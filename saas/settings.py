@@ -94,6 +94,8 @@ _SETTINGS = {
     # Do not check the auth token against the processor to set processor keys.
     # (useful while testing).
     'BYPASS_PROCESSOR_AUTH': False,
+    'CURRENCY_JSON_PATH': os.path.join(os.path.dirname(__file__),
+        'static', 'data', 'currencies.json'),
     'DEFAULT_UNIT': 'usd',
     'DISABLE_UPDATES': False,
     'EXPIRE_NOTICE_DAYS': [15],
@@ -227,7 +229,4 @@ TIME_ZONE = getattr(settings, 'TIME_ZONE')
 CONTRIBUTOR = _SETTINGS.get('CONTRIBUTOR')
 MANAGER = _SETTINGS.get('MANAGER')
 PROFILE_URL_KWARG = _SETTINGS.get('PROFILE_URL_KWARG')
-
-CURRENCY_JSON_PATH = os.path.join(
-    settings.BASE_DIR, 'saas',
-    'static', 'data', 'currencies.json')
+CURRENCY_JSON_PATH = _SETTINGS.get('CURRENCY_JSON_PATH')

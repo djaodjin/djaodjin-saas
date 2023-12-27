@@ -366,7 +366,7 @@ class TypeaheadPagination(PageNumberPagination):
             'properties': {
                 'count': {
                     'type': 'integer',
-                    'description': "The number of records available XXX"
+                    'description': "The number of records available"
                 },
                 'results': schema,
             },

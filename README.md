@@ -105,7 +105,7 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.19.0
+0.19.1
 
   * adds API endpoint to retrieve customers with balances due
   * adds API endpoint for broker to retrieve in-progress carts

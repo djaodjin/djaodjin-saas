@@ -17,6 +17,12 @@ Roadmap
 Released versions
 =================
 
+0.19.1
+
+  * packages missing static/data/currencies.json
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 27 Dec 2023 14:20:00 -0700
+
 0.19.0
 
   * adds API endpoint to retrieve customers with balances due
