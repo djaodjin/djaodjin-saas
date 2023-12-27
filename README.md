@@ -105,14 +105,14 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.18.0
+0.19.0
 
-  * adds APIs for agreements
-  * adds expiration date to roles (migrations)
-  * renames `agreement.modified` to `agreement.updated_at` (migrations)
-  * reduces number of query in list APIs by using `select_related`
-  * simplifies personal profile to organization profile convertion
-  * fixes `expand` argument specified twice (#270)
-  * fixes display of coupons restricted to plan
+  * adds API endpoint to retrieve customers with balances due
+  * adds API endpoint for broker to retrieve in-progress carts
+  * extends metrics APIs to support period_type and nb_periods parameters
+  * notifies when use charges are above limit in period
+  * supports OpenAPI 3 schema for API documentation
+  * fixes revenue recognition when subscription is resumed after pause
+  * fixes denying role request with no role description
 
 [previous release notes](changelog)

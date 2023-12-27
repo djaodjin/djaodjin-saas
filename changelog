@@ -1,16 +1,33 @@
 Roadmap
 =======
 
+1.5
+
+  * Uses Web Component for browser-based client components
+  * removes deprecated AngularJS browser app
+
 1.0
 
-  * completes documentation of new features in 0.17
+  * completes documentation of new features in 0.19
 
   (initially we anticipated to support Vue3 but there are so many features
-   in Vue2 that lead us to pick Vue from a front-end UI framework and that
-   were removed in Vue3 that it does not make sense to migrate to Vue3)
+   in Vue2 that lead us to pick Vue from a front-end UI framework, and that
+   were removed in Vue3, that it does not make sense to migrate to Vue3)
 
 Released versions
 =================
+
+0.19.0
+
+  * adds API endpoint to retrieve customers with balances due
+  * adds API endpoint for broker to retrieve in-progress carts
+  * extends metrics APIs to support period_type and nb_periods parameters
+  * notifies when use charges are above limit in period
+  * supports OpenAPI 3 schema for API documentation
+  * fixes revenue recognition when subscription is resumed after pause
+  * fixes denying role request with no role description
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 27 Dec 2023 12:00:00 -0700
 
 0.18.0
 
