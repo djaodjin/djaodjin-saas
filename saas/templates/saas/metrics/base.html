@@ -24,10 +24,10 @@
           <option value="local">Local</option>
           <option value="utc">UTC</option>
         </select>
-        <select name="period"
+        <select name="period_type"
            ng-model="period"
            ng-change="prepareCurrentTabData(ends_at, timezone, period)"
-           v-model="period"
+           v-model="periodType"
            @change="prepareCurrentTabData">
           <option value="hourly">Hourly</option>
           <option value="daily">Daily</option>
@@ -58,7 +58,7 @@
             <td></td>
             <th ng-repeat="col in table.data[0].values"
                 v-for="col in table.data[0].values">
-              [[ asPeriodHeading(col[0], params.period, '{{organization.default_timezone}}') ]]
+              [[ asPeriodHeading(col[0], params.period_type, '{{organization.default_timezone}}') ]]
             </th>
           </tr>
           <tr ng-prop-id="row.slug"

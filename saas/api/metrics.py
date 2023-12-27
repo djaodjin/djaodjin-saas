@@ -51,8 +51,8 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
     """
     Base class for metrics APIs
     """
-    period_type_param = 'period'
-    nb_periods_param = 'num_periods'
+    period_type_param = 'period_type'
+    nb_periods_param = 'nb_periods'
     serializer_class = MetricsSerializer
 
     @extend_schema(parameters=[QueryParamPeriodSerializer])
@@ -63,7 +63,6 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
         nb_periods = query_serializer.validated_data.get(self.nb_periods_param)
         period_type = query_serializer.validated_data.get(
             self.period_type_param, humanize.MONTHLY)
-        print("XXX [MetricsMixin] query_serializer.validated_data=%s" % str(query_serializer.validated_data))
 
         date_periods = convert_dates_to_utc(
             generate_periods(period_type, nb_periods=nb_periods,
@@ -87,7 +86,7 @@ class BalancesAPIView(MetricsMixin, GenericAPIView):
     The date from which trailing balances are computed can be specified
     by the `ends_at` query parameter. The type of periods (hourly, daily,
     weekly, monthly, yearly) to aggregate balances over, and the number of
-    periods to return can be specificed by `period` and `num_periods`
+    periods to return can be specificed by `period_type` and `nb_periods`
     respectively.
 
     The API is typically used within an HTML
@@ -447,7 +446,7 @@ class CustomerMetricAPIView(MetricsMixin, GenericAPIView):
     The date from which trailing balances are computed can be specified
     by the `ends_at` query parameter. The type of periods (hourly, daily,
     weekly, monthly, yearly) to aggregate balances over, and the number of
-    periods to return can be specificed by `period` and `num_periods`
+    periods to return can be specificed by `period_type` and `nb_periods`
     respectively.
 
     The API is typically used within an HTML
@@ -667,7 +666,7 @@ class PlanMetricAPIView(MetricsMixin, GenericAPIView):
     The date from which trailing balances are computed can be specified
     by the `ends_at` query parameter. The type of periods (hourly, daily,
     weekly, monthly, yearly) to aggregate balances over, and the number of
-    periods to return can be specificed by `period` and `num_periods`
+    periods to return can be specificed by `period_type` and `nb_periods`
     respectively.
 
     The API is typically used within an HTML

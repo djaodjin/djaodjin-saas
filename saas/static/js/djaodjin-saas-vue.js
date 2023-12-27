@@ -1,4 +1,4 @@
-// Copyright (c) 2021, DjaoDjin inc.
+// Copyright (c) 2023, DjaoDjin inc.
 // All rights reserved.
 // BSD 2-Clause license
 
@@ -348,7 +348,7 @@ var timezoneMixin = {
     },
     methods: {
         // Used to be filters but Vue3 will not allow it.
-        asPeriodHeading: function(datetime, periodType, tzString) {
+        asPeriodHeading: function(atTime, periodType, tzString) {
             var datetime = null;
             if( typeof atTime === 'string' ) {
                 datetime = new Date(atTime);
@@ -1620,7 +1620,7 @@ Vue.component('metrics-charts', {
             params: {
                 ends_at: this.datetimeOrNow(
                     this.$dateRange ? this.$dateRange.ends_at : null),
-                period: "monthly"
+                period_type: "monthly"
             },
         }
         return data;
@@ -1630,7 +1630,7 @@ Vue.component('metrics-charts', {
             var vm = this;
             var params = {
                 ends_at: vm.params.ends_at,
-                period: vm.params.period,
+                period_type: vm.params.period_type,
             };
             if( vm.timezone ) {
                 params["timezone"] = vm.timezone;
@@ -1750,12 +1750,12 @@ Vue.component('metrics-charts', {
                 this.get();
             }
         },
-        period: {
+        periodType: {
         get: function() {
-          return this.params.period;
+          return this.params.period_type;
         },
         set: function(newVal) {
-          this.$set(this.params, 'period', newVal);
+          this.$set(this.params, 'period_type', newVal);
           this.get();
         }
       },

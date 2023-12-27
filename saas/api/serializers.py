@@ -1458,11 +1458,11 @@ class QueryParamPeriodSerializer(NoModelSerializer):
     ends_at = serializers.CharField(required=False,
         help_text=_("Data/time for the end of the period (in ISO format)"))
 
-    period = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
+    period_type = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
         help_text=_("Natural period length"\
         " (hourly, daily, weekly, monthly, yearly). Defaults to monthly."))
 
-    num_periods = serializers.IntegerField(
+    nb_periods = serializers.IntegerField(
         required=False,
         min_value=1,
         max_value=100,
