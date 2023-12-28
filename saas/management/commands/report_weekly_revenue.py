@@ -52,6 +52,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            '--dry-run', action='store_true',
+            dest='dry_run', default=False,
+            help='Do not trigger the signal'
+        )
+        parser.add_argument(
             '--at-time', action='store',
             dest='at_time', default=None,
             help='Specifies the time at which the command runs'
@@ -59,7 +64,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--provider', action='append',
             dest='providers', default=None,
-            help='Specifies provider to generate reports for.'
+            help='Specifies provider to generate reports for'
         )
         parser.add_argument(
             '--period', action='store',
@@ -218,12 +223,13 @@ class Command(BaseCommand):
         #pylint:disable=too-many-locals
         # aware utc datetime object
         at_time = datetime_or_now(options.get('at_time'))
-        period = self.inverted_period_choices[options.get('period')]
-        period_name = Plan.INTERVAL_CHOICES[period][1]
+        dry_run = options['dry_run']
+        period_type = self.inverted_period_choices[options.get('period')]
+        period_name = Plan.INTERVAL_CHOICES[period_type][1]
 
         self.stdout.write(
             "running report_weekly_revenue for %s %s period at %s" %
-            ('an' if period == humanize.HOURLY else 'a',
+            ('an' if period_type == humanize.HOURLY else 'a',
              period_name, at_time))
 
         providers = get_organization_model().objects.filter(is_provider=True)
@@ -231,40 +237,48 @@ class Command(BaseCommand):
         if provider_slugs:
             providers = providers.filter(slug__in=provider_slugs)
         for provider in providers:
-            dates = self.construct_date_periods(
-                at_time, period=period, timezone=provider.default_timezone)
-            prev_period, prev_year = dates
-            if period == humanize.YEARLY:
-                LOGGER.debug(
-                "Two last consecutive yearly periods\n: %s to %s and %s to %s",
-                    prev_period[0].isoformat(), prev_period[1].isoformat(),
-                    prev_period[1].isoformat(), prev_period[2].isoformat())
-                LOGGER.debug(
-                    "Year before the corresponding yearly period\n: %s to %s",
-                    prev_year[0].isoformat(), prev_year[1].isoformat())
-            else:
-                LOGGER.debug(
-                    "Two last consecutive %s periods\n: %s to %s and %s to %s",
-                    period_name,
-                    prev_period[0].isoformat(), prev_period[1].isoformat(),
-                    prev_period[1].isoformat(), prev_period[2].isoformat())
-                LOGGER.debug(
-                    "Same %s period from the previous year\n: %s to %s",
-                    period_name,
-                    prev_year[0].isoformat(), prev_year[1].isoformat())
-            data, unit = self.get_perf_data(
-                provider, prev_period, prev_year, period_type=period)
-            table = self.construct_table(data, unit)
+            self.run_report(provider, at_time, period_type, dry_run=dry_run)
 
-            self.stdout.write("%s | %s | %s | %s" % (
-                str(provider),
-                'Last %s' % period_name,
-                'Prev %s' % period_name,
-                'Last year'))
-            for row in table:
-                self.stdout.write("%s | %s | %s | %s" % (
-                    row['title'], row['values']['last'],
-                    row['values']['prev'], row['values']['prev_year']))
 
+    def run_report(self, provider, at_time, period_type=Plan.WEEKLY,
+                   dry_run=False):
+        period_name = Plan.INTERVAL_CHOICES[period_type][1]
+        dates = self.construct_date_periods(
+            at_time, period=period_type, timezone=provider.default_timezone)
+        prev_period, prev_year = dates
+        if period_type == humanize.YEARLY:
+            LOGGER.debug(
+            "Two last consecutive yearly periods\n: %s to %s and %s to %s",
+                prev_period[0].isoformat(), prev_period[1].isoformat(),
+                prev_period[1].isoformat(), prev_period[2].isoformat())
+            LOGGER.debug(
+                "Year before the corresponding yearly period\n: %s to %s",
+                prev_year[0].isoformat(), prev_year[1].isoformat())
+        else:
+            LOGGER.debug(
+                "Two last consecutive %s periods\n: %s to %s and %s to %s",
+                period_name,
+                prev_period[0].isoformat(), prev_period[1].isoformat(),
+                prev_period[1].isoformat(), prev_period[2].isoformat())
+            LOGGER.debug(
+                "Same %s period from the previous year\n: %s to %s",
+                period_name,
+                prev_year[0].isoformat(), prev_year[1].isoformat())
+        data, unit = self.get_perf_data(
+            provider, prev_period, prev_year, period_type=period_type)
+        table = self.construct_table(data, unit)
+
+        self.stdout.write("  {0:<15s} | {1:>12s} | {2:>8s} | {3:>8s}".format(
+            str(provider),
+            'Last %s' % period_name,
+            'Prev %s' % period_name,
+            'Last year'))
+        for row in table:
+            self.stdout.write(
+                "  {0:<15s} | {1:>12s} | {2:>8s} | {3:>8s}".format(
+                row['title'], row['values']['last'],
+                row['values']['prev'], row['values']['prev_year']))
+
+        if not dry_run:
             signals.period_sales_report_created.send(sender=__name__,
                 provider=provider, dates=dates, data=table)
