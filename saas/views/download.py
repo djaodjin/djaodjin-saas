@@ -42,6 +42,11 @@ from .. import humanize
 from ..api.balances import BrokerBalancesMixin
 from ..api.charges import SmartChargeListMixin, ChargeQuerysetMixin
 from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
+from ..api.metrics import (BalancesMetricsMixin, PlanMetricsMixin,
+    RevenueMetricsMixin, CustomerMetricsMixin)
+from ..api.organizations import (EngagedSubscribersQuerysetMixin,
+    UnengagedSubscribersQuerysetMixin)
+from ..api.serializers import OrganizationSerializer
 from ..api.subscriptions import ActiveSubscribersMixin, ChurnedSubscribersMixin
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
@@ -49,7 +54,8 @@ from ..api.users import RegisteredQuerysetMixin
 from ..compat import six
 from ..metrics.base import month_periods
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
-    UserSmartListMixin, as_html_description)
+    UserSmartListMixin, as_html_description, BalancesDueMixin,
+    MetricsDownloadMixin)
 from ..models import BalanceLine, CartItem, Coupon
 from ..utils import datetime_or_now, convert_dates_to_utc
 
@@ -420,4 +426,186 @@ class TransferDownloadView(SmartTransactionListMixin,
                 Decimal(transaction.dest_amount) / 100),
             self.encode(transaction.dest_unit),
             self.encode_descr(transaction)
+        ]
+
+
+class BalancesMetricsDownloadView(MetricsDownloadMixin, BalancesMetricsMixin,
+                                  CSVDownloadView):
+    basename = 'balancesmetrics'
+
+    headings = [
+        'Date',
+        'Income',
+        'Backlog',
+        'Receivable',
+    ]
+
+    def queryrow_to_columns(self, record):
+        row = [
+            self.encode(record[heading]) for heading in self.headings
+        ]
+        return row
+
+
+class RevenueMetricsDownloadView(MetricsDownloadMixin, RevenueMetricsMixin,
+                                 CSVDownloadView):
+
+    basename = 'revenuemetrics'
+
+    headings = [
+        'Date',
+        'Total Sales',
+        'New Sales',
+        'Churned Sales',
+        'Payments',
+        'Refunds'
+    ]
+
+    def queryrow_to_columns(self, record):
+        row = [
+            self.encode(record[heading]) for heading in self.headings
+        ]
+        return row
+
+
+class CustomerMetricsDownloadView(MetricsDownloadMixin, CustomerMetricsMixin,
+                                  CSVDownloadView):
+
+    basename = 'customermetrics'
+
+    headings = [
+        'Date',
+        'Total # of Customers',
+        '# of new Customers',
+        '# of churned Customers',
+        'Net New Customers',
+        '% Customer Churn'
+    ]
+
+    def queryrow_to_columns(self, record):
+        return [
+            self.encode(record[heading]) for heading in self.headings
+        ]
+
+
+class PlanMetricsDownloadView(MetricsDownloadMixin, PlanMetricsMixin,
+                              CSVDownloadView):
+
+    basename = 'planmetrics'
+
+    @property
+    def plans(self):
+        if not hasattr(self, '_plans'):
+            self._plans, _ = self.get_data()
+        return self._plans
+
+    def get_headings(self):
+        headings = ['Date'] + [plan['title'] for plan in self.plans]
+        return headings
+
+    def queryrow_to_columns(self, record):
+        return [
+            self.encode(record[heading]) for heading in self.get_headings()
+        ]
+
+
+class BalancesDueDownloadView(BalancesDueMixin, CSVDownloadView):
+
+    basename = 'balances_due'
+
+    def get_headings(self):
+        basic_headers = [
+            'Slug',
+            'Profile Name',
+            'Created At'
+        ]
+
+        currency_set = self.currency_set
+        currency_headers = [
+            f'{currency}_{balance_type}'
+            for currency in currency_set
+            for balance_type in ['contract_value', 'cash_payments', 'balance']
+        ]
+
+        return basic_headers + currency_headers
+
+    @property
+    def currency_set(self):
+        if not hasattr(self, '_currency_set'):
+            currency_set = set()
+            for balances in self.balances_due.values():
+                currency_set.update(balances.keys())
+            self._currency_set = currency_set
+
+        return self._currency_set
+
+    def queryrow_to_columns(self, record):
+        organization_balances = self.balances_due.get(record.slug, {})
+        row = [
+            self.encode(getattr(record, 'slug', '')),
+            self.encode(getattr(record, 'printable_name', '')),
+            self.encode(getattr(record, 'created_at', ''))
+        ]
+
+        for currency in self.currency_set:
+            balances = organization_balances.get(currency, {})
+            row.extend([self.encode(balances.get(key, 0)) for key in
+                        ['contract_value', 'cash_payments', 'balance']])
+
+        return row
+
+
+class EngagedSubscribersDownloadView(EngagedSubscribersQuerysetMixin, CSVDownloadView):
+
+    basename = 'engaged_subscribers'
+
+    headings = [
+        'Created At',
+        'Username',
+        'Email',
+        'Full Name',
+        'Account Creation Date',
+        'Role Description',
+        'Profile Slug',
+        'Profile Name',
+        'Profile Creation Date'
+    ]
+
+    def queryrow_to_columns(self, record):
+        user = record.user
+        role_description = record.role_description
+        organization = record.organization
+
+        return [
+            self.encode(getattr(record, 'created_at', '')),
+            self.encode(getattr(user, 'username', '')),
+            self.encode(getattr(user, 'email', '')),
+            self.encode(getattr(user, 'get_full_name', '')()),
+            self.encode(getattr(user, 'date_joined', '')),
+            self.encode(getattr(role_description, 'title', '')),
+            self.encode(getattr(organization, 'slug', '')),
+            self.encode(getattr(organization, 'printable_name', '')),
+            self.encode(getattr(organization, 'created_at', '')),
+        ]
+
+
+class UnengagedSubscribersDownloadView(UnengagedSubscribersQuerysetMixin, CSVDownloadView):
+
+    basename = 'unengaged_subscribers'
+
+    headings = [
+        'Slug',
+        'Profile Name',
+        'Type',
+        'Credentials',
+        'Created At'
+    ]
+
+    def queryrow_to_columns(self, record):
+        record = OrganizationSerializer(record).data
+        return [
+            self.encode(record['printable_name']) if
+            heading == 'Profile Name' else
+            self.encode(record.get('_'.join(heading.lower().split()), ''))
+            for heading in self.get_headings()
         ]

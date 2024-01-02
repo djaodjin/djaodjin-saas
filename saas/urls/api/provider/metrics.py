@@ -68,5 +68,5 @@ urlpatterns = [
     path('metrics/<slug:%s>/federated' %
         settings.PROFILE_URL_KWARG,
         FederatedSubscribersAPIView.as_view(),
-        name="saas_api_federated_subscribers"),
+        name="saas_api_federated_subscribers")
 ]

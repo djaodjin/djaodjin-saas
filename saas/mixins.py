@@ -1216,7 +1216,19 @@ class RoleMixin(RoleDescriptionMixin):
 
 class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
 
-    filter_backends = (DateRangeFilter,) # XXX Why no search and ordering?
+    search_fields = (
+        'slug',
+        'full_name',
+    )
+
+    ordering_fields = (
+        ('slug', 'Slug'),
+        ('full_name', 'Full Name'),
+        ('created_at', 'Created At')
+    )
+    ordering = ('slug',)
+
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
     @property
     def balances_due(self):
@@ -1248,6 +1260,26 @@ class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
             else:
                 organization.balances = None
         return decorated_queryset
+
+
+class MetricsDownloadMixin(object):
+
+    filter_backends = []
+
+    def get_queryset(self):
+        results, _ = self.get_data()
+        consolidated_data = {}
+        for result in results:
+            for date_value in result['values']:
+                date_str = date_value[0]
+                if date_str not in consolidated_data:
+                    consolidated_data[date_str] = {
+                        'Date': date_str,
+                        **{heading: 0 for heading in self.headings if heading != 'Date'}
+                    }
+                consolidated_data[date_str][result['title']] = date_value[1]
+
+        return list(consolidated_data.values())
 
 
 def _as_html_description(transaction_descr,
