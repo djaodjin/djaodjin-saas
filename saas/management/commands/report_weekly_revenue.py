@@ -225,7 +225,7 @@ class Command(BaseCommand):
         at_time = datetime_or_now(options.get('at_time'))
         dry_run = options['dry_run']
         period_type = self.inverted_period_choices[options.get('period')]
-        period_name = Plan.INTERVAL_CHOICES[period_type][1]
+        period_name = humanize.describe_period_name(period_type, 1)
 
         self.stdout.write(
             "running report_weekly_revenue for %s %s period at %s" %
@@ -240,9 +240,9 @@ class Command(BaseCommand):
             self.run_report(provider, at_time, period_type, dry_run=dry_run)
 
 
-    def run_report(self, provider, at_time, period_type=Plan.WEEKLY,
+    def run_report(self, provider, at_time, period_type=humanize.WEEKLY,
                    dry_run=False):
-        period_name = Plan.INTERVAL_CHOICES[period_type][1]
+        period_name = humanize.describe_period_name(period_type, 1)
         dates = self.construct_date_periods(
             at_time, period=period_type, timezone=provider.default_timezone)
         prev_period, prev_year = dates
@@ -272,7 +272,7 @@ class Command(BaseCommand):
             str(provider),
             'Last %s' % period_name,
             'Prev %s' % period_name,
-            'Last year'))
+            'Same %s last year' % period_name))
         for row in table:
             self.stdout.write(
                 "  {0:<15s} | {1:>12s} | {2:>8s} | {3:>8s}".format(
