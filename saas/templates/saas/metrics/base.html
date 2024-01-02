@@ -46,6 +46,9 @@
          ng-click="tabClicked(table)"
          v-bind:href="'#' + table.key"
          @click="tabClicked(index)"><h2>[[table.title]]</h2></a>
+      <div>
+        <a :href="[[table.download + getQueryString(['page'])]]" target="_blank">Download</a>
+      </div>
       <div class="chart-content">
       </div>
       <!-- Display as a table -->

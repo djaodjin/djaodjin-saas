@@ -271,22 +271,30 @@ reference/djaoapp/latest/api/#listCustomerMetric>`__
                 "title": "Amounts",
                 "unit": unit,
                 "location": reverse('saas_api_revenue',
+                    args=(self.organization,)),
+                "download": reverse('saas_metrics_revenue_download',
                     args=(self.organization,))
             }, {
                 "key": "balances",
                 "title": "Balances",
                 "unit": unit,
                 "location": reverse('saas_api_balances',
+                    args=(self.organization,)),
+                "download": reverse('saas_metrics_balances_download',
                     args=(self.organization,))
             }, {
                 "key": "customer",
                 "title": "Customers",
                 "location": reverse('saas_api_customer',
+                    args=(self.organization,)),
+                "download": reverse('saas_metrics_customers_download',
                     args=(self.organization,))
             }, {
                 "key": "plan",
                 "title": "Active subscribers",
                 "location": reverse('saas_api_metrics_plans',
+                    args=(self.organization,)),
+                "download": reverse('saas_metrics_plans_download',
                     args=(self.organization,))
             }])})
         return context

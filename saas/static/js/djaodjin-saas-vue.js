@@ -1649,6 +1649,7 @@ Vue.component('metrics-charts', {
                     key: table.key,
                     title: table.title,
                     location: table.location,
+                    download: table.download,
                     unit: unit,
                     scale: scale,
                     data: resp.results
