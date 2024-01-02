@@ -3523,12 +3523,12 @@ class Subscription(models.Model):
                 # Integer division?
                 estimated = (start_upper - until_lower).total_seconds() // 3600
             elif period_type == Plan.DAILY:
-                estimated = delta.days
+                estimated = (start_upper - until_lower).days
             elif period_type == Plan.WEEKLY:
                 # Integer division?
-                estimated = delta.days // 7
+                estimated = (start_upper - until_lower).days // 7
             elif period_type == Plan.MONTHLY:
-                estimated = delta.months
+                estimated = delta.years * 12 + delta.months
             elif period_type == Plan.YEARLY:
                 estimated = delta.years
             upper = self.plan.end_of_period(
