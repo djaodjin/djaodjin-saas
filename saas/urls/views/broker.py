@@ -43,7 +43,7 @@ urlpatterns = [
         ChargesDownloadView.as_view(), name='saas_charges_download'),
     path('billing/charges/',
         ChargeListView.as_view(), name='saas_charges'),
-    re_path(r'billing/transactions/((?P<selector>%s)/)?download',
+    re_path(r'billing/transactions/((?P<selector>%s)/)?download/',
         TransactionDownloadView.as_view(),
         name='saas_transactions_download'),
     re_path(r'^billing/transactions/((?P<selector>%s)/)?' %
@@ -52,13 +52,13 @@ urlpatterns = [
     # Organization refers to the subscriber in the following URL pattern.
     re_path(r'^billing/(?P<customer>%s)/vtcharge/' % settings.SLUG_RE,
         VTChargeView.as_view(), name='saas_organization_vtcharge'),
-    re_path(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?download'
+    re_path(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?download/'
         % settings.SLUG_RE,
         BalancesDownloadView.as_view(), name='saas_balances_download'),
     re_path(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'
         % settings.SLUG_RE,
         BalancesView.as_view(), name='saas_balance'),
-    path('metrics/registered/download',
+    path('metrics/registered/download/',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),
 ]

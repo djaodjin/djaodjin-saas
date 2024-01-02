@@ -46,7 +46,7 @@ urlpatterns += [
     path('billing/<slug:%s>/receipt/<slug:charge>/' %
         settings.PROFILE_URL_KWARG,
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    path('billing/<slug:%s>/history/download' %
+    path('billing/<slug:%s>/history/download/' %
         settings.PROFILE_URL_KWARG,
         BillingStatementDownloadView.as_view(), name='saas_statement_download'),
     path('billing/<slug:%s>/history/' %

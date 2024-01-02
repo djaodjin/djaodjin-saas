@@ -43,7 +43,7 @@ urlpatterns = [
     path('billing/<slug:%s>/coupons/' %
         settings.PROFILE_URL_KWARG,
         CouponListView.as_view(), name='saas_coupon_list'),
-    path('billing/<slug:%s>/transfers/download' %
+    path('billing/<slug:%s>/transfers/download/' %
         settings.PROFILE_URL_KWARG,
         TransferDownloadView.as_view(), name='saas_transfers_download'),
     path('billing/<slug:%s>/transfers/import/' %

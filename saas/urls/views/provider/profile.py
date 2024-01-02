@@ -29,7 +29,8 @@ URLs related to provider bank account information.
 from .... import settings
 from ....compat import path, re_path
 from ....views.download import (ActiveSubscriptionDownloadView,
-    ChurnedSubscriptionDownloadView)
+    ChurnedSubscriptionDownloadView, PlanMetricsDownloadView,
+    EngagedSubscribersDownloadView, UnengagedSubscribersDownloadView)
 from ....views.optins import SubscriptionRequestAcceptView
 from ....views.plans import PlanCreateView, PlanUpdateView, PlanListView
 from ....views.profile import SubscriberListView, PlanSubscribersListView
@@ -48,11 +49,11 @@ urlpatterns = [
     path('profile/<slug:%s>/plans/' %
         settings.PROFILE_URL_KWARG,
         PlanListView.as_view(), name='saas_plan_base'),
-    path('profile/<slug:%s>/subscribers/active/download' %
+    path('profile/<slug:%s>/subscribers/active/download/' %
         settings.PROFILE_URL_KWARG,
         ActiveSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_subscribed'),
-    path('profile/<slug:%s>/subscribers/churned/download' %
+    path('profile/<slug:%s>/subscribers/churned/download/' %
         settings.PROFILE_URL_KWARG,
         ChurnedSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_churned'),
@@ -64,4 +65,16 @@ urlpatterns = [
     path('profile/<slug:%s>/subscribers/' %
         settings.PROFILE_URL_KWARG,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
+    path('profile/<slug:%s>/plans/download/'
+         % settings.PROFILE_URL_KWARG,
+         PlanMetricsDownloadView.as_view(),
+         name='saas_metrics_plans_download'),
+    path('profile/<slug:%s>/subscribers/engaged/download/' %
+         settings.PROFILE_URL_KWARG,
+         EngagedSubscribersDownloadView.as_view(),
+         name='saas_engaged_subscribers_download'),
+    path('profile/<slug:%s>/subscribers/unengaged/download/' %
+         settings.PROFILE_URL_KWARG,
+         UnengagedSubscribersDownloadView.as_view(),
+         name='saas_unengaged_subscribers_download'),
 ]
