@@ -4,7 +4,7 @@
       "slug": "club140",
       "email": "club+140@localhost.localdomain",
       "full_name": "Club140",
-      "created_at": "2023-01-01T00:00:00+00:00",
+      "created_at": "2024-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 0,
       "is_active": 1
@@ -13,8 +13,8 @@
 },
 {
     "fields": {
-      "created_at": "2023-01-01T00:00:00+00:00",
-      "ends_at": "2023-12-31T23:59:59-00:00",
+      "created_at": "2024-01-01T00:00:00+00:00",
+      "ends_at": "2024-12-31T23:59:59-00:00",
       "organization": 140,
       "plan": 1
     },
@@ -22,7 +22,7 @@
 },
 {
     "fields": {
-      "created_at": "2023-01-01T00:00:00+00:00",
+      "created_at": "2024-01-01T00:00:00+00:00",
       "dest_amount": 24900,
       "dest_unit": "usd",
       "dest_account": "Payable",
@@ -32,13 +32,13 @@
       "orig_account": "Receivable",
       "orig_organization": 2,
       "event_id": "sub_140/",
-      "descr": "Subscription to basic until 2023/02/01 (1 month)"
+      "descr": "Subscription to basic until 2024/02/01 (1 month)"
     },
     "model": "saas.transaction", "pk": 140
 },
 {
     "fields": {
-      "created_at": "2023-01-01T00:00:00+00:00",
+      "created_at": "2024-01-01T00:00:00+00:00",
       "dest_amount": 24900,
       "dest_unit": "usd",
       "dest_account": "Funds",
@@ -53,7 +53,7 @@
 },
 {
     "fields": {
-      "created_at": "2023-01-01T00:00:00+00:00",
+      "created_at": "2024-01-01T00:00:00+00:00",
       "dest_amount": 24900,
       "dest_unit": "usd",
       "dest_account": "Liability",
@@ -69,7 +69,7 @@
 },
 {
     "fields": {
-      "created_at": "2023-01-01T00:00:00+00:00",
+      "created_at": "2024-01-01T00:00:00+00:00",
       "dest_amount": 24900,
       "dest_unit": "usd",
       "dest_account": "Receivable",
@@ -85,7 +85,7 @@
 },
 {
     "fields": {
-      "created_at": "2023-04-01T00:00:00+00:00",
+      "created_at": "2024-04-01T00:00:00+00:00",
       "dest_amount": 24900,
       "dest_unit": "usd",
       "dest_account": "Payable",
@@ -95,7 +95,7 @@
       "orig_account": "Receivable",
       "orig_organization": 2,
       "event_id": "sub_140/",
-      "descr": "Subscription to basic until 2023/05/01 (1 month)"
+      "descr": "Subscription to basic until 2024/05/01 (1 month)"
     },
     "model": "saas.transaction", "pk": 144
 }
