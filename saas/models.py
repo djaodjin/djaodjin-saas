@@ -1287,6 +1287,9 @@ class RoleDescription(SlugTitleMixin, models.Model):
     implicit_create_on_none = models.BooleanField(default=False,
         help_text=_("Automatically adds the role when a user and profile share"\
         " the same e-mail domain."))
+    otp_required = models.BooleanField(default=False,
+        help_text=_("Requires users with the role to sign-in using an"\
+        " OTP code as a multi-factor authentication."))
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 

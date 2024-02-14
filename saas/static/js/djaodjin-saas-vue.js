@@ -2376,7 +2376,7 @@ Vue.component('roledescr-list', {
         }
     },
     methods: {
-        save: function(){
+        save: function() {
             var vm = this;
             vm.reqPost(vm.url, vm.newItem,
             function() {
@@ -2385,12 +2385,18 @@ Vue.component('roledescr-list', {
                 vm.get()
             });
         },
-        remove: function(role){
+        remove: function(role) {
             var vm = this;
             var url = vm.url + "/" + role.slug
             vm.reqDelete(url, function() {
                 vm.params.page = 1;
                 vm.get()
+            });
+        },
+        update: function(role) {
+            var vm = this;
+            var url = vm.url + "/" + role.slug
+            vm.reqPut(url, role, function() {
             });
         },
     },
