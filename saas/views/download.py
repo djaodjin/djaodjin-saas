@@ -496,6 +496,7 @@ class PlanMetricsDownloadView(MetricsDownloadMixin, PlanMetricsMixin,
     @property
     def plans(self):
         if not hasattr(self, '_plans'):
+            #pylint:disable=attribute-defined-outside-init
             self._plans, _ = self.get_data()
         return self._plans
 
@@ -535,6 +536,7 @@ class BalancesDueDownloadView(BalancesDueMixin, CSVDownloadView):
             currency_set = set()
             for balances in self.balances_due.values():
                 currency_set.update(balances.keys())
+            #pylint:disable=attribute-defined-outside-init
             self._currency_set = currency_set
 
         return self._currency_set

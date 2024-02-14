@@ -23,8 +23,10 @@ whitenoise==6.4.0
 
 # development
 Faker==3.0.1
-Sphinx==5.1.1
+Sphinx== 7.2.6
+sphinx_rtd_theme==2.0.0
 sphinxcontrib-httpdomain==1.8.1
+sphinxcontrib-websupport==1.2.7
 
 # When running with Py37, we transitively use the `importlib-metadata`
 # package through `djangorestframework` -> `makrdown`. Latest version (>=5.0)
