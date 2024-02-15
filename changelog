@@ -17,6 +17,13 @@ Roadmap
 Released versions
 =================
 
+0.20.0
+
+  * adds field to manage otp code requirements per role
+  * computes number of periods that cover more than 1 year correctly
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 15 Feb 2024 06:30:00 -0700
+
 0.19.1
 
   * packages missing static/data/currencies.json

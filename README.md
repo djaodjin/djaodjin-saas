@@ -105,14 +105,9 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.19.1
+0.20.0
 
-  * adds API endpoint to retrieve customers with balances due
-  * adds API endpoint for broker to retrieve in-progress carts
-  * extends metrics APIs to support period_type and nb_periods parameters
-  * notifies when use charges are above limit in period
-  * supports OpenAPI 3 schema for API documentation
-  * fixes revenue recognition when subscription is resumed after pause
-  * fixes denying role request with no role description
+  * adds field to manage otp code requirements per role
+  * computes number of periods that cover more than 1 year correctly
 
 [previous release notes](changelog)
