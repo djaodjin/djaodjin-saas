@@ -1,4 +1,4 @@
-Django==1.11.29
+Django==3.2.24
 django-countries==5.5
 django-localflavor==2.2
 django-phonenumber-field==2.4.0
