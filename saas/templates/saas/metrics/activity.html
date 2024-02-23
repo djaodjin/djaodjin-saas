@@ -11,6 +11,8 @@
     <engaged-subscribers inline-template>
       <div>
         <div>
+          <a id="download-engaged" role="button"
+           v-bind:href="'{{urls.engaged_subscribers_download}}' + getQueryString(['page'])">CSV Download</a>
           <div v-if="!itemsLoaded">
             <h3>loading...</h3>
           </div>
@@ -83,6 +85,8 @@
     <unengaged-subscribers inline-template>
       <div>
         <div>
+          <a id="download-unengaged" role="button"
+           v-bind:href="'{{urls.unengaged_subscribers_download}}' + getQueryString(['page'])">CSV Download</a>
           <div v-if="!itemsLoaded">
             <h3>loading ...</h3>
           </div>

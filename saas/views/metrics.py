@@ -55,6 +55,10 @@ class SubscribersActivityView(ProviderMixin, TemplateView):
                 'saas_api_engaged_subscribers', args=(self.provider,)),
             'api_unengaged_subscribers': reverse(
                 'saas_api_unengaged_subscribers', args=(self.provider,)),
+            'engaged_subscribers_download': reverse(
+                'saas_engaged_subscribers_download', args=(self.provider,)),
+            'unengaged_subscribers_download': reverse(
+                'saas_unengaged_subscribers_download', args=(self.provider,)),
         })
         return context
 
