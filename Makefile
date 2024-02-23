@@ -97,7 +97,9 @@ initdb: clean-dbs
         testsite/fixtures/110-balance-checkout.json \
         testsite/fixtures/120-subscriptions.json \
         testsite/fixtures/130-subscriptions.json \
-        testsite/fixtures/140-payment-gap.json
+        testsite/fixtures/140-payment-gap.json \
+        testsite/fixtures/150-subscribers.json
+
 
 doc:
 	$(installDirs) build/docs
