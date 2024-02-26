@@ -38,7 +38,7 @@ from django.views.generic import View
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 
-from .. import humanize
+from .. import humanize, settings
 from ..api.balances import BrokerBalancesMixin
 from ..api.charges import SmartChargeListMixin, ChargeQuerysetMixin
 from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
@@ -305,12 +305,31 @@ class RegisteredDownloadView(UserSmartListMixin, RegisteredQuerysetMixin,
 class SubscriptionBaseDownloadView(CSVDownloadView):
 
     subscriber_type = None
+    CSV_CUSTOMER_CONTACTS_INCLUDE = settings.CSV_CUSTOMER_CONTACTS_INCLUDE
+
+    headings = [
+        'Name',
+        'Email',
+        'Plan',
+        'Since',
+        'Until'
+    ]
 
     def get_queryset(self):
         raise NotImplementedError()
 
     def get_headings(self):
-        return ['Name', 'Email', 'Plan', 'Since', 'Until']
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+            extra_headings = [
+                'Phone',
+                'Street Address',
+                'Locality',
+                'Region',
+                'Postal Code',
+                'Country'
+            ]
+            self.headings += extra_headings
+        return self.headings
 
     def get_filename(self):
         return 'subscribers-{}-{}.csv'.format(
@@ -318,13 +337,26 @@ class SubscriptionBaseDownloadView(CSVDownloadView):
 
     def queryrow_to_columns(self, record):
         subscription = record
-        return [
+        columns = [
             self.encode(subscription.organization.full_name),
             self.encode(subscription.organization.email),
             self.encode(subscription.plan.title),
             subscription.created_at.date(),
             subscription.ends_at.date(),
         ]
+
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+            extra_columns = [
+                self.encode(subscription.organization.phone),
+                self.encode(subscription.organization.street_address),
+                self.encode(subscription.organization.locality),
+                self.encode(subscription.organization.region),
+                self.encode(subscription.organization.postal_code),
+                self.encode(subscription.organization.country)
+            ]
+            columns += extra_columns
+
+        return columns
 
 
 class ActiveSubscriptionDownloadView(ActiveSubscribersMixin,
@@ -409,16 +441,32 @@ class TransferDownloadView(SmartTransactionListMixin,
                            TransferQuerysetMixin, CSVDownloadView):
 
     basename = 'transfers'
+    CSV_CUSTOMER_CONTACTS_INCLUDE = settings.CSV_CUSTOMER_CONTACTS_INCLUDE
+
     headings = [
-        'CreatedAt',
+        'Created At',
         'Amount',
         'Unit',
         'Description'
     ]
 
+    def get_headings(self):
+        # if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+        #     extra_headings = [
+        #         'Organization Full Name',
+        #         'Phone',
+        #         'Street Address',
+        #         'Locality',
+        #         'Region',
+        #         'Postal_code',
+        #         'Country'
+        #     ]
+        #     self.headings += extra_headings
+        return self.headings
+
     def queryrow_to_columns(self, record):
         transaction = record
-        return [
+        columns = [
             transaction.created_at.date(),
             '{:.2f}'.format(
                 (-1 if transaction.is_debit(self.organization) else 1) *
@@ -428,22 +476,49 @@ class TransferDownloadView(SmartTransactionListMixin,
             self.encode_descr(transaction)
         ]
 
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+            # Should this check for charges/subscriptions
+            # in the transaction's event_id? And return
+            # the attached organization to those?
+            
+            # By default it returns the processor's details
+                # subscriber = transaction.subscription.organization
+                # extra_columns = [
+                #     self.encode(subscriber.full_name),
+                #     self.encode(subscriber.phone),
+                #     self.encode(subscriber.street_address),
+                #     self.encode(subscriber.locality),
+                #     self.encode(subscriber.region),
+                #     self.encode(subscriber.postal_code),
+                #     self.encode(subscriber.country)
+                # ]
+                # columns += extra_columns
+            pass
+
+        return columns
+
 
 class BalancesMetricsDownloadView(MetricsDownloadMixin, BalancesMetricsMixin,
                                   CSVDownloadView):
     basename = 'balancesmetrics'
 
-    headings = [
-        'Date',
-        'Income',
-        'Backlog',
-        'Receivable',
-    ]
+    @property
+    def metrics(self):
+        if not hasattr(self, '_metrics'):
+            #pylint:disable=attribute-defined-outside-init
+            self._metrics, _ = self.get_data()
+        return self._metrics
+
+    def get_headings(self):
+        return [''] + [val[0] for val in self.metrics[0]['values']]
 
     def queryrow_to_columns(self, record):
         row = [
-            self.encode(record[heading]) for heading in self.headings
+            self.encode(record['title']),
         ]
+        for val in record['values']:
+            row.append(val[1])
+
         return row
 
 
@@ -452,19 +527,23 @@ class RevenueMetricsDownloadView(MetricsDownloadMixin, RevenueMetricsMixin,
 
     basename = 'revenuemetrics'
 
-    headings = [
-        'Date',
-        'Total Sales',
-        'New Sales',
-        'Churned Sales',
-        'Payments',
-        'Refunds'
-    ]
+    @property
+    def metrics(self):
+        if not hasattr(self, '_metrics'):
+            #pylint:disable=attribute-defined-outside-init
+            self._metrics, _ = self.get_data()
+        return self._metrics
+
+    def get_headings(self):
+        return [''] + [val[0] for val in self.metrics[0]['values']]
 
     def queryrow_to_columns(self, record):
         row = [
-            self.encode(record[heading]) for heading in self.headings
+            self.encode(record['title']),
         ]
+        for val in record['values']:
+            row.append(val[1])
+
         return row
 
 
@@ -473,19 +552,24 @@ class CustomerMetricsDownloadView(MetricsDownloadMixin, CustomerMetricsMixin,
 
     basename = 'customermetrics'
 
-    headings = [
-        'Date',
-        'Total # of Customers',
-        '# of new Customers',
-        '# of churned Customers',
-        'Net New Customers',
-        '% Customer Churn'
-    ]
+    @property
+    def metrics(self):
+        if not hasattr(self, '_metrics'):
+            #pylint:disable=attribute-defined-outside-init
+            self._metrics, _ = self.get_data()
+        return self._metrics
+
+    def get_headings(self):
+        return [''] + [val[0] for val in self.metrics[0]['values']]
 
     def queryrow_to_columns(self, record):
-        return [
-            self.encode(record[heading]) for heading in self.headings
+        row = [
+            self.encode(record['title']),
         ]
+        for val in record['values']:
+            row.append(val[1])
+
+        return row
 
 
 class PlanMetricsDownloadView(MetricsDownloadMixin, PlanMetricsMixin,
@@ -501,13 +585,16 @@ class PlanMetricsDownloadView(MetricsDownloadMixin, PlanMetricsMixin,
         return self._plans
 
     def get_headings(self):
-        headings = ['Date'] + [plan['title'] for plan in self.plans]
-        return headings
+        return [''] + [val[0] for val in self.plans[0]['values']]
 
     def queryrow_to_columns(self, record):
-        return [
-            self.encode(record[heading]) for heading in self.get_headings()
+        row = [
+            self.encode(record['title']),
         ]
+        for val in record['values']:
+            row.append(val[1])
+
+        return row
 
 
 class BalancesDueDownloadView(BalancesDueMixin, CSVDownloadView):
