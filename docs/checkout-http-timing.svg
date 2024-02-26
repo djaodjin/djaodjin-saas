@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="0 0 576 733" width="576" height="733">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="StickArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-7 -4 8 8" markerWidth="8" markerHeight="8" color="#666a6b">
+      <g>
+        <path d="M -5.76 0 L 0 0 M 0 2.16 L -5.76 0 L 0 -2.16" fill="none" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="Checkout_timing_diagram" stroke-opacity="1" fill-opacity="1" stroke="none" fill="none" stroke-dasharray="none">
+    <title>Checkout timing diagram</title>
+    <rect fill="white" x="0" y="0" width="576" height="733"/>
+    <g id="Checkout_timing_diagram_Layer_1">
+      <title>Layer 1</title>
+      <g id="Group_2">
+        <title>Class Role</title>
+        <g id="Graphic_5">
+          <title>Object</title>
+          <rect x="12.375" y="18" width="130" height="58" fill="white"/>
+          <rect x="12.375" y="18" width="130" height="58" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+          <text transform="translate(18.375 38)" fill="#515556">
+            <tspan font-family="Avenir" font-weight="bold" font-size="13" fill="#515556" x="14.3385" y="13">Browser Client</tspan>
+          </text>
+        </g>
+        <g id="Line_4">
+          <title>Lifeline</title>
+          <line x1="77.375" y1="77" x2="77.375" y2="722" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-dasharray="8.0,8.0" stroke-width="2"/>
+        </g>
+        <g id="Graphic_3">
+          <title>Activation</title>
+          <rect x="67.375" y="147.11522" width="20" height="464.125" fill="white"/>
+          <rect x="67.375" y="147.11522" width="20" height="464.125" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+      </g>
+      <g id="Group_6">
+        <title>Class Role</title>
+        <g id="Graphic_9">
+          <title>Object</title>
+          <rect x="227.63294" y="18" width="130" height="76" fill="white"/>
+          <rect x="227.63294" y="18" width="130" height="76" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+          <text transform="translate(233.63294 38)" fill="#515556">
+            <tspan font-family="Avenir" font-weight="bold" font-size="13" fill="#515556" x="23.367" y="13">Web Server</tspan>
+            <tspan font-family="Avenir" font-weight="bold" font-size="13" fill="#515556" x="15.892" y="31">(djaodjin-saas)</tspan>
+          </text>
+        </g>
+        <g id="Line_8">
+          <title>Lifeline</title>
+          <line x1="292.64043" y1="95" x2="292.63294" y2="722" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-dasharray="8.0,8.0" stroke-width="2"/>
+        </g>
+        <g id="Graphic_7">
+          <title>Activation</title>
+          <rect x="282.63925" y="148.30623" width="20" height="90.34596" fill="white"/>
+          <rect x="282.63925" y="148.30623" width="20" height="90.34596" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+      </g>
+      <g id="Group_10">
+        <title>Class Role</title>
+        <g id="Graphic_13">
+          <title>Object</title>
+          <rect x="441" y="18" width="130" height="58" fill="white"/>
+          <rect x="441" y="18" width="130" height="58" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+          <text transform="translate(447 38)" fill="#515556">
+            <tspan font-family="Avenir" font-weight="bold" font-size="13" fill="#515556" x="1.1175" y="13">Payment Processor</tspan>
+          </text>
+        </g>
+        <g id="Line_12">
+          <title>Lifeline</title>
+          <line x1="506" y1="77" x2="506" y2="722" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-dasharray="8.0,8.0" stroke-width="2"/>
+        </g>
+        <g id="Graphic_11">
+          <title>Activation</title>
+          <rect x="496" y="333.98047" width="20" height="90.5872" fill="white"/>
+          <rect x="496" y="333.98047" width="20" height="90.5872" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+      </g>
+      <g id="Line_14">
+        <title>Simple Message</title>
+        <line x1="267.8207" y1="148.21766" x2="83.375" y2="147.11522" marker-start="url(#StickArrow_Marker)" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="2"/>
+      </g>
+      <g id="Graphic_15">
+        <rect x="111.41349" y="130.33937" width="112.62" height="34.559998" fill="white"/>
+        <text transform="translate(116.41349 135.33937)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="0" y="10">1. GET checkout page,</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="15.565" y="22.28">or checkout API</tspan>
+        </text>
+      </g>
+      <g id="Line_17">
+        <title>Simple Message</title>
+        <line x1="102.19468" y1="239.84246" x2="281.63925" y2="238.6588" marker-start="url(#StickArrow_Marker)" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="2"/>
+      </g>
+      <g id="Graphic_16">
+        <rect x="108.11384" y="215.86782" width="156.33" height="46.839996" fill="white"/>
+        <text transform="translate(113.11384 220.86782)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="881073e-18" y="10">2. `get_payment_context` returns</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="32.505" y="22.28">public key to pass</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="24.17" y="34.559998">to payment processor </tspan>
+        </text>
+      </g>
+      <g id="Line_20">
+        <title>Simple Message</title>
+        <line x1="480.18007" y1="333.9334" x2="87.375" y2="332.7652" marker-start="url(#StickArrow_Marker)" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="2"/>
+      </g>
+      <g id="Graphic_19">
+        <rect x="204.30524" y="309.9403" width="166.34" height="46.839996" fill="white"/>
+        <text transform="translate(209.30523 314.9403)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="27.69" y="10">3. Pass public key and</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="26.305" y="22.28">credit  card information</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="7105427e-20" y="34.559998">(car number, ccv, postal code, etc.)</tspan>
+        </text>
+      </g>
+      <g id="Line_23">
+        <title>Simple Message</title>
+        <line x1="102.19495" y1="425.55313" x2="496" y2="424.56767" marker-start="url(#StickArrow_Marker)" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="2"/>
+      </g>
+      <g id="Graphic_22">
+        <rect x="228.63387" y="413.92963" width="133.55" height="22.28" fill="white"/>
+        <text transform="translate(233.63387 418.92963)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="1.39" y="10">4. return a processor token </tspan>
+        </text>
+      </g>
+      <g id="Graphic_24">
+        <title>Activation</title>
+        <rect x="281.6875" y="493.35895" width="20" height="130" fill="white"/>
+        <rect x="281.6875" y="493.35895" width="20" height="130" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Line_26">
+        <title>Simple Message</title>
+        <line x1="267.69412" y1="488.4786" x2="87.375" y2="425.5902" marker-start="url(#StickArrow_Marker)" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="2"/>
+      </g>
+      <g id="Graphic_25">
+        <rect x="108.75664" y="441.5774" width="148.01" height="34.559998" fill="white"/>
+        <text transform="translate(113.75663 446.5774)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="0" y="10">5. POST to the checkout page,</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="32.335" y="22.28">or Checkout API </tspan>
+        </text>
+      </g>
+      <g id="Line_28">
+        <title>Simple Message</title>
+        <line x1="480.18336" y1="562.1629" x2="302.6875" y2="558.38026" marker-start="url(#StickArrow_Marker)" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="2"/>
+      </g>
+      <g id="Graphic_27">
+        <rect x="327.4353" y="536.891" width="131.7" height="46.839996" fill="white"/>
+        <text transform="translate(332.4353 541.891)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="36948222e-20" y="10">6. `create_payment` passes</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="16.21" y="22.28">the processor token</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="16.06" y="34.559998">to effect the charge. </tspan>
+        </text>
+      </g>
+      <g id="Graphic_29">
+        <title>Activation</title>
+        <rect x="496" y="562.5" width="20" height="130" fill="white"/>
+        <rect x="496" y="562.5" width="20" height="130" stroke="#b9c0c1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Line_31">
+        <title>Simple Message</title>
+        <line x1="314.88363" y1="567.4687" x2="496" y2="692.5" marker-start="url(#StickArrow_Marker)" stroke="#666a6b" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="2"/>
+      </g>
+      <g id="Graphic_30">
+        <rect x="336.42954" y="602.5272" width="108.54" height="34.559998" fill="white"/>
+        <text transform="translate(341.42954 607.5272)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="26.77" y="10">7. triggers</tspan>
+          <tspan font-family="Helvetica Neue" font-size="10" fill="black" x="43343107e-20" y="22.28">`payment_successful`.</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>

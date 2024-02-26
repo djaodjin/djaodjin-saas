@@ -11,18 +11,7 @@
         <croppa v-model="picture" :width="100" :height="100"></croppa>
         <button @click.prevent="uploadProfilePicture">Save picture</button>
       </div>
-      {{form.full_name}}
-      {{form.email}}
-      {{form.phone}}
-      {{form.street_address}}
-      {{form.locality}}
-      {{form.postal_code}}
-      {{form.country}}
-      {{form.region}}
-      {{form.is_bulk_buyer}}
-      {% if form.extra %}
-      {{form.extra}}
-      {% endif %}
+      {{form.as_p}}
       <button type="submit">Update Profile</button>
     </form>
     <div id="remove-profile-container" ng-app="saasApp">
