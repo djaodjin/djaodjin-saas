@@ -98,7 +98,7 @@ _SETTINGS = {
         'static', 'data', 'currencies.json'),
     'DEFAULT_UNIT': 'usd',
     'DISABLE_UPDATES': False,
-    'DISPLAY_GROUP_BUY': False,
+    'DISPLAY_GROUP_BUY': True,
     'EXPIRE_NOTICE_DAYS': [15],
     'EXTRA_MIXIN': object,
     'EXTRA_FIELD': None,
