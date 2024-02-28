@@ -149,7 +149,7 @@ else:
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-    #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
+#    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
@@ -236,7 +236,7 @@ LOGGING = {
     },
     'handlers': {
         'log': {
-            'level': 'DEBUG',
+            'level':'DEBUG',
             'formatter': 'simple',
             'class': 'logging.StreamHandler',
         },
@@ -244,7 +244,7 @@ LOGGING = {
             'level': 'DEBUG',
             'formatter': 'simple',
             'filters': ['require_debug_true'],
-            'class': 'logging.StreamHandler',
+            'class':'logging.StreamHandler',
         },
     },
     'loggers': {
@@ -256,11 +256,11 @@ LOGGING = {
             'handlers': [],
             'level': 'INFO',
         },
-        #        'django.db.backends': {
-        #             'handlers': ['db_log'],
-        #             'level': 'DEBUG',
-        #             'propagate': True,
-        #        },
+#        'django.db.backends': {
+#             'handlers': ['db_log'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#        },
         'django.request': {
             'handlers': [],
             'level': 'ERROR',
@@ -291,39 +291,37 @@ if logging.getLogger('gunicorn.error').handlers:
 if TEMPLATE_REVERT_TO_DJANGO:
     sys.stderr.write("Use Django templates engine.\n")
     TEMPLATES = [
-        {
-            'BACKEND': 'django.template.backends.django.DjangoTemplates',
-            'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates'),
-                     os.path.join(BASE_DIR, 'saas', 'templates')),
-            'OPTIONS': {
-                'context_processors': [
-                    'django.contrib.auth.context_processors.auth',
-                    # because of admin/
-                    'django.contrib.messages.context_processors.messages',
-                    # because of admin/
-                    'django.template.context_processors.request',
-                    'django.template.context_processors.media',
-                    'testsite.context_processors.js_framework'
-                ],
-                'loaders': [
-                    'django.template.loaders.filesystem.Loader',
-                    'django.template.loaders.app_directories.Loader'],
-                # XXX 'builtins' key is not supported on Django 1.8
-                'builtins': [
-                    'saas.templatetags.saas_tags',
-                    'testsite.templatetags.testsite_tags']
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates'),
+                 os.path.join(BASE_DIR, 'saas', 'templates')),
+        'OPTIONS': {
+            'context_processors': [
+    'django.contrib.auth.context_processors.auth', # because of admin/
+    'django.contrib.messages.context_processors.messages', # because of admin/
+    'django.template.context_processors.request',
+    'django.template.context_processors.media',
+    'testsite.context_processors.js_framework'
+            ],
+            'loaders': [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader'],
+            # XXX 'builtins' key is not supported on Django 1.8
+            'builtins': [
+                'saas.templatetags.saas_tags',
+                'testsite.templatetags.testsite_tags']
             }
         }
     ]
 else:
     sys.stderr.write("Use Jinja2 templates engine.\n")
     TEMPLATES = [
-        {
-            'BACKEND': 'django.template.backends.jinja2.Jinja2',
-            'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates', 'jinja2'),
-                     os.path.join(BASE_DIR, 'testsite', 'templates'),
-                     os.path.join(BASE_DIR, 'saas', 'templates')),
-            'OPTIONS': {
-                'environment': 'testsite.jinja2.environment'
-            }
-        }]
+    {
+        'BACKEND': 'django.template.backends.jinja2.Jinja2',
+        'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates', 'jinja2'),
+                 os.path.join(BASE_DIR, 'testsite', 'templates'),
+                 os.path.join(BASE_DIR, 'saas', 'templates')),
+        'OPTIONS': {
+            'environment': 'testsite.jinja2.environment'
+        }
+    }]
