@@ -451,17 +451,17 @@ class TransferDownloadView(SmartTransactionListMixin,
     ]
 
     def get_headings(self):
-        # if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
-        #     extra_headings = [
-        #         'Organization Full Name',
-        #         'Phone',
-        #         'Street Address',
-        #         'Locality',
-        #         'Region',
-        #         'Postal_code',
-        #         'Country'
-        #     ]
-        #     self.headings += extra_headings
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+            extra_headings = [
+                'Organization Full Name',
+                'Phone',
+                'Street Address',
+                'Locality',
+                'Region',
+                'Postal Code',
+                'Country'
+            ]
+            self.headings += extra_headings
         return self.headings
 
     def queryrow_to_columns(self, record):
@@ -477,23 +477,17 @@ class TransferDownloadView(SmartTransactionListMixin,
         ]
 
         if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
-            # Should this check for charges/subscriptions
-            # in the transaction's event_id? And return
-            # the attached organization to those?
-            
-            # By default it returns the processor's details
-                # subscriber = transaction.subscription.organization
-                # extra_columns = [
-                #     self.encode(subscriber.full_name),
-                #     self.encode(subscriber.phone),
-                #     self.encode(subscriber.street_address),
-                #     self.encode(subscriber.locality),
-                #     self.encode(subscriber.region),
-                #     self.encode(subscriber.postal_code),
-                #     self.encode(subscriber.country)
-                # ]
-                # columns += extra_columns
-            pass
+            organization = transaction.orig_organization
+            extra_columns = [
+                self.encode(organization.full_name),
+                self.encode(organization.phone),
+                self.encode(organization.street_address),
+                self.encode(organization.locality),
+                self.encode(organization.region),
+                self.encode(organization.postal_code),
+                self.encode(organization.country)
+            ]
+            columns += extra_columns
 
         return columns
 
