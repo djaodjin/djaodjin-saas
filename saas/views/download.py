@@ -453,7 +453,7 @@ class TransferDownloadView(SmartTransactionListMixin,
     def get_headings(self):
         if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
             extra_headings = [
-                'Organization Full Name',
+                'Full Name',
                 'Phone',
                 'Street Address',
                 'Locality',
