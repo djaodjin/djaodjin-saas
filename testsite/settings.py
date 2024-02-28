@@ -5,7 +5,6 @@ import logging, os.path, re, sys
 from django.contrib.messages import constants as messages
 from saas.compat import reverse_lazy
 
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Default values that can be overriden by `update_settings` later on.
@@ -19,8 +18,8 @@ FEATURES_DEBUG = True
 TEMPLATE_REVERT_TO_DJANGO = True
 JS_FRAMEWORK = 'vuejs'
 SAAS_ORGANIZATION_MODEL = 'saas.Organization'
-
 ALLOWED_HOSTS = ('*',)
+
 
 def load_config(confpath):
     '''
@@ -38,7 +37,7 @@ def load_config(confpath):
                     look = re.match(r'(\w+)\s*=\s*(.*)', line)
                     if look:
                         value = look.group(2) \
-                            % {'LOCALSTATEDIR': RUN_DIR + '/var'}
+                                % {'LOCALSTATEDIR': RUN_DIR + '/var'}
                         try:
                             # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
                             # definitely in the site.conf set), we had no choice
@@ -74,6 +73,7 @@ INSTALLED_APPS = (
     'debug_toolbar',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
+    'corsheaders',
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
     'rest_framework',
@@ -88,6 +88,7 @@ WSGI_APPLICATION = 'testsite.wsgi.application'
 ROOT_URLCONF = 'testsite.urls'
 
 MIDDLEWARE = (
+    'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -95,8 +96,11 @@ MIDDLEWARE = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'testsite.authentication.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware'
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
 DATABASES = {
     'default': {
@@ -110,7 +114,6 @@ DATABASES = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
-
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -146,9 +149,8 @@ else:
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-#    'django.contrib.staticfiles.finders.DefaultStorageFinder',
+    #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
-
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 MESSAGE_TAGS = {
@@ -185,7 +187,6 @@ USE_L10N = True
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
 
-
 LOGIN_URL = reverse_lazy('login')
 LOGIN_REDIRECT_URL = reverse_lazy('product_default_start')
 
@@ -194,22 +195,22 @@ DURATIONFIELD_ALLOW_MONTHS = True
 
 # Configuration of djaodjin-saas
 SAAS = {
-  'BROKER': {
-      'GET_INSTANCE': 'cowork',
-  },
-  'PLATFORM_NAME': 'cowork',
-  'PROCESSOR': {
-      'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
-      'MODE': 0, # `LOCAL`
-      'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
-      'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
-      'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
-      'WEBHOOK_SECRET': getattr(
-          sys.modules[__name__], "STRIPE_ENDPOINT_SECRET", None),
-# Comment above and uncomment below to use RazorPay instead.
-#      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
-#      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
-#      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
+    'BROKER': {
+        'GET_INSTANCE': 'cowork',
+    },
+    'PROCESSOR_ID': 69,
+    'PLATFORM_NAME': 'cowork',
+    'PROCESSOR': {
+        'BACKEND': 'saas.backends.flutterwave_processor.FlutterwaveProcessor',
+        'CLIENT_ID': None,
+        'INSTANCE_PK': 69,
+        'MODE': 0,
+        'PRIV_KEY': 'your_priv_key',
+        'PUB_KEY': 'your_pub_key',
+        # 'REDIRECT_CALLABLE': None,
+        # 'USE_STRIPE_V3': False,
+        # 'WEBHOOK_URL': 'stripe/postevent',
+        # 'WEBHOOK_SECRET': None,
     },
     'EXPIRE_NOTICE_DAYS': [90, 60, 30, 15, 1],
 }
@@ -235,15 +236,15 @@ LOGGING = {
     },
     'handlers': {
         'log': {
-            'level':'DEBUG',
+            'level': 'DEBUG',
             'formatter': 'simple',
-            'class':'logging.StreamHandler',
+            'class': 'logging.StreamHandler',
         },
         'db_log': {
             'level': 'DEBUG',
             'formatter': 'simple',
             'filters': ['require_debug_true'],
-            'class':'logging.StreamHandler',
+            'class': 'logging.StreamHandler',
         },
     },
     'loggers': {
@@ -255,11 +256,11 @@ LOGGING = {
             'handlers': [],
             'level': 'INFO',
         },
-#        'django.db.backends': {
-#             'handlers': ['db_log'],
-#             'level': 'DEBUG',
-#             'propagate': True,
-#        },
+        #        'django.db.backends': {
+        #             'handlers': ['db_log'],
+        #             'level': 'DEBUG',
+        #             'propagate': True,
+        #        },
         'django.request': {
             'handlers': [],
             'level': 'ERROR',
@@ -272,7 +273,7 @@ LOGGING = {
         # This is the root logger.
         # The level will only be taken into account if the record is not
         # propagated from a child logger.
-        #https://docs.python.org/2/library/logging.html#logging.Logger.propagate
+        # https://docs.python.org/2/library/logging.html#logging.Logger.propagate
         '': {
             'handlers': ['log'],
             'level': 'WARNING'
@@ -281,47 +282,48 @@ LOGGING = {
 }
 if logging.getLogger('gunicorn.error').handlers:
     LOGGING['handlers']['log'].update({
-        'class':'logging.handlers.WatchedFileHandler',
+        'class': 'logging.handlers.WatchedFileHandler',
         'filename': LOG_FILE
     })
-
 
 # Templates (Django 1.8+)
 # ----------------------
 if TEMPLATE_REVERT_TO_DJANGO:
     sys.stderr.write("Use Django templates engine.\n")
     TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates'),
-                 os.path.join(BASE_DIR, 'saas', 'templates')),
-        'OPTIONS': {
-            'context_processors': [
-    'django.contrib.auth.context_processors.auth', # because of admin/
-    'django.contrib.messages.context_processors.messages', # because of admin/
-    'django.template.context_processors.request',
-    'django.template.context_processors.media',
-    'testsite.context_processors.js_framework'
-            ],
-            'loaders': [
-                'django.template.loaders.filesystem.Loader',
-                'django.template.loaders.app_directories.Loader'],
-            # XXX 'builtins' key is not supported on Django 1.8
-            'builtins': [
-                'saas.templatetags.saas_tags',
-                'testsite.templatetags.testsite_tags']
+        {
+            'BACKEND': 'django.template.backends.django.DjangoTemplates',
+            'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates'),
+                     os.path.join(BASE_DIR, 'saas', 'templates')),
+            'OPTIONS': {
+                'context_processors': [
+                    'django.contrib.auth.context_processors.auth',
+                    # because of admin/
+                    'django.contrib.messages.context_processors.messages',
+                    # because of admin/
+                    'django.template.context_processors.request',
+                    'django.template.context_processors.media',
+                    'testsite.context_processors.js_framework'
+                ],
+                'loaders': [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader'],
+                # XXX 'builtins' key is not supported on Django 1.8
+                'builtins': [
+                    'saas.templatetags.saas_tags',
+                    'testsite.templatetags.testsite_tags']
+            }
         }
-    }
     ]
 else:
     sys.stderr.write("Use Jinja2 templates engine.\n")
     TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.jinja2.Jinja2',
-        'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates', 'jinja2'),
-                 os.path.join(BASE_DIR, 'testsite', 'templates'),
-                 os.path.join(BASE_DIR, 'saas', 'templates')),
-        'OPTIONS': {
-            'environment': 'testsite.jinja2.environment'
-        }
-    }]
+        {
+            'BACKEND': 'django.template.backends.jinja2.Jinja2',
+            'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates', 'jinja2'),
+                     os.path.join(BASE_DIR, 'testsite', 'templates'),
+                     os.path.join(BASE_DIR, 'saas', 'templates')),
+            'OPTIONS': {
+                'environment': 'testsite.jinja2.environment'
+            }
+        }]

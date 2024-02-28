@@ -41,6 +41,72 @@ If you have a coupon code, it is time to redeem it now!
         </div>
         {% elif STRIPE_PUB_KEY %}
         {% include "saas/_card_use.html" %}
+            {% elif FLUTTERWAVE_PUB_KEY %}
+<script src="https://checkout.flutterwave.com/v3.js"></script>
+<div id="payment-failed">
+  Uh-oh. Please try again, or contact support if you're encountering difficulties making payment.
+</div>
+<br>
+<form>
+  <div>
+    Your order is ₦54,600
+  </div>
+  <button type="button" class="start-payment-button" onclick="makePayment()">Pay Now</button>
+</form>
+<div id="payment-success">
+  Thank you! Enjoy your awesome cruise.🚢
+</div>
+<div id="payment-pending">
+  Verifying...Setting up your cruise🚢
+</div>
+<script>
+  function makePayment() {
+    FlutterwaveCheckout({
+      public_key: "{{ FLUTTERWAVE_PUB_KEY }}",
+      tx_ref: "titanic-48981487343MDI0NzMx",
+      amount: 54600,
+      currency: "NGN",
+      payment_options: "card, mobilemoneyghana, ussd",
+      callback: function(payment) {
+        // Send AJAX verification request to backend
+        verifyTransactionOnBackend(payment.id);
+      },
+      onclose: function(incomplete) {
+        if (incomplete || window.verified === false) {
+          document.querySelector("#payment-failed").style.display = 'block';
+        } else {
+          document.querySelector("form").style.display = 'none';
+          if (window.verified == true) {
+            document.querySelector("#payment-success").style.display = 'block';
+          } else {
+            document.querySelector("#payment-pending").style.display = 'block';
+          }
+        }
+      },
+      meta: {
+        consumer_id: 23,
+        consumer_mac: "92a3-912ba-1192a",
+      },
+      customer: {
+        email: "rose@unsinkableship.com",
+        phone_number: "08102909304",
+        name: "Rose DeWitt Bukater",
+      },
+      customizations: {
+        title: "The Titanic Store",
+        description: "Payment for an awesome cruise",
+        logo: "https://www.logolynx.com/images/logolynx/22/2239ca38f5505fbfce7e55bbc0604386.jpeg",
+      },
+    });
+  }
+
+  function verifyTransactionOnBackend(transactionId) {
+    // Let's just pretend the request was successful
+    setTimeout(function() {
+      window.verified = true;
+    }, 200);
+  }
+</script>
         {% else %}
         <p>
 Either variables RAZORPAY_PUB_KEY or STRIPE_PUB_KEY must be defined.

@@ -1,0 +1,139 @@
+import datetime, logging
+
+from .. import settings
+from ..compat import six
+from ..utils import datetime_or_now, generate_random_slug
+from rave_python import Rave
+
+LOGGER = logging.getLogger(__name__)
+
+
+# rave = Rave(
+#     settings.PROCESSOR.PUB_KEY, settings.PROCESSOR.PRIV_KEY, usingEnv=False)
+
+
+class FlutterwaveProcessor(object):
+
+    LOCAL = 0
+    FORWARD = 1
+    REMOTE = 2
+
+    token_id = 'flutterwave_token_id'
+
+    def __init__(self):
+        self.pub_key = settings.PROCESSOR.get('PUB_KEY', None)
+        self.priv_key = settings.PROCESSOR.get("PRIV_KEY", None)
+        self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
+        self.mode = settings.PROCESSOR.get('MODE', 0)
+
+    @staticmethod
+    def charge_distribution(charge, refunded=0, orig_total_broker_fee_amount=0,
+                            unit=settings.DEFAULT_UNIT):
+        #pylint:disable=unused-argument
+        # Stripe processing fee associated to a transaction
+        # is 2.9% + 30 cents.
+        # Stripe rounds up so we do the same here. Be careful Python 3.x
+        # semantics are broken and will return a float instead of a int.
+        processor_fee_unit = unit
+        available_amount = charge.amount - refunded
+        if available_amount > 0:
+            # integer division
+            processor_fee_amount = (available_amount * 290 + 5000) // 10000 + 30
+            assert isinstance(processor_fee_amount, six.integer_types)
+        else:
+            processor_fee_amount = 0
+        distribute_amount = available_amount - processor_fee_amount
+        distribute_unit = charge.unit
+        broker_fee_amount = 0
+        broker_fee_unit = charge.unit
+        return (distribute_amount, distribute_unit,
+                processor_fee_amount, processor_fee_unit,
+                broker_fee_amount, broker_fee_unit)
+
+    @staticmethod
+    def create_payment(amount, unit, token,
+                       processor_card_key=None,
+                       descr=None, stmt_descr=None, created_at=None,
+                       broker_fee_amount=0, provider=None, broker=None):
+        #pylint: disable=too-many-arguments,unused-argument
+        created_at = datetime_or_now(created_at)
+        receipt_info = {
+            'last4': "1234",
+            'exp_date': created_at + datetime.timedelta(days=365),
+            'card_name': "Joe Test"
+        }
+        charge_key = "fake_%s" % generate_random_slug()
+        LOGGER.debug("create_payment(amount=%s, unit='%s', descr='%s') => %s",
+            amount, unit, descr, charge_key)
+        return (charge_key, created_at, receipt_info)
+
+    @staticmethod
+    def create_transfer(provider, amount, unit, descr=None):
+        """
+        Transfer *amount* into the organization bank account.
+        """
+        LOGGER.debug(
+            "create_transfer(provider=%s, amount=%s, unit=%s, descr=%s)",
+            provider, amount, unit, descr)
+        created_at = datetime_or_now()
+        return (generate_random_slug(), created_at)
+
+    def create_or_update_card(self, subscriber, token,
+                              user=None, provider=None, broker=None):
+        """
+        Create or update a card associated to a subscriber.
+        """
+        #pylint:disable=too-many-arguments
+        raise NotImplementedError()
+
+    def delete_card(self, subscriber, broker=None):
+        """
+        Removes a card associated to an subscriber.
+        """
+        raise NotImplementedError()
+
+    def get_payment_context(self, subscriber,
+                            amount=None, unit=None, broker_fee_amount=0,
+                            provider=None, broker=None):
+        #pylint:disable=too-many-arguments,unused-argument
+        context = {
+            'FLUTTERWAVE_PUB_KEY': self.pub_key
+        }
+        return context
+
+    @staticmethod
+    def reconcile_transfers(provider, created_at, dry_run=False):
+        #pylint:disable=unused-argument
+        raise NotImplementedError(
+            "reconcile_transfers is not implemented on FakeProcessor")
+
+    @staticmethod
+    def refund_charge(charge, amount, broker_amount=0):
+        """
+        Refund a charge on the associated card.
+        """
+
+    @staticmethod
+    def retrieve_charge(charge):
+        if charge.is_progress:
+            charge.payment_successful()
+        return charge
+
+    @staticmethod
+    def dispute_fee(amount): #pylint: disable=unused-argument
+        """
+        Return processing fee associated to a chargeback (i.e. $15).
+        """
+        return 1500
+
+    @staticmethod
+    def prorate_transfer(amount, provider): #pylint: disable=unused-argument
+        """
+        Return processing fee associated to a transfer (i.e. nothing here).
+        """
+        return 0
+
+    def retrieve_card(self, subscriber, broker=None):
+        #pylint:disable=unused-argument
+        context = {}
+        return context

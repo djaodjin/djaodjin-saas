@@ -324,7 +324,7 @@ class CheckoutFormMixin(CardFormMixin):
             provider = self.invoicables_provider
             context.update(
                 provider.processor_backend.get_payment_context(# checkout
-                    self.organization,
+                    subscriber=self.organization,
                     amount=lines_price.amount, unit=lines_price.unit,
                     broker_fee_amount=self.invoicables_broker_fee_amount,
                     provider=provider, broker=get_broker()))

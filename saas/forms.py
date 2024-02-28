@@ -98,6 +98,8 @@ class CreditCardForm(PostalFormMixin, forms.Form):
     """
     stripeToken = forms.CharField(required=False)
     razorpay_payment_id = forms.CharField(required=False)
+    flutterwave_token_id = forms.CharField(required=False)
+
     remember_card = forms.BooleanField(
         label=_("Remember this card"), required=False, initial=True)
 

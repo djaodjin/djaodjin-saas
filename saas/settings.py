@@ -113,15 +113,15 @@ _SETTINGS = {
     'PLATFORM_NAME': getattr(settings, 'APP_NAME',
         os.path.basename(settings.BASE_DIR)),
     'PROCESSOR': {
-        'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+        'BACKEND': 'saas.backends.flutterwave_processor.FlutterwaveProcessor',
         'CLIENT_ID': None,
         'CONNECT_STATE_CALLABLE': None,
         'CONNECT_CALLBACK_URL': None,
         'FALLBACK': False,
-        'INSTANCE_PK': 1,
+        'INSTANCE_PK': 69,
         'MODE': 0,
-        'PRIV_KEY': None,
-        'PUB_KEY': None,
+        'PRIV_KEY': 'your_priv_key',
+        'PUB_KEY': 'your_pub_key',
         'REDIRECT_CALLABLE': None,
         'USE_STRIPE_V3': False,
         'WEBHOOK_URL': 'stripe/postevent',
@@ -141,6 +141,10 @@ _SETTINGS = {
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
+SAAS = {
+    'PROCESSOR_ID': 69
+}
+
 
 SLUG_RE = r'[-a-zA-Z0-9_]+'
 ACCT_REGEX = SLUG_RE
@@ -149,6 +153,7 @@ SELECTOR_RE = r'[a-zA-Z0-9_\-\:]+'
 VERIFICATION_KEY_RE = r'[a-f0-9]{40}'
 AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
+CORS_ORIGIN_ALLOW_ALL = True
 
 #: overrides the implementation of `saas.models.get_broker`
 #: This function must return an `Organization` instance.
