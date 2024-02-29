@@ -89,16 +89,28 @@ def describe_no_links(transaction):
 
 @register.filter()
 def price(item):
+    try:
+        return item.price
+    except AttributeError:
+        pass
     return Price(item['amount'], item['unit'])
 
 
 @register.filter()
 def dest_price(item):
+    try:
+        return item.dest_price
+    except AttributeError:
+        pass
     return Price(item['dest_amount'], item['dest_unit'])
 
 
 @register.filter()
 def orig_price(item):
+    try:
+        return item.orig_price
+    except AttributeError:
+        pass
     return Price(item['orig_amount'], item['orig_unit'])
 
 

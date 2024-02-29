@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,12 +22,13 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.views.generic import TemplateView
 from extended_templates.backends.pdf import PdfTemplateResponse
 
-from .billing import ChargeReceiptView
+from ..mixins import ChargeMixin
 
 
-class PrintableChargeReceiptView(ChargeReceiptView):
+class PrintableChargeReceiptView(ChargeMixin, TemplateView):
     """
     ``Charge`` receipt as printable PDF format.
 

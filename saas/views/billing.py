@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -913,21 +913,19 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(ChargeReceiptView, self).get_context_data(**kwargs)
-        charge = self.object
-        context.update(get_charge_context(charge))
         urls = {'charge': {
             'api_base': reverse('saas_api_charge', args=(
-                charge.customer, charge,)),
+                self.charge.customer, self.charge,)),
             'api_email_receipt': reverse(
                 'saas_api_email_charge_receipt', args=(
-                charge.customer, charge,)),
+                self.charge.customer, self.charge,)),
             'api_refund': reverse('saas_api_charge_refund', args=(
-                charge.customer, charge,))}}
+                self.charge.customer, self.charge,))}}
         try:
             # optional
             urls['charge'].update({'printable_receipt': reverse(
                 'saas_printable_charge_receipt',
-                args=(charge.customer, charge,))})
+                args=(self.charge.customer, self.charge,))})
         except NoReverseMatch:
             pass
         update_context_urls(context, urls)

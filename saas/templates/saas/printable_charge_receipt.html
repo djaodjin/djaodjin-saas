@@ -27,22 +27,22 @@ text-align: right;
     {% if charge.is_paid %}
     <p>
       On {{charge.created_at}}, the credit card has been charged for an amount
-      of {{charge.price|humanize_money}}. Payment Information:
+      of {{charge|price|humanize_money}}. Payment Information:
     </p>
     {% elif charge.is_failed %}
     <p>
     On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.price|humanize_money}}. The charge failed.
+    {{charge|price|humanize_money}}. The charge failed.
     </p>
     {% elif charge.is_disputed %}
     <p>
     On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.price|humanize_money}}. The charge was disputed.
+    {{charge|price|humanize_money}}. The charge was disputed.
     </p>
     {% elif charge.is_progress %}
     <p>
     On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.price|humanize_money}}. The charge is in progress...
+    {{charge|price|humanize_money}}. The charge is in progress...
     </p>
     {% endif %}
 </div>
@@ -57,15 +57,15 @@ text-align: right;
       </tr>
       <tr>
         <th class="info-row-header">AMOUNT&nbsp;&nbsp;</th>
-        <td>{{charge.price|humanize_money}}</td>
+        <td>{{charge|price|humanize_money}}</td>
       </tr>
       <tr>
         <th class="info-row-header">CARD&nbsp;&nbsp;</th>
-        <td>**** - {{last4}}</td>
+        <td>**** - {{charge.last4}}</td>
       </tr>
       <tr>
         <th class="info-row-header">EXPIRES&nbsp;&nbsp;</th>
-        <td>{{exp_date}}</td>
+        <td>{{charge.exp_date}}</td>
       </tr>
     </tbody>
   </table>
@@ -83,13 +83,13 @@ text-align: right;
       <tbody>
         {% for line in charge_items %}
         <tr>
-          <td>{{line.invoiced.dest_price|humanize_money}}</td>
+          <td>{{line.invoiced|dest_price|humanize_money}}</td>
           <td>{{line.invoiced|describe}}</td>
           <td></td>
         </tr>
         {% for refund in line.refunded %}
         <tr>
-          <td>-{{refund.orig_price|humanize_money}}</td>
+          <td>-{{refund|orig_price|humanize_money}}</td>
           <td>{{refund|describe}}</td>
           <td></td>
         </tr>

@@ -587,6 +587,17 @@ class ChargeMixin(OrganizationMixin):
     slug_field = 'processor_key'
     slug_url_kwarg = 'charge'
 
+    @property
+    def charge(self):
+        if not hasattr(self, '_charge'):
+            self._charge = self.get_object()
+        return self._charge
+
+    def get_context_data(self, **kwargs):
+        context = super(ChargeMixin, self).get_context_data(**kwargs)
+        context.update(get_charge_context(self.charge))
+        return context
+
     def get_object(self, queryset=None):
         if not queryset:
             queryset = self.model.objects.filter(customer=self.organization)
