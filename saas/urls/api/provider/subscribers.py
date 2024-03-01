@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,12 @@ API URLs for a provider subcribers.
 """
 
 from .... import settings
-from ....api.organizations import (EngagedSubscribersAPIView,
-    ProviderAccessiblesAPIView, UnengagedSubscribersAPIView)
-from ....api.subscriptions import (ActiveSubscribersAPIView,
-    AllSubscribersAPIView, ChurnedSubscribersAPIView, PlanAllSubscribersAPIView,
+from ....api.organizations import (ActiveSubscribersAPIView,
+    EngagedSubscribersAPIView, ProviderAccessiblesAPIView,
+    UnengagedSubscribersAPIView)
+from ....api.subscriptions import (ActiveSubscriberSubscriptionsAPIView,
+    AllSubscriberSubscriptionsAPIView, ChurnedSubscribersAPIView,
+    PlanAllSubscribersAPIView,
     PlanActiveSubscribersAPIView, PlanChurnedSubscribersAPIView,
     PlanSubscriptionDetailAPIView, SubscriptionRequestAcceptAPIView)
 from ....compat import path, re_path
@@ -44,14 +46,16 @@ urlpatterns = [
         name='saas_api_subscription_grant_accept'),
     path('profile/<slug:%s>/subscribers/subscriptions/all' %
         settings.PROFILE_URL_KWARG,
-        AllSubscribersAPIView.as_view(), name='saas_api_subscribers_all'),
+        AllSubscriberSubscriptionsAPIView.as_view(),
+        name='saas_api_subscribed_and_churned'),
     path('profile/<slug:%s>/subscribers/subscriptions/churned' %
         settings.PROFILE_URL_KWARG,
         ChurnedSubscribersAPIView.as_view(),
         name='saas_api_churned'),
     path('profile/<slug:%s>/subscribers/subscriptions' %
         settings.PROFILE_URL_KWARG,
-        ActiveSubscribersAPIView.as_view(), name='saas_api_subscribed'),
+        ActiveSubscriberSubscriptionsAPIView.as_view(),
+        name='saas_api_subscribed'),
 
     path('profile/<slug:%s>/subscribers/engaged' %
         settings.PROFILE_URL_KWARG,
@@ -61,9 +65,12 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         UnengagedSubscribersAPIView.as_view(),
         name='saas_api_unengaged_subscribers'),
+    path('profile/<slug:%s>/subscribers/all' %
+        settings.PROFILE_URL_KWARG,
+        ProviderAccessiblesAPIView.as_view(), name='saas_api_subscribers_all'),
     path('profile/<slug:%s>/subscribers' %
         settings.PROFILE_URL_KWARG,
-        ProviderAccessiblesAPIView.as_view(), name='saas_api_subscribers'),
+        ActiveSubscribersAPIView.as_view(), name='saas_api_subscribers'),
 
     path('profile/<slug:%s>/plans/<slug:plan>/subscriptions/all' %
         settings.PROFILE_URL_KWARG,

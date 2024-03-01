@@ -59,7 +59,7 @@ from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
 from ..mixins import (BalanceDueMixin, BalanceAndCartMixin, ChargeMixin,
     DateRangeContextMixin, InvoicablesMixin, OrganizationMixin,
-    ProviderMixin, get_charge_context, product_url, UserMixin)
+    ProviderMixin, product_url, UserMixin)
 from ..models import (CartItem, Charge, Coupon,
     Plan, Price, Subscription, Transaction, UseCharge, get_broker)
 from ..utils import (get_organization_model, update_context_urls,

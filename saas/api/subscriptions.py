@@ -775,13 +775,9 @@ class PlanChurnedSubscribersAPIView(SubscriptionSmartListMixin,
         ChurnedInPeriodFilter,)
 
 
-class AllSubscribersBaseAPIView(ProvidedSubscriptionsMixin, ListAPIView):
-
-    pass
-
-
-class AllSubscribersAPIView(SubscriptionSmartListMixin,
-                            AllSubscribersBaseAPIView):
+class AllSubscriberSubscriptionsAPIView(SubscriptionSmartListMixin,
+                                        ProvidedSubscriptionsMixin,
+                                        ListAPIView):
     """
     Lists provider subscriptions
 
@@ -843,14 +839,15 @@ class AllSubscribersAPIView(SubscriptionSmartListMixin,
 
 
 
-class ActiveSubscribersMixin(SubscriptionSmartListMixin,
+class ActiveSubscriberSubscriptionsMixin(SubscriptionSmartListMixin,
                              ProvidedSubscriptionsMixin):
 
     filter_backends = SubscriptionSmartListMixin.filter_backends + (
         ActiveInPeriodFilter,)
 
 
-class ActiveSubscribersAPIView(ActiveSubscribersMixin, ListAPIView):
+class ActiveSubscriberSubscriptionsAPIView(ActiveSubscriberSubscriptionsMixin,
+                                           ListAPIView):
     """
     Lists provider active subscriptions
 

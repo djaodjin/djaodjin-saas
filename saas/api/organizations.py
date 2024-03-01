@@ -43,7 +43,7 @@ from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSearchOrderListMixin, OrganizationSmartListMixin,
     ProviderMixin, OrganizationDecorateMixin)
-from ..models import get_broker
+from ..models import get_broker, Subscription
 from ..utils import (build_absolute_uri, datetime_or_now,
     get_organization_model, get_role_model, get_picture_storage,
     handle_uniq_error)
@@ -215,6 +215,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         Archive the organization. We don't to loose the subscriptions
         and transactions history.
         """
+        at_time = datetime_or_now()
         obj = self.get_object()
         user = obj.attached_user()
         email = obj.email
@@ -231,6 +232,8 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             # Removes all roles on the organization such that the organization
             # is not picked up inadvertently.
             get_role_model().objects.filter(organization=obj).delete()
+            Subscription.objects.filter(
+                organization=obj, ends_at__gt=at_time).update(ends_at=at_time)
             obj.slug = slug
             obj.email = email
             obj.is_active = False
@@ -351,26 +354,92 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         return page
 
 
-class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
+class ProviderAccessiblesQuerysetMixin(OrganizationDecorateMixin,
+                                       ProviderMixin):
 
     def get_queryset(self):
-        queryset = get_organization_model().objects.filter(
-            subscribes_to__organization=self.provider)
+        queryset = get_organization_model().objects.filter(is_active=True,
+            subscribes_to__organization=self.provider).distinct()
         return queryset
 
     def paginate_queryset(self, queryset):
-        page = super(SubscribersQuerysetMixin, self).paginate_queryset(queryset)
+        page = super(ProviderAccessiblesQuerysetMixin, self).paginate_queryset(
+            queryset)
         page = self.decorate_personal(page)
         return page
 
 
 class ProviderAccessiblesAPIView(OrganizationSmartListMixin,
-                                 SubscribersQuerysetMixin, ListAPIView):
+                                 ProviderAccessiblesQuerysetMixin, ListAPIView):
     """
     Lists subscribers
 
     Returns a list of {{PAGE_SIZE}} subscribers which have or
     had a subscription to a plan of the specified provider {profile}.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``) and/or intersects a period (``start_at``, ``ends_at``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
+
+    The API is typically used in search forms linked to providers.
+
+    **Tags**: list, provider, profilemodel, subscriptions
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/subscribers/all?o=created_at&ot=desc HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "slug": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null,
+                    "type": "personal",
+                    "credentials": true
+                }
+            ]
+        }
+    """
+    serializer_class = OrganizationSerializer
+
+
+class ActiveSubscribersQuerysetMixin(DateRangeContextMixin,
+                                     OrganizationDecorateMixin, ProviderMixin):
+
+    def get_queryset(self):
+        ends_at = datetime_or_now(self.ends_at)
+        queryset = get_organization_model().objects.filter(is_active=True,
+            subscribes_to__organization=self.provider,
+            subscriptions__ends_at__gt=ends_at).distinct()
+        return queryset
+
+    def paginate_queryset(self, queryset):
+        page = super(ActiveSubscribersQuerysetMixin, self).paginate_queryset(
+            queryset)
+        page = self.decorate_personal(page)
+        return page
+
+
+class ActiveSubscribersAPIView(OrganizationSmartListMixin,
+                               ActiveSubscribersQuerysetMixin, ListAPIView):
+    """
+    Lists active subscribers
+
+    Returns a list of {{PAGE_SIZE}} subscribers which have an active
+    subscription to a plan of the specified provider {profile}.
 
     The queryset can be filtered for at least one field to match a search
     term (``q``) and/or intersects a period (``start_at``, ``ends_at``).
@@ -440,8 +509,7 @@ class EngagedSubscribersSmartListMixin(object):
          # of `EngagedSubscribersQuerysetMixin`.
 
 
-class EngagedSubscribersQuerysetMixin(DateRangeContextMixin,
-                                      SubscribersQuerysetMixin):
+class EngagedSubscribersQuerysetMixin(ActiveSubscribersQuerysetMixin):
 
     def get_queryset(self):
         filter_params = {}
@@ -454,10 +522,8 @@ class EngagedSubscribersQuerysetMixin(DateRangeContextMixin,
             'user__last_login__gte': start_at
         })
         queryset = get_role_model().objects.filter(
-            organization__in=get_organization_model().objects.filter(
-                is_active=True,
-                subscriptions__plan__organization=self.provider,
-                subscriptions__ends_at__gt=ends_at),
+            organization__in=super(
+                EngagedSubscribersQuerysetMixin, self).get_queryset(),
             **filter_params
         ).select_related('user', 'organization')
         return queryset
@@ -530,10 +596,7 @@ class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
     serializer_class = EngagedSubscriberSerializer
 
 
-class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
-                                       SubscribersQuerysetMixin):
-    # Uses `OrganizationSmartListMixin` here because it derives from
-    # `DateRangeContextMixin` and we need `start_at`/`ends_at` in the query.
+class UnengagedSubscribersQuerysetMixin(ActiveSubscribersQuerysetMixin):
 
     def get_queryset(self):
         ends_at = datetime_or_now(self.ends_at)
@@ -546,11 +609,9 @@ class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
                     days=settings.INACTIVITY_DAYS)})
         one_login_within_period = get_organization_model().objects.filter(
             **kwargs)
-        queryset = get_organization_model().objects.filter(
-            is_active=True,
-            subscribes_to__organization=self.provider,
-            subscriptions__ends_at__gt=ends_at).exclude(
-                pk__in=one_login_within_period).distinct()
+        queryset = super(
+            UnengagedSubscribersQuerysetMixin, self).get_queryset().exclude(
+            pk__in=one_login_within_period).distinct()
         return queryset
 
 

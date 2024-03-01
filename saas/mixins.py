@@ -1085,7 +1085,8 @@ class ProvidedSubscriptionsMixin(OrganizationDecorateMixin, ProviderMixin):
 
     def get_queryset(self):
         # OK to use ``filter`` here since we want to list all subscriptions.
-        queryset = Subscription.objects.filter(plan__organization=self.provider)
+        queryset = Subscription.objects.filter(organization__is_active=True,
+            plan__organization=self.provider)
         # `SubscriptionSerializer` will expand `organization` and `plan`.
         queryset = queryset.select_related('organization').select_related(
             'plan')

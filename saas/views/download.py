@@ -47,7 +47,8 @@ from ..api.metrics import (BalancesMetricsMixin, PlanMetricsMixin,
 from ..api.organizations import (EngagedSubscribersQuerysetMixin,
     UnengagedSubscribersQuerysetMixin)
 from ..api.serializers import OrganizationSerializer
-from ..api.subscriptions import ActiveSubscribersMixin, ChurnedSubscribersMixin
+from ..api.subscriptions import (ActiveSubscriberSubscriptionsMixin,
+    ChurnedSubscribersMixin)
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
@@ -327,7 +328,7 @@ class SubscriptionBaseDownloadView(CSVDownloadView):
         ]
 
 
-class ActiveSubscriptionDownloadView(ActiveSubscribersMixin,
+class ActiveSubscriptionDownloadView(ActiveSubscriberSubscriptionsMixin,
                                      SubscriptionBaseDownloadView):
 
     subscriber_type = 'active'
