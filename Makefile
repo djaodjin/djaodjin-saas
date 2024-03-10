@@ -58,29 +58,6 @@ clean-dbs:
 	[ ! -f $(DB_NAME) ] || rm $(DB_NAME)
 
 
-vendor-assets-prerequisites: $(srcDir)/testsite/package.json
-
-
-$(DESTDIR)$(CONFIG_DIR)/credentials: $(srcDir)/testsite/etc/credentials
-	$(installDirs) $(dir $@)
-	@if [ ! -f $@ ] ; then \
-		sed \
-		-e "s,\%(SECRET_KEY)s,`$(PYTHON) -c 'import sys ; from random import choice ; sys.stdout.write("".join([choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)]))'`," \
-		-e "s,STRIPE_PUB_KEY = \"\",STRIPE_PUB_KEY = \"$(STRIPE_PUB_KEY)\"," \
-		-e "s,STRIPE_PRIV_KEY = \"\",STRIPE_PRIV_KEY = \"$(STRIPE_PRIV_KEY)\","\
-		-e "s,STRIPE_CLIENT_ID = \"\",STRIPE_CLIENT_ID = \"$(STRIPE_CLIENT_ID)\","\
-			$< > $@ ; \
-	else \
-		echo "warning: We are keeping $@ intact but $< contains updates that might affect behavior of the testsite." ; \
-	fi
-
-
-$(DESTDIR)$(CONFIG_DIR)/gunicorn.conf: $(srcDir)/testsite/etc/gunicorn.conf
-	$(installDirs) $(dir $@)
-	[ -f $@ ] || sed \
-		-e 's,%(LOCALSTATEDIR)s,$(LOCALSTATEDIR),' $< > $@
-
-
 initdb-with-dummydata: initdb
 	cd $(srcDir) && $(MANAGE) load_test_transactions
 
@@ -107,6 +84,27 @@ doc:
 
 
 vendor-assets-prerequisites: $(installTop)/.npm/djaodjin-saas-packages
+
+
+$(DESTDIR)$(CONFIG_DIR)/credentials: $(srcDir)/testsite/etc/credentials
+	$(installDirs) $(dir $@)
+	@if [ ! -f $@ ] ; then \
+		sed \
+		-e "s,\%(SECRET_KEY)s,`$(PYTHON) -c 'import sys ; from random import choice ; sys.stdout.write("".join([choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)]))'`," \
+		-e "s,STRIPE_PUB_KEY = \"\",STRIPE_PUB_KEY = \"$(STRIPE_PUB_KEY)\"," \
+		-e "s,STRIPE_PRIV_KEY = \"\",STRIPE_PRIV_KEY = \"$(STRIPE_PRIV_KEY)\","\
+		-e "s,STRIPE_CLIENT_ID = \"\",STRIPE_CLIENT_ID = \"$(STRIPE_CLIENT_ID)\","\
+			$< > $@ ; \
+	else \
+		echo "warning: We are keeping $@ intact but $< contains updates that might affect behavior of the testsite." ; \
+	fi
+
+
+$(DESTDIR)$(CONFIG_DIR)/gunicorn.conf: $(srcDir)/testsite/etc/gunicorn.conf
+	$(installDirs) $(dir $@)
+	[ -f $@ ] || sed \
+		-e 's,%(LOCALSTATEDIR)s,$(LOCALSTATEDIR),' $< > $@
+
 
 $(installTop)/.npm/djaodjin-saas-packages: $(srcDir)/testsite/package.json
 	$(installFiles) $^ $(installTop)

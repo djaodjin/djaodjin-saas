@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -87,7 +87,7 @@ class BalancePagination(PageNumberPagination):
 
     def get_paginated_response_schema(self, schema):
         if 'description' not in schema:
-            schema.update({'description': "Records in the queryset"})
+            schema.update({'description': "Items in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -115,19 +115,19 @@ class BalancePagination(PageNumberPagination):
                 },
                 'count': {
                     'type': 'integer',
-                    'description': "The number of records"
+                    'description': "Total number of items in the results"
                 },
                 'next': {
                     'type': 'string',
                     'description': "API end point to get the next page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
                 'previous': {
                     'type': 'string',
                     'description': "API end point to get the previous page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
@@ -150,7 +150,7 @@ class RoleListPagination(PageNumberPagination):
 
     def get_paginated_response_schema(self, schema):
         if 'description' not in schema:
-            schema.update({'description': "Records in the queryset"})
+            schema.update({'description': "Items in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -164,19 +164,19 @@ class RoleListPagination(PageNumberPagination):
                 },
                 'count': {
                     'type': 'integer',
-                    'description': "The number of records"
+                    'description': "Total number of items in the results"
                 },
                 'next': {
                     'type': 'string',
                     'description': "API end point to get the next page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
                 'previous': {
                     'type': 'string',
                     'description': "API end point to get the previous page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
@@ -214,7 +214,7 @@ class StatementBalancePagination(PageNumberPagination):
 
     def get_paginated_response_schema(self, schema):
         if 'description' not in schema:
-            schema.update({'description': "Records in the queryset"})
+            schema.update({'description': "Items in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -242,19 +242,19 @@ class StatementBalancePagination(PageNumberPagination):
                 },
                 'count': {
                     'type': 'integer',
-                    'description': "The number of records"
+                    'description': "Total number of items in the results"
                 },
                 'next': {
                     'type': 'string',
                     'description': "API end point to get the next page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
                 'previous': {
                     'type': 'string',
                     'description': "API end point to get the previous page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
@@ -295,7 +295,7 @@ class TotalPagination(PageNumberPagination):
 
     def get_paginated_response_schema(self, schema):
         if 'description' not in schema:
-            schema.update({'description': "Records in the queryset"})
+            schema.update({'description': "Items in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -310,19 +310,19 @@ class TotalPagination(PageNumberPagination):
                 },
                 'count': {
                     'type': 'integer',
-                    'description': "The number of records"
+                    'description': "Total number of items in the results"
                 },
                 'next': {
                     'type': 'string',
                     'description': "API end point to get the next page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
                 'previous': {
                     'type': 'string',
                     'description': "API end point to get the previous page"\
-                        "of records matching the query",
+                        "of results matching the query",
                     'nullable': True,
                     'format': 'uri',
                 },
@@ -360,13 +360,13 @@ class TypeaheadPagination(PageNumberPagination):
 
     def get_paginated_response_schema(self, schema):
         if 'description' not in schema:
-            schema.update({'description': "Records in the queryset"})
+            schema.update({'description': "Items in the queryset"})
         return {
             'type': 'object',
             'properties': {
                 'count': {
                     'type': 'integer',
-                    'description': "The number of records available"
+                    'description': "Total number of items in the results"
                 },
                 'results': schema,
             },
