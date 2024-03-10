@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,8 @@ from django.shortcuts import get_object_or_404
 from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
+from django.utils import formats
+from django.utils.dateparse import parse_date, parse_datetime
 
 from ..compat import gettext_lazy as _, six
 from ..decorators import fail_direct, _valid_manager
@@ -243,7 +245,16 @@ def products(subscriptions):
 
 
 @register.filter()
-def short_date(val):
-    if isinstance(val, datetime):
-        return val.strftime("%b %d, %Y")
-    return val
+def humanize_short_date(dtime_at):
+    as_datetime = dtime_at
+    if isinstance(dtime_at, six.string_types):
+        as_datetime = parse_datetime(dtime_at)
+        if not as_datetime:
+            as_date = parse_date(dtime_at)
+            if as_date:
+                as_datetime = datetime.datetime.combine(
+                    as_date, datetime.time.min)
+    if isinstance(as_datetime, datetime):
+        return formats.date_format(
+            as_datetime, format=formats.get_format("SHORT_DATE_FORMAT"))
+    return as_datetime

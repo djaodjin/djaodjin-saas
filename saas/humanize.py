@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,8 @@
 from __future__ import unicode_literals
 
 import datetime, re
+
+from django.utils import formats
 
 from . import settings
 from .compat import gettext_lazy as _
@@ -191,29 +193,18 @@ def as_money(value, currency=settings.DEFAULT_UNIT, negative_format="(%s)"):
             negative = True
             currency = currency[1:]
         currency = currency.lower()
-        currency_symbol = CurrencyDataLoader.get_currency_symbols(currency) if currency \
-            else None
+        currency_symbol = (CurrencyDataLoader.get_currency_symbols(currency)
+            if currency else None)
         if currency_symbol:
             unit_prefix = currency_symbol
         else:
             unit_suffix = ' %s' % currency
-    grouped = ""
     if value < 0:
         value = - value
         negative = True
-    text = '%d' % value
-    if len(text) > 2:
-        int_part = text[:-2]
-        frac_part = text[-2:]
-        idx = len(int_part)
-        while idx > 3:
-            grouped += ',' + int_part[idx - 3:idx]
-            idx -= 3
-        int_part = int_part[0:idx]
-    else:
-        int_part = '0'
-        frac_part = '%02d' % value
-    result = (unit_prefix + int_part + grouped + '.' + frac_part + unit_suffix)
+
+    formatted_number = formats.number_format(value / 100, decimal_pos=2)
+    result = unit_prefix + formatted_number + unit_suffix
     if negative:
         result = negative_format % result
     return result
