@@ -194,22 +194,28 @@ DURATIONFIELD_ALLOW_MONTHS = True
 
 # Configuration of djaodjin-saas
 SAAS = {
-  'BROKER': {
-      'GET_INSTANCE': 'cowork',
-  },
-  'PLATFORM_NAME': 'cowork',
-  'PROCESSOR': {
-      'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
-      'MODE': 0, # `LOCAL`
-      'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
-      'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
-      'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
-      'WEBHOOK_SECRET': getattr(
-          sys.modules[__name__], "STRIPE_ENDPOINT_SECRET", None),
-# Comment above and uncomment below to use RazorPay instead.
+    'BROKER': {
+        'GET_INSTANCE': 'cowork',
+    },
+    'PLATFORM_NAME': 'cowork',
+    'PROCESSOR': {
+#        'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+#        'MODE': 0, # `LOCAL`
+#        'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
+#        'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
+#        'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
+#        'WEBHOOK_SECRET': getattr(
+#            sys.modules[__name__], "STRIPE_ENDPOINT_SECRET", None),
+
+        # Comment above and uncomment below to use RazorPay instead.
 #      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
 #      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
 #      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
+
+        # Comment above and uncomment below to use RazorPay instead.
+      'BACKEND': 'saas.backends.flutterwave_processor.FlutterwaveBackend',
+      'PRIV_KEY': getattr(sys.modules[__name__], "FLUTTERWAVE_PRIV_KEY", None),
+      'PUB_KEY': getattr(sys.modules[__name__], "FLUTTERWAVE_PUB_KEY", None),
     },
     'EXPIRE_NOTICE_DAYS': [90, 60, 30, 15, 1],
 }

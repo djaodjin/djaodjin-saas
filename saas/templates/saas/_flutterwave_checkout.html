@@ -1,0 +1,38 @@
+<script src="https://checkout.flutterwave.com/v3.js"></script>
+<script>
+  function makePayment() {
+    FlutterwaveCheckout({
+      public_key: "{{ FLUTTERWAVE_PUB_KEY }}",
+      tx_ref: "{{flutterwave_invoice_id}}",
+      amount: {{lines_price.amount}} / 100,
+      currency: "{{lines_price.unit}}",
+      payment_options: "card, mobilemoneyghana, ussd",
+      callback: function(payment) {
+        // Send AJAX verification request to backend
+        verifyTransactionOnBackend(payment.tx_ref);
+      },
+      onclose: function(incomplete) {
+        if (incomplete || window.verified === false) {
+          showErrorMessages(["Payment canceled."]);
+        }
+      },
+      customer: {
+        email: "{{organization.email}}",
+        name: "{{organization.full_name}}",
+      },
+    });
+  }
+
+  function verifyTransactionOnBackend(token) {
+      // insert the token into the form so it gets submitted
+      // to the server.
+      var element = document.getElementById("payment-form");
+      $(element).append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
+      // and submit
+      element.submit();
+  }
+</script>
+<div>
+    <input type="hidden" name="remember_card" value="0" />
+    <button type="button" class="payment-submit"  onclick="makePayment()">{% if submit_title %}{{submit_title}}{% else %}Pay Now{% endif %}</button>
+</div>

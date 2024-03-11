@@ -41,9 +41,12 @@ If you have a coupon code, it is time to redeem it now!
         </div>
         {% elif STRIPE_PUB_KEY %}
         {% include "saas/_card_use.html" %}
+        {% elif FLUTTERWAVE_PUB_KEY %}
+        {% include "saas/_flutterwave_checkout.html" %}
         {% else %}
         <p>
-Either variables RAZORPAY_PUB_KEY or STRIPE_PUB_KEY must be defined.
+Either variables FLUTTERWAVE_PUB_KEY, RAZORPAY_PUB_KEY, or STRIPE_PUB_KEY
+must be defined.
         </p>
         {% endif %}
         {% endblock %}
