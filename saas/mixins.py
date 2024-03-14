@@ -1286,9 +1286,8 @@ class MetricsDownloadMixin(object):
                 date_str = date_value[0]
                 if date_str not in consolidated_data:
                     consolidated_data[date_str] = {
-                        'Date': date_str,
-                        **{heading: 0 for heading in self.headings if heading != 'Date'}
-                    }
+                        heading: 0 for heading in self.headings}
+                    consolidated_data[date_str].update({'Date': date_str})
                 consolidated_data[date_str][result['title']] = date_value[1]
 
         return list(consolidated_data.values())

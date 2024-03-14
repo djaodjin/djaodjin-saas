@@ -23,7 +23,7 @@ whitenoise==6.4.0
 
 # development
 Faker==3.0.1
-Sphinx== 7.2.6
+Sphinx==5.3.0                     # last version that supports Py3.7
 sphinx_rtd_theme==2.0.0
 sphinxcontrib-httpdomain==1.8.1
 sphinxcontrib-websupport==1.2.7
