@@ -3574,6 +3574,27 @@ class TransactionQuerySet(models.QuerySet):
     """
 
     def get_statement_balances(self, organization, until=None):
+        """
+        Returns a dictionnary keyed by event_id of dictionnaries keyed by
+        currency unit.
+
+        Example:
+
+            {
+                'sub_4/': {'usd': 0},
+                'sub_437/': {'usd': 3490}
+            }
+
+        Note that the event_id can be `None` if a one-time charge was created,
+        and it wasn't associated to a specific subscription.
+
+        Example:
+
+            {
+                'sub_437/': {'usd': 3490},
+                None:  {'usd': 2500}
+            }
+        """
         #pylint:disable=too-many-locals
         until = datetime_or_now(until)
         # We use the fact that all orders (and only orders) will have
@@ -4022,7 +4043,7 @@ class TransactionManager(models.Manager):
         for event_id, balance in six.iteritems(balances):
             # subscription_event_id endswith a '/' which is garenteed
             # to be a terminal character.
-            if event_id.startswith(subscription_event_id):
+            if event_id and event_id.startswith(subscription_event_id):
                 if len(balance) > 1:
                     raise ValueError(
                         _("balance with multiple currency units (%s)") %
@@ -4664,11 +4685,13 @@ def record_use_charge(subscription, use_charge, quantity=1):
 
     if usage >= use_charge.quota:
         signals.quota_reached.send(sender=__name__,
+                                   usage=usage,
                                    use_charge=use_charge,
                                    subscription=subscription)
 
     if use_charge.maximum_limit and usage >= use_charge.maximum_limit:
         signals.use_charge_limit_crossed.send(sender=__name__,
+                                              usage=usage,
                                               use_charge=use_charge,
                                               subscription=subscription)
 

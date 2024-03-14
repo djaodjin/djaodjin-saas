@@ -97,8 +97,8 @@ period_sales_report_created = Signal(
 #    providing_args=['provider', 'dates', 'data']
 )
 quota_reached = Signal(
-#   providing_args=['use_charge', 'subscription']
+#   providing_args=['usage', 'use_charge', 'subscription']
 )
 use_charge_limit_crossed = Signal(
-#    providing_args=['use_charge', 'subscription']
+#    providing_args=['usage', 'use_charge', 'subscription']
 )

@@ -76,7 +76,7 @@ class BalanceDueMixin(object):
         balances = Transaction.objects.get_statement_balances(
             customer, until=at_time)
         for event_id, amount_by_units in six.iteritems(balances):
-            if not event_id.startswith('sub_'):
+            if not (event_id and event_id.startswith('sub_')):
                 # XXX Not showing balance due on group buy events.
                 LOGGER.error("Looking at a balance %s on event_id '%s'",
                     amount_by_units, event_id)
