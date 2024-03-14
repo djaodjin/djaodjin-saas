@@ -778,13 +778,14 @@ class OrganizationInviteSerializer(OrganizationCreateSerializer):
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
-    """
-    Base class to serialize `Subscription` instances.
-
-    The actual serializer used in API endpoints will either
-    be `SubscribedSubscriptionSerializer` for subscriber-side APIs
-    or `ProvidedSubscriptionSerializer` for provider-side APIs.
-    """
+    # Implementation Note: As a comment to avoid API docgen
+    # to pick it up as a replacement of the field description.
+    #
+    # Base class to serialize `Subscription` instances.
+    #
+    # The actual serializer used in API endpoints will either
+    # be `SubscribedSubscriptionSerializer` for subscriber-side APIs
+    # or `ProvidedSubscriptionSerializer` for provider-side APIs.
 
     # XXX used to be OrganizationDetailSerializer. because it is used
     # in checkout with group buy, do we need the e-mail?

@@ -697,6 +697,11 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
     """
     Retrieves customers lifetime value
 
+    Generates the total amount of the contract for a customer,
+    the amount of cash payments towards the contract value made so far
+    by the customer, and the deferred revenue remaining to be recognized
+    on the contract value.
+
     **Tags**: metrics, list, provider, profilemodel
 
     **Examples**
