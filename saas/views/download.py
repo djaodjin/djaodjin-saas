@@ -523,11 +523,10 @@ class BalancesDueDownloadView(BalancesDueMixin, CSVDownloadView):
         ]
 
         currency_set = self.currency_set
-        currency_headers = [
-            f'{currency}_{balance_type}'
-            for currency in currency_set
-            for balance_type in ['contract_value', 'cash_payments', 'balance']
-        ]
+        currency_headers = []
+        for currency in currency_set:
+            for balance_type in ['contract_value', 'cash_payments', 'balance']:
+                currency_headers += ["%s_%s" % (currency, balance_type)]
 
         return basic_headers + currency_headers
 
