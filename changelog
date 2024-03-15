@@ -17,6 +17,15 @@ Roadmap
 Released versions
 =================
 
+0.20.1
+
+  * uses Django formats to localize money and dates (renamed `|short_date`)
+  * uses same template context for e-mail and PDF charge receipts
+  * prevents deleted subscribers to show in subscribers API results
+  * fixes 500 when balance due on a one-time charge
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 14 Mar 2024 14:10:00 -0700
+
 0.20.0
 
   * adds field to manage otp code requirements per role

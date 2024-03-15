@@ -105,9 +105,11 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.20.0
+0.20.1
 
-  * adds field to manage otp code requirements per role
-  * computes number of periods that cover more than 1 year correctly
+  * uses Django formats to localize money and dates (renamed `|short_date`)
+  * uses same template context for e-mail and PDF charge receipts
+  * prevents deleted subscribers to show in subscribers API results
+  * fixes 500 when balance due on a one-time charge
 
 [previous release notes](changelog)
