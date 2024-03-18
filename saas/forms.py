@@ -208,16 +208,15 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
             if not self.fields['country'].initial:
                 self.fields['country'].initial = country.code
             self.add_postal_region(country=country)
-        if settings.DISPLAY_GROUP_BUY:
-            if 'is_bulk_buyer' in self.initial:
-                initial = self.initial['is_bulk_buyer']
-                if self.instance:
-                    initial = self.instance.is_bulk_buyer
-                self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
-                    initial=initial,
-                    label=mark_safe(_("Enable GroupBuy (<a href=\""\
-    "https://djaodjin.com/docs/#group-billing\" target=\"_blank\">what is it?</a>)"
-                    )))
+        if 'is_bulk_buyer' in self.initial:
+            initial = self.initial['is_bulk_buyer']
+            if self.instance:
+                initial = self.instance.is_bulk_buyer
+            self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
+                initial=initial,
+                label=mark_safe(_("Enable GroupBuy (<a href=\""\
+"https://djaodjin.com/docs/#group-billing\" target=\"_blank\">what is it?</a>)"
+                )))
         if 'is_provider' in self.initial:
             initial = self.initial['is_provider']
             if self.instance:
