@@ -16,6 +16,11 @@ This can be overridden by defining ``PROCESSOR_ID`` in the settings block.
         'PROCESSOR_ID': 1
     }
 
+Flutterwave configuration
+-------------------------
+
+.. automodule:: saas.backends.flutterwave_processor
+
 
 Razorpay configuration
 ----------------------
