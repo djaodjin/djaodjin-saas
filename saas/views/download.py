@@ -51,7 +51,7 @@ from ..api.subscriptions import ActiveSubscribersMixin, ChurnedSubscribersMixin
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
-from ..compat import six
+from ..compat import six, gettext_lazy as _
 from ..metrics.base import month_periods
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
     UserSmartListMixin, as_html_description, BalancesDueMixin,
@@ -158,10 +158,10 @@ class ChargesDownloadView(SmartChargeListMixin, ChargeQuerysetMixin,
     basename = 'charges'
 
     headings = [
-        'Created At'
-        'Amount',
-        'State',
-        'Description',
+        _('Created At'),
+        _('Amount'),
+        _('State'),
+        _('Description'),
     ]
 
     def queryrow_to_columns(self, record):
@@ -178,10 +178,10 @@ class CouponDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
                          CSVDownloadView):
 
     headings = [
-        'Created At'
-        'Code',
-        'DiscountType',
-        'Amount',
+        _('Created At'),
+        _('Code'),
+        _('DiscountType'),
+        _('Amount'),
     ]
 
     def get_headings(self):
@@ -212,13 +212,13 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
     coupon_url_kwarg = 'coupon'
 
     headings = [
-        'Used At',
-        'Code',
-        'DiscountType',
-        'Amount',
-        'Name',
-        'Email',
-        'Plan',
+        _('Used At'),
+        _('Code'),
+        _('DiscountType'),
+        _('Amount'),
+        _('Name'),
+        _('Email'),
+        _('Plan'),
     ]
 
     @property
@@ -287,7 +287,7 @@ class RegisteredDownloadView(UserSmartListMixin, RegisteredQuerysetMixin,
                              CSVDownloadView):
 
     def get_headings(self):
-        return ['First name', 'Last name', 'Email', 'Registration Date']
+        return [_('First name'), _('Last name'), 'Email', _('Registration Date')]
 
     def get_filename(self):
         return 'registered-{}.csv'.format(datetime_or_now().strftime('%Y%m%d'))
@@ -305,28 +305,28 @@ class RegisteredDownloadView(UserSmartListMixin, RegisteredQuerysetMixin,
 class SubscriptionBaseDownloadView(CSVDownloadView):
 
     subscriber_type = None
-    CSV_CUSTOMER_CONTACTS_INCLUDE = settings.CSV_CUSTOMER_CONTACTS_INCLUDE
+    CSV_CUSTOMER_CONTACTS_INCLUDED = settings.CSV_CUSTOMER_CONTACTS_INCLUDED
 
     headings = [
-        'Name',
-        'Email',
-        'Plan',
-        'Since',
-        'Until'
+        _('Name'),
+        _('Email'),
+        _('Plan'),
+        _('Since'),
+        _('Until')
     ]
 
     def get_queryset(self):
         raise NotImplementedError()
 
     def get_headings(self):
-        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDED:
             extra_headings = [
-                'Phone',
-                'Street Address',
-                'Locality',
-                'Region',
-                'Postal Code',
-                'Country'
+                _('Phone'),
+                _('Street Address'),
+                _('Locality'),
+                _('Region'),
+                _('Postal Code'),
+                _('Country')
             ]
             self.headings += extra_headings
         return self.headings
@@ -345,7 +345,7 @@ class SubscriptionBaseDownloadView(CSVDownloadView):
             subscription.ends_at.date(),
         ]
 
-        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDED:
             extra_columns = [
                 self.encode(subscription.organization.phone),
                 self.encode(subscription.organization.street_address),
@@ -418,10 +418,10 @@ class BillingStatementDownloadView(SmartTransactionListMixin,
 
     basename = 'history'
     headings = [
-        'CreatedAt',
-        'Amount',
-        'Unit',
-        'Description'
+        _('Created At'),
+        _('Amount'),
+        _('Unit'),
+        _('Description')
     ]
 
     def queryrow_to_columns(self, record):
@@ -441,25 +441,26 @@ class TransferDownloadView(SmartTransactionListMixin,
                            TransferQuerysetMixin, CSVDownloadView):
 
     basename = 'transfers'
-    CSV_CUSTOMER_CONTACTS_INCLUDE = settings.CSV_CUSTOMER_CONTACTS_INCLUDE
+    CSV_CUSTOMER_CONTACTS_INCLUDED = settings.CSV_CUSTOMER_CONTACTS_INCLUDED
 
     headings = [
-        'Created At',
-        'Amount',
-        'Unit',
-        'Description'
+        _('Created At'),
+        _('Amount'),
+        _('Unit'),
+        _('Description'),
+        _('Full Name')
     ]
 
     def get_headings(self):
-        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDED:
             extra_headings = [
-                'Full Name',
-                'Phone',
-                'Street Address',
-                'Locality',
-                'Region',
-                'Postal Code',
-                'Country'
+                _('Email'),
+                _('Phone'),
+                _('Street Address'),
+                _('Locality'),
+                _('Region'),
+                _('Postal Code'),
+                _('Country')
             ]
             self.headings += extra_headings
         return self.headings
@@ -473,13 +474,14 @@ class TransferDownloadView(SmartTransactionListMixin,
                 # XXX integer division
                 Decimal(transaction.dest_amount) / 100),
             self.encode(transaction.dest_unit),
-            self.encode_descr(transaction)
+            self.encode_descr(transaction),
+            self.encode(transaction.orig_organization.full_name)
         ]
 
-        if self.CSV_CUSTOMER_CONTACTS_INCLUDE:
+        if self.CSV_CUSTOMER_CONTACTS_INCLUDED:
             organization = transaction.orig_organization
             extra_columns = [
-                self.encode(organization.full_name),
+                self.encode(organization.email),
                 self.encode(organization.phone),
                 self.encode(organization.street_address),
                 self.encode(organization.locality),
@@ -597,9 +599,9 @@ class BalancesDueDownloadView(BalancesDueMixin, CSVDownloadView):
 
     def get_headings(self):
         basic_headers = [
-            'Slug',
-            'Profile Name',
-            'Created At'
+            _('Slug'),
+            _('Profile Name'),
+            _('Created At')
         ]
 
         currency_set = self.currency_set
@@ -643,15 +645,15 @@ class EngagedSubscribersDownloadView(EngagedSubscribersQuerysetMixin, CSVDownloa
     basename = 'engaged_subscribers'
 
     headings = [
-        'Created At',
-        'Username',
-        'Email',
-        'Full Name',
-        'Account Creation Date',
-        'Role Description',
-        'Profile Slug',
-        'Profile Name',
-        'Profile Creation Date'
+        _('Created At'),
+        _('Username'),
+        _('Email'),
+        _('Full Name'),
+        _('Account Creation Date'),
+        _('Role Description'),
+        _('Profile Slug'),
+        _('Profile Name'),
+        _('Profile Creation Date')
     ]
 
     def queryrow_to_columns(self, record):
@@ -677,11 +679,11 @@ class UnengagedSubscribersDownloadView(UnengagedSubscribersQuerysetMixin, CSVDow
     basename = 'unengaged_subscribers'
 
     headings = [
-        'Slug',
-        'Profile Name',
-        'Type',
-        'Credentials',
-        'Created At'
+        _('Slug'),
+        _('Profile Name'),
+        _('Type'),
+        _('Credentials'),
+        _('Created At')
     ]
 
     def queryrow_to_columns(self, record):

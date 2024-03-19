@@ -47,7 +47,7 @@ urlpatterns = [
          % settings.PROFILE_URL_KWARG,
          PlanMetricsDownloadView.as_view(),
          name='saas_metrics_plans_download'),
-    path('profile/<slug:%s>/plans/<slug:plan>/edit' %
+    path('profile/<slug:%s>/plans/<slug:plan>/' %
         settings.PROFILE_URL_KWARG,
         PlanUpdateView.as_view(), name='saas_plan_edit'),
     path('profile/<slug:%s>/plans/' %
