@@ -43,6 +43,10 @@ urlpatterns = [
     path('profile/<slug:%s>/plans/new/' %
         settings.PROFILE_URL_KWARG,
         PlanCreateView.as_view(), name='saas_plan_new'),
+    path('profile/<slug:%s>/plans/download/'
+         % settings.PROFILE_URL_KWARG,
+         PlanMetricsDownloadView.as_view(),
+         name='saas_metrics_plans_download'),
     path('profile/<slug:%s>/plans/<slug:plan>/' %
         settings.PROFILE_URL_KWARG,
         PlanUpdateView.as_view(), name='saas_plan_edit'),
@@ -65,10 +69,6 @@ urlpatterns = [
     path('profile/<slug:%s>/subscribers/' %
         settings.PROFILE_URL_KWARG,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
-    path('profile/<slug:%s>/plans/download/'
-         % settings.PROFILE_URL_KWARG,
-         PlanMetricsDownloadView.as_view(),
-         name='saas_metrics_plans_download'),
     path('profile/<slug:%s>/subscribers/engaged/download/' %
          settings.PROFILE_URL_KWARG,
          EngagedSubscribersDownloadView.as_view(),

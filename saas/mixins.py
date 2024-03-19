@@ -1280,17 +1280,7 @@ class MetricsDownloadMixin(object):
 
     def get_queryset(self):
         results, _ = self.get_data()
-        consolidated_data = {}
-        for result in results:
-            for date_value in result['values']:
-                date_str = date_value[0]
-                if date_str not in consolidated_data:
-                    consolidated_data[date_str] = {
-                        heading: 0 for heading in self.headings}
-                    consolidated_data[date_str].update({'Date': date_str})
-                consolidated_data[date_str][result['title']] = date_value[1]
-
-        return list(consolidated_data.values())
+        return results
 
 
 def _as_html_description(transaction_descr,
