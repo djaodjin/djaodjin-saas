@@ -452,7 +452,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
-        if Plan.objects.exists():
+        if Plan.objects.exists() and settings.DISPLAY_BULK_BUYER_TOGGLE:
             # Do not display the bulk buying option if there are no plans.
             kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
         if _valid_manager(self.request, [get_broker()]):
