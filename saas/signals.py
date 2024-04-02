@@ -94,7 +94,7 @@ subscription_request_created = Signal(
 #    providing_args=['subscription', 'reason']
 )
 period_sales_report_created = Signal(
-#    providing_args=['provider', 'dates', 'data']
+#    providing_args=['provider', 'dates', 'data', 'unit', 'scale']
 )
 quota_reached = Signal(
 #   providing_args=['usage', 'use_charge', 'subscription']

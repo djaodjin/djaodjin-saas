@@ -381,11 +381,14 @@ class EmailChargeReceiptSerializer(NoModelSerializer):
         help_text=_("Feedback for the user in plain text"))
 
 
-class DatetimeValueTuple(serializers.ListField):
+class KeyValueTuple(serializers.ListField):
+    # `KeyValueTuple` is typed as a (String, Integer) tuple.
+    # by not specifying a child field, the serialized data
+    # is generated as expected. Otherwise we would end up
+    # with a (String, String).
 
-    child = serializers.CharField() # XXX (Datetime, Integer)
     min_length = 2
-    max_length = 2
+    max_length = 3
 
 
 class TableSerializer(NoModelSerializer):
@@ -398,7 +401,7 @@ class TableSerializer(NoModelSerializer):
     extra = ExtraField(required=False, read_only=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
     values = serializers.ListField(
-        child=DatetimeValueTuple(),
+        child=KeyValueTuple(),
         help_text=_("List of (datetime, integer) couples that represents"\
         " the data serie"))
     # XXX only in balances.py

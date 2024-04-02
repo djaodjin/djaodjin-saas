@@ -130,11 +130,11 @@ class Command(BaseCommand):
                 return 'N/A'
 
         for row in table:
-            val = row['values']
-            val['prev'] = calculate_percentage_change(val['last'], val['prev'])
-            val['prev_year'] = calculate_percentage_change(
-                val['last'], val['prev_year'])
-            val['last'] = humanize.as_money(val['last'], unit)
+            values = row['values']
+            for idx in range(1, len(values)):
+                values[idx][1] = calculate_percentage_change(
+                    values[0][1], values[idx][1])
+            values[0][1] = humanize.as_money(values[0][1], unit)
         return table
 
     @staticmethod
@@ -183,39 +183,39 @@ class Command(BaseCommand):
         table = [{
             'slug': "Total Sales",
             'title': "Total Sales",
-            'values': {
-                'last': account_table[0]['values'][1][1],
-                'prev': account_table[0]['values'][0][1],
-                'prev_year': account_table_prev_year[0]['values'][0][1]
-            }}, {
+            'values': [
+                ['last', account_table[0]['values'][1][1]],
+                ['prev', account_table[0]['values'][0][1]],
+                ['prev_year', account_table_prev_year[0]['values'][0][1]]
+            ]}, {
             'slug': "New Sales",
             'title': "New Sales",
-            'values': {
-                'last': account_table[1]['values'][1][1],
-                'prev': account_table[1]['values'][0][1],
-                'prev_year': account_table_prev_year[1]['values'][0][1]
-            }}, {
+            'values': [
+                ['last', account_table[1]['values'][1][1]],
+                ['prev', account_table[1]['values'][0][1]],
+                ['prev_year', account_table_prev_year[1]['values'][0][1]]
+            ]}, {
             'slug': "Churned Sales",
             'title': "Churned Sales",
-            'values': {
-                'last': account_table[2]['values'][1][1],
-                'prev': account_table[2]['values'][0][1],
-                'prev_year': account_table_prev_year[2]['values'][0][1]
-            }}, {
+            'values': [
+                ['last', account_table[2]['values'][1][1]],
+                ['prev', account_table[2]['values'][0][1]],
+                ['prev_year', account_table_prev_year[2]['values'][0][1]]
+            ]}, {
             'slug': "Payments",
             'title': "Payments",
-            'values': {
-                'last': payment_amounts[1][1],
-                'prev': payment_amounts[0][1],
-                'prev_year': payment_amounts_prev_year[0][1]
-            }}, {
+            'values': [
+                ['last', payment_amounts[1][1]],
+                ['prev', payment_amounts[0][1]],
+                ['prev_year', payment_amounts_prev_year[0][1]]
+            ]}, {
             'slug': "Refunds",
             'title': "Refunds",
-            'values': {
-                'last': refund_amounts[1][1],
-                'prev': refund_amounts[0][1],
-                'prev_year': refund_amounts_prev_year[0][1]
-            }}
+            'values': [
+                ['last', refund_amounts[1][1]],
+                ['prev', refund_amounts[0][1]],
+                ['prev_year', refund_amounts_prev_year[0][1]]
+            ]}
         ]
         return (table, unit)
 
@@ -276,9 +276,9 @@ class Command(BaseCommand):
         for row in table:
             self.stdout.write(
                 "  {0:<15s} | {1:>12s} | {2:>8s} | {3:>8s}".format(
-                row['title'], row['values']['last'],
-                row['values']['prev'], row['values']['prev_year']))
+                row['title'], row['values'][0][1],
+                row['values'][1][1], row['values'][2][1]))
 
         if not dry_run:
             signals.period_sales_report_created.send(sender=__name__,
-                provider=provider, dates=dates, data=table)
+                provider=provider, dates=dates, data=table, unit=unit, scale=1)
