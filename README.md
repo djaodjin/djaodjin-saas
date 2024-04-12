@@ -105,11 +105,14 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.20.1
+0.20.2
 
-  * uses Django formats to localize money and dates (renamed `|short_date`)
-  * uses same template context for e-mail and PDF charge receipts
-  * prevents deleted subscribers to show in subscribers API results
-  * fixes 500 when balance due on a one-time charge
+  * matches period_sales_report notification context to API format
+  * supports queryset and list in TypeaheadPagination
+  * makes profile redirect page consistent with deployutils
+  * adds contact info in CSV downloads
+  * adds feature flag for group buy functionality
+  * handles alpha channel properly in profile pictures (UI)
+  * attaches error message to input field or toplevel - not both (UI)
 
 [previous release notes](changelog)
