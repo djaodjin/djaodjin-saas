@@ -341,13 +341,16 @@ class TypeaheadPagination(PageNumberPagination):
             request.query_params.get(api_settings.SEARCH_PARAM, ''))
         page_size = max(len(search_terms), self.page_size)
 
-        self.count = queryset.count()
+        try:
+            self.count = queryset.count()
+        except (TypeError, AttributeError):
+            # In case we are not dealing with a `QuerySet`.
+            self.count = len(queryset)
         if self.count > page_size:
             # returning an empty set if the number of results is greater than
             # MAX_TYPEAHEAD_CANDIDATES
-            queryset = queryset.none()
             self.count = 0
-        return list(queryset)
+        return queryset[:self.count]
 
     def get_paginated_response(self, data):
         return Response(OrderedDict([
