@@ -2294,7 +2294,7 @@ Vue.component('profile-update', {
                         vm.$forceUpdate();
                         showMessages(["Profile was updated."], "success");
                 });
-            }, 'image/jpeg');
+            }, 'image/png');
         },
         verifyEmail: function() {
             var vm = this;
