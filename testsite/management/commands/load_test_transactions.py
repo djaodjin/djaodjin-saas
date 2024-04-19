@@ -100,6 +100,7 @@ class Command(BaseCommand):
                 args[0], '%Y-%m-%d')
         provider = Organization.objects.get(slug=options['provider'])
         processor = Organization.objects.get(pk=saas_settings.PROCESSOR_ID)
+        self.generate_optional_plans(provider)
         self.generate_coupons(provider)
         self.generate_transactions(provider, processor, from_date, now,
             profile_pictures_dir=options['profile_pictures'])
@@ -109,6 +110,23 @@ class Command(BaseCommand):
         coupon_code = options['coupon']
         if coupon_code:
             self.generate_coupon_uses(coupon_code, provider=provider)
+
+
+    def generate_optional_plans(self, provider):
+        queryset = Plan.objects.filter(
+            organization=provider, period_amount__gt=0)
+        if not queryset.exists():
+            # We don't have any plans, so we create a few standard ones.
+            Plan.objects.create(
+                slug='demo-basic', title="Basic", period_amount=2000,
+                organization=provider)
+            Plan.objects.create(
+                slug='demo-premium', title="Premium", period_amount=5000,
+                organization=provider)
+            Plan.objects.create(
+                slug='demo-deluxe', title="Deluxe", period_amount=12000,
+                organization=provider)
+
 
     def generate_coupons(self, provider, nb_coupons=None):
         if nb_coupons is None:
@@ -189,12 +207,13 @@ class Command(BaseCommand):
                 else:
                     profile_pictures_females += [
                         "/media/livedemo/profiles/%s" % picture_name]
+        queryset = Plan.objects.filter(
+            organization=provider, period_amount__gt=0)
+        nb_plans = queryset.count()
         for end_period in month_periods(from_date=from_date):
             nb_new_customers = random.randint(0, 9)
             for _ in range(nb_new_customers):
-                queryset = Plan.objects.filter(
-                    organization=provider, period_amount__gt=0)
-                plan = queryset[random.randint(0, queryset.count() - 1)]
+                plan = queryset[random.randint(0, nb_plans - 1)]
                 created = False
                 trials = 0
                 while not created:
