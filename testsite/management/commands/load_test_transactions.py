@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # see LICENSE
 
 import datetime, logging, os, random
@@ -17,8 +17,6 @@ from saas.models import (CartItem, Charge, ChargeItem, Coupon, Organization,
 from saas import humanize, settings as saas_settings
 from saas.utils import datetime_or_now, generate_random_slug
 from saas import signals as saas_signals
-from signup.helpers import full_name_natural_split
-from signup import signals as signup_signals
 
 LOGGER = logging.getLogger(__name__)
 
@@ -203,21 +201,21 @@ class Command(BaseCommand):
                     try:
                         picture = None
                         if random.randint(0, 1):
-                            full_name = fake.name_male()
+                            first_name = fake.first_name_male()
                             if profile_pictures_males:
                                 picture = profile_pictures_males[
                                     random.randint(
                                         0, len(profile_pictures_males) - 1)]
                         else:
-                            full_name = fake.name_female()
+                            first_name = fake.first_name_female()
                             if profile_pictures_females:
                                 picture = profile_pictures_females[
                                     random.randint(
                                         0, len(profile_pictures_females) - 1)]
+                        last_name = fake.last_name()
+                        full_name = "%s %s" % (first_name, last_name)
                         slug = slugify('demo%d' % random.randint(1, 1000))
                         email = "%s@%s" % (slug, fake.domain_name())
-                        first_name, _, last_name = \
-                            full_name_natural_split(full_name)
                         customer, created = Organization.objects.get_or_create(
                             slug=slug,
                             full_name=full_name,
