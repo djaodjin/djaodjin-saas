@@ -100,10 +100,11 @@ class BrokerBalancesAPIView(BrokerBalancesMixin, GenericAPIView):
     @extend_schema(operation_id='metrics_balances_report',
         parameters=[QueryParamPeriodSerializer])
     def get(self, request, *args, **kwargs):
-        return super(BrokerBalancesAPIView, self).get(request, *args, **kwargs)
+        return self.retrieve_metrics()
 
 
-    def retrieve_metrics(self, date_periods):
+    def retrieve_metrics(self):
+        date_periods = self.calculate_date_periods()
         report = self.kwargs.get('report') # XXX Add QueryParam
         unit = settings.DEFAULT_UNIT
         results = []
