@@ -215,8 +215,8 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
             self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
                 initial=initial,
                 label=mark_safe(_("Enable GroupBuy (<a href=\""\
-"https://djaodjin.com/docs/#group-billing\" target=\"_blank\">what is it?</a>)"
-                )))
+"https://www.djaodjin.com/docs/faq/#group-billing\" target=\"_blank\">"\
+"what is it?</a>)")))
         if 'is_provider' in self.initial:
             initial = self.initial['is_provider']
             if self.instance:

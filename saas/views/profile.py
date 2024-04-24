@@ -452,10 +452,12 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
-        if Plan.objects.exists() and settings.DISPLAY_BULK_BUYER_TOGGLE:
-            # Do not display the bulk buying option if there are no plans.
-            kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
         if _valid_manager(self.request, [get_broker()]):
+            # Shows checkbox for `is_bulk_buyer` and `is_provider` only
+            # to brokers.
+            if Plan.objects.exists() and settings.DISPLAY_BULK_BUYER_TOGGLE:
+                # Do not display the bulk buying option if there are no plans.
+                kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
             kwargs.update({
                 'is_provider': self.object.is_provider,
                 'extra': self.object.extra})

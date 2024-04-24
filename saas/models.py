@@ -284,7 +284,7 @@ class AbstractOrganization(models.Model):
 
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=mark_safe(_("Enable GroupBuy ("\
-        "<a href=\"https://djaodjin.com/docs/#group-billing\""\
+        "<a href=\"https://www.djaodjin.com/docs/faq/#group-billing\""\
         " target=\"_blank\">what is it?</a>)")))
     is_provider = models.BooleanField(default=False,
         help_text=_("The profile can fulfill the provider side"\
