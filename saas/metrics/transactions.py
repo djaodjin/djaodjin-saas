@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,9 @@
 
 import logging
 
-from django.db import connection, router
+from django.db import router
 from django.db.models import F, Sum
+from django.db.models.sql.query import RawQuery
 
 from .. import settings
 from ..compat import six
@@ -88,22 +89,20 @@ GROUP BY saas_organization.slug, matched_transfers_payments.dest_unit""" % {
             'liability': Transaction.LIABILITY
         }
     # XXX transfers: without processor fee, payments: with processor fee.
-    with connection.cursor() as cursor:
-        cursor.execute(payments_query, params=None)
-        for row in cursor.fetchall():
-            organization_slug = row[0]
-            unit = row[1]
-            amount = row[2]
-            account = Transaction.LIABILITY
-            if organization_slug not in by_profiles:
-                by_profiles[organization_slug] = {unit: {account: amount}}
+    for row in RawQuery(payments_query, using=router.db_for_read(Transaction)):
+        organization_slug = row[0]
+        unit = row[1]
+        amount = row[2]
+        account = Transaction.LIABILITY
+        if organization_slug not in by_profiles:
+            by_profiles[organization_slug] = {unit: {account: amount}}
+        else:
+            if unit not in by_profiles[organization_slug]:
+                by_profiles[organization_slug].update({
+                    unit: {account: amount}})
             else:
-                if unit not in by_profiles[organization_slug]:
-                    by_profiles[organization_slug].update({
-                        unit: {account: amount}})
-                else:
-                    by_profiles[organization_slug][unit].update({
-                        account: amount})
+                by_profiles[organization_slug][unit].update({
+                    account: amount})
 
     kwargs = {'dest_organization': provider} if provider else {}
     refunds = Transaction.objects.filter(
@@ -152,22 +151,21 @@ GROUP BY saas_organization.slug, saas_transaction.dest_unit
        'extract_number': extract_number,
        'provider_clause': ("AND saas_plan.organization_id = %d" % provider.pk
             if provider else "")}
-    with connection.cursor() as cursor:
-        cursor.execute(deferred_revenues_query, params=None)
-        for row in cursor.fetchall():
-            organization_slug = row[0]
-            unit = row[1]
-            amount = row[2]
-            account = Transaction.BACKLOG
-            if organization_slug not in by_profiles:
-                by_profiles[organization_slug] = {unit: {account: amount}}
+    for row in RawQuery(deferred_revenues_query,
+                        using=router.db_for_read(Transaction)):
+        organization_slug = row[0]
+        unit = row[1]
+        amount = row[2]
+        account = Transaction.BACKLOG
+        if organization_slug not in by_profiles:
+            by_profiles[organization_slug] = {unit: {account: amount}}
+        else:
+            if unit not in by_profiles[organization_slug]:
+                by_profiles[organization_slug].update({
+                    unit: {account: amount}})
             else:
-                if unit not in by_profiles[organization_slug]:
-                    by_profiles[organization_slug].update({
-                        unit: {account: amount}})
-                else:
-                    by_profiles[organization_slug][unit].update({
-                        account: amount})
+                by_profiles[organization_slug][unit].update({
+                    account: amount})
 
     results = {}
     for slug, by_units in six.iteritems(by_profiles):
@@ -250,63 +248,38 @@ GROUP BY saas_organization.slug, matched_transfers_payments.dest_unit""" % {
         'liability': Transaction.LIABILITY
     }
 
-    with connection.cursor() as cursor:
-        cursor.execute(payments_query, params=None)
-        for row in cursor.fetchall():
-            organization_slug = row[0]
-            unit = row[1]
-            amount = row[2]
-            account = Transaction.LIABILITY
-            if organization_slug not in by_profiles:
-                by_profiles[organization_slug] = {unit: {account: amount}}
-            else:
-                if unit not in by_profiles[organization_slug]:
-                    by_profiles[organization_slug].update({
-                        unit: {account: amount}})
-                else:
-                    by_profiles[organization_slug][unit].update({
-                        account: amount})
-
-    kwargs = {'dest_organization': provider} if provider else {}
-    refunds = Transaction.objects.filter(
-        dest_account=Transaction.REFUND,
-        orig_account=Transaction.REFUNDED, **kwargs).values(
-        slug=F('orig_organization__slug'), unit=F('orig_unit')).annotate(
-        amount=Sum('orig_amount')).order_by(
-        'orig_organization__slug')
-
-    for val in refunds:
-        organization_slug = val['slug']
-        unit = val['unit']
-        amount = val['amount']
-        account = Transaction.REFUNDED
+    for row in RawQuery(payments_query, using=router.db_for_read(Transaction)):
+        organization_slug = row[0]
+        unit = row[1]
+        amount = row[2]
+        account = Transaction.LIABILITY
         if organization_slug not in by_profiles:
             by_profiles[organization_slug] = {unit: {account: amount}}
         else:
             if unit not in by_profiles[organization_slug]:
-                by_profiles[organization_slug].update({unit: {account: amount}})
+                by_profiles[organization_slug].update({
+                    unit: {account: amount}})
             else:
-                by_profiles[organization_slug][unit].update({account: amount})
+                by_profiles[organization_slug][unit].update({
+                    account: amount})
 
     results = {}
     for slug, by_units in six.iteritems(by_profiles):
         for unit, val in six.iteritems(by_units):
             contract_value = val.get('contract_value', 0)
-            payments = (val.get(Transaction.LIABILITY, 0)
-                        - val.get(Transaction.REFUNDED, 0))
-            balance = contract_value - payments if contract_value > payments else 0
-            if balance < 1:
-                continue
-            val.update({
-                'contract_value': contract_value,
-                'cash_payments': payments,
-                'balance': balance
-            })
-            if slug not in results:
-                results[slug] = {unit: val}
-            else:
-                if unit not in results[slug]:
-                    results[slug].update({unit: val})
+            payments = val.get(Transaction.LIABILITY, 0)
+            balance = contract_value - payments
+            if balance:
+                val.update({
+                    'contract_value': contract_value,
+                    'cash_payments': payments,
+                    'balance': balance
+                })
+                if slug not in results:
+                    results[slug] = {unit: val}
                 else:
-                    results[slug][unit].update(val)
+                    if unit not in results[slug]:
+                        results[slug].update({unit: val})
+                    else:
+                        results[slug][unit].update(val)
     return results

@@ -1234,11 +1234,11 @@ class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
     )
 
     ordering_fields = (
-        ('slug', 'Slug'),
-        ('full_name', 'Full Name'),
-        ('created_at', 'Created At')
+        ('slug', 'slug'),
+        ('full_name', 'full_name'),
+        ('created_at', 'created_at')
     )
-    ordering = ('slug',)
+    ordering = ('-created_at',)
 
     filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
@@ -1258,7 +1258,7 @@ class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
         queryset = queryset.filter(
             outgoing__orig_account=Transaction.PAYABLE,
             slug__in=self.balances_due.keys()).distinct()
-        return queryset.order_by('full_name')
+        return queryset
 
     def decorate_queryset(self, queryset):
         decorated_queryset = list(queryset)

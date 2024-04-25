@@ -325,6 +325,7 @@ class BalancesDueView(ProviderMixin, TemplateView):
         update_context_urls(context, {
             'provider': {
                 'api_metrics_balances_due': reverse(
-                    'saas_api_metrics_balances_due', args=(self.provider,))}
+                    'saas_api_metrics_balances_due', args=(self.provider,))},
+            'profile_base': reverse('saas_profile'),
         })
         return context

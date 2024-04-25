@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ from .serializers import (CartItemSerializer, LifetimeSerializer,
 from .. import settings, humanize
 from ..compat import gettext_lazy as _, reverse, six
 from ..docs import extend_schema
-from ..filters import DateRangeFilter
+from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..metrics.base import (abs_balances_by_period,
     aggregate_transactions_by_period, aggregate_transactions_change_by_period,
     generate_periods, get_different_units)
@@ -652,7 +652,19 @@ class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
     """
     Decorates profiles with subscriber age and lifetime value
     """
-    filter_backends = (DateRangeFilter,) # XXX includes `DateRangeContextMixin` and `ProviderMixin`
+    search_fields = (
+        'slug',
+        'full_name',
+    )
+
+    ordering_fields = (
+        ('slug', 'slug'),
+        ('full_name', 'full_name'),
+        ('created_at', 'created_at')
+    )
+    ordering = ('-created_at',)
+
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
     def get_queryset(self):
         organization_model = get_organization_model()
@@ -663,7 +675,7 @@ class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
             queryset = organization_model.objects.all()
         queryset = queryset.filter(
             outgoing__orig_account=Transaction.PAYABLE).distinct()
-        return queryset.order_by('full_name')
+        return queryset
 
     def decorate_queryset(self, queryset):
         decorated_queryset = list(queryset)

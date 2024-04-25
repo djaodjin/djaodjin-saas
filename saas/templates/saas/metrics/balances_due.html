@@ -21,7 +21,7 @@ Balances due
       <template v-for="(item, index) in items.results">
         <tr v-for="(balance, unit) in item.balances" :key="index + '-' + unit" v-show="itemsLoaded && items.results.length > 0">
           <td>
-            <a :href="'{{urls.profile_redirect}}' + item.slug + '/'">[[item.printable_name]]</a>
+            <a :href="'{{urls.profile_base}}' + item.slug + '/'">[[item.printable_name]]</a>
           </td>
           <td>[[unit]]</td>
           <td>[[balance.contract_value]]</td>
