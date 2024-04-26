@@ -8,6 +8,7 @@ Markdown==3.2.2
 phonenumbers==8.13.7
 python-dateutil==2.8.2
 PyJWT==2.6.0
+rave_python==1.4.0
 razorpay==0.2.0
 stripe==5.0.0
 
