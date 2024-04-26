@@ -17,6 +17,15 @@ Roadmap
 Released versions
 =================
 
+0.20.3
+
+  * adds back `created_at` in registered-not-subscribed API
+  * uses db router for lifetime and balances-due APIs
+  * fixes bad refactoring of balance sheet API
+  * restores group buy checkbox as default option
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 26 Apr 2024 12:50:00 -0700
+
 0.20.2
 
   * matches period_sales_report notification context to API format

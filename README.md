@@ -105,14 +105,11 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.20.2
+0.20.3
 
-  * matches period_sales_report notification context to API format
-  * supports queryset and list in TypeaheadPagination
-  * makes profile redirect page consistent with deployutils
-  * adds contact info in CSV downloads
-  * adds feature flag for group buy functionality
-  * handles alpha channel properly in profile pictures (UI)
-  * attaches error message to input field or toplevel - not both (UI)
+  * adds back `created_at` in registered-not-subscribed API
+  * uses db router for lifetime and balances-due APIs
+  * fixes bad refactoring of balance sheet API
+  * restores group buy checkbox as default option
 
 [previous release notes](changelog)
