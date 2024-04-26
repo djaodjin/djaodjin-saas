@@ -52,7 +52,7 @@ from ..api.subscriptions import (ActiveSubscriberSubscriptionsMixin,
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
-from ..compat import six, gettext_lazy as _
+from ..compat import force_str, six, gettext_lazy as _
 from ..metrics.base import month_periods
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
     UserSmartListMixin, as_html_description, BalancesDueMixin,
@@ -69,9 +69,10 @@ class CSVDownloadView(View):
 
     @staticmethod
     def encode(text):
-        if six.PY2:
-            return text.encode('utf-8')
-        return text
+        text_str = force_str(text)
+        if hasattr(text_str, 'encode'):
+            return text_str.encode('utf-8')
+        return text_str
 
     def encode_descr(self, transaction):
         return self.encode(('"%s"' % as_html_description(transaction).replace(
