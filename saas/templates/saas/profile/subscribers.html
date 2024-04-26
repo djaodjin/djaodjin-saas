@@ -4,9 +4,10 @@
 <section id="subscribers-list-container" ng-app="saasApp">
   <div ng-controller="subscriberListCtrl" ng-init="refresh()">
     {% if registered %}
-    <registered inline-template id="registered">
+    <registered inline-template id="registered" ref="registered">
       <div>
-        <a name="registered" href="#registered"><h2>Registered</h2></a>
+        <a name="registered" href="#registered"
+           @click="get"><h2>Registered</h2></a>
         {% include "saas/_filter.html" %}
         <div>
           <a id="download-registered" role="button"

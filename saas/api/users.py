@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@ from ..compat import gettext_lazy as _
 from ..models import Agreement, Signature
 from ..mixins import (ProviderMixin, UserSmartListMixin,
     DateRangeContextMixin)
-from ..utils import get_role_model, get_user_serializer
+from ..utils import get_role_model, get_user_detail_serializer
 
 
 class RegisteredQuerysetMixin(DateRangeContextMixin, ProviderMixin):
@@ -104,7 +104,7 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredQuerysetMixin,
             ]
         }
     """
-    serializer_class = get_user_serializer()
+    serializer_class = get_user_detail_serializer()
 
 
 class AgreementSignAPIView(GenericAPIView):

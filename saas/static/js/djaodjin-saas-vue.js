@@ -1784,10 +1784,7 @@ Vue.component('registered', {
         return {
             url: this.$urls.broker.api_users_registered,
         }
-    },
-    mounted: function(){
-        this.get();
-    },
+    }
 });
 
 
@@ -1811,6 +1808,16 @@ Vue.component('churned', {
         return {
             url: this.$urls.provider.api_subscribers_churned,
         }
+    }
+});
+
+
+Vue.component('lazy-load-tabs', {
+    methods: {
+        tabClicked: function(refName) {
+            var vm = this;
+            vm.$refs[refName].get();
+        },
     }
 });
 
