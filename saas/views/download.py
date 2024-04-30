@@ -70,7 +70,7 @@ class CSVDownloadView(View):
     @staticmethod
     def encode(text):
         text_str = force_str(text)
-        if hasattr(text_str, 'encode'):
+        if six.PY2 and hasattr(text_str, 'encode'):
             return text_str.encode('utf-8')
         return text_str
 
