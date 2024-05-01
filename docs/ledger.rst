@@ -102,10 +102,16 @@ Place a subscription order from a ``Cart``
 .. automethod:: saas.models.TransactionManager.new_subscription_order
 
 
-Charge sucessful
-^^^^^^^^^^^^^^^^
+Online charge sucessful
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automethod:: saas.models.Charge.payment_successful
+
+
+Offline Payment
+^^^^^^^^^^^^^^^
+
+.. automethod:: saas.models.TransactionManager.offline_payment
 
 
 Refund and Chargeback

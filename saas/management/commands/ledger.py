@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,15 +22,16 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, logging, re, sys
+import csv, datetime, logging, re, sys
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.timezone import utc
 
+from ... import settings as saas_settings
 from ...ledger import export
 from ...models import Transaction
-from ...utils import get_organization_model
+from ...utils import datetime_or_now, get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -66,15 +67,43 @@ class Command(BaseCommand):
             broker = options.get('broker', None)
             create_organizations = options.get('create_organizations', False)
             for arg in filenames:
-                if arg == '-':
-                    import_transactions(sys.stdin,
-                        create_organizations, broker, using=using)
-                else:
+                if arg.endswith('.csv'):
+                    with open(arg) as file_d:
+                        csv_file = csv.reader(file_d)
+                        _ = next(csv_file) # first row is column heading
+                        import_transactions_from_csv(
+                            csv_file, broker, using=using)
+                elif arg.endswith('.ledger'):
                     with open(arg) as filedesc:
                         import_transactions(filedesc,
                             create_organizations, broker, using=using)
+                elif arg == '-':
+                    import_transactions(sys.stdin,
+                        create_organizations, broker, using=using)
+                else:
+                    self.stdout.write('warnning: skipping %s' % str(arg))
         else:
             self.stderr.write("error: unknown command: '%s'" % subcommand)
+
+
+def import_transactions_from_csv(csv_file, broker=None, using='default'):
+    with transaction.atomic():
+        for row in csv_file:
+            created_at = datetime_or_now(row[0])
+            unit = saas_settings.DEFAULT_UNIT
+            amount = abs(row[1]) * 100
+            descr = row[4]
+            Transaction.objects.using(using).create(
+                created_at=created_at,
+                descr=descr,
+                dest_unit=unit,
+                dest_amount=amount,
+                dest_organization=broker,
+                dest_account='Expenses',
+                orig_amount=amount,
+                orig_unit=unit,
+                orig_organization=broker,
+                orig_account='Cash')
 
 
 def import_transactions(filedesc, create_organizations=False, broker=None,
