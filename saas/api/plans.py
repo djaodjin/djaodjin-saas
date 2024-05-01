@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,12 @@ class PlanSmartListMixin(DateRangeContextMixin, ProviderMixin):
     search_fields = (
         'slug',
         'title',
+        'profile',
     )
+
+    alternate_fields = {
+        'profile': 'organization__slug',
+    }
 
     ordering_fields = (
         ('title', 'title'),
