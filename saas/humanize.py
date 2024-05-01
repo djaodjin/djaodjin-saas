@@ -263,9 +263,9 @@ def translate_descr_suffix(descr):
     pat = r"(a %(percent)s discount)?( and )?"\
         r"(%(nb_periods)s %(period_name)s free)?( and )?"\
         r"(a %(amount)s off)?"\
+        r"( \(code: %(code)s\))?"\
         r"(, complimentary of %(payer)s)?"\
-        r"(\s*for %(subscriber_full_name)s \(%(sync_on)s\))?"\
-        r"( \(code: %(code)s\))?" % REGEXES
+        r"(\s*for %(subscriber_full_name)s \(%(sync_on)s\))?" % REGEXES
     look = re.match(pat, descr_suffix)
     if look:
         descr_suffix = ""
@@ -291,6 +291,9 @@ def translate_descr_suffix(descr):
             descr_suffix += sep + _(DESCRIBE_SUFFIX_DISCOUNT_CURRENCY) % {
                 'amount': amount}
             sep = _(" and ")
+        code = look.group('code')
+        if code:
+            descr_suffix += _(DESCRIBE_SUFFIX_COUPON_APPLIED) % {'code': code}
         payer = look.group('payer')
         if payer:
             descr_suffix += _(", complimentary of %(payer)s") % {'payer': payer}
@@ -301,9 +304,6 @@ def translate_descr_suffix(descr):
                 'subscriber_full_name': subscriber_full_name,
                 'sync_on': sync_on
             }
-        code = look.group('code')
-        if code:
-            descr_suffix += _(DESCRIBE_SUFFIX_COUPON_APPLIED) % {'code': code}
 
     if descr_suffix:
         descr += " - %s" % descr_suffix

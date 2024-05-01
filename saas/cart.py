@@ -68,9 +68,9 @@ def cart_insert_item(request, **kwargs):
             filter_args = None
             if sync_on:
                 if filter_args:
-                    filter_args |= Q(sync_on=sync_on)
+                    filter_args |= Q(sync_on__iexact=sync_on)
                 else:
-                    filter_args = Q(sync_on=sync_on)
+                    filter_args = Q(sync_on__iexact=sync_on)
             if option:
                 if filter_args:
                     filter_args |= Q(option=option)
@@ -95,7 +95,8 @@ def cart_insert_item(request, **kwargs):
                 use = template_item.use
             # Can we use that template?
             if sync_on:
-                if template_item.sync_on and template_item.sync_on != sync_on:
+                if (template_item.sync_on and
+                    template_item.sync_on.lower() != sync_on.lower()):
                     # conflicting sync_on. we cannot use the template.
                     template_item = None
             if template_item and option:
@@ -147,11 +148,14 @@ def cart_insert_item(request, **kwargs):
                     continue
                 if sync_on:
                     item_sync_on = item.get('sync_on')
-                    if item_sync_on and item_sync_on == sync_on:
+                    if (item_sync_on and
+                        item_sync_on.lower() == sync_on.lower()):
                         if not template_item:
                             template_item = item
                             continue
-                        if template_item.get('sync_on') != sync_on:
+                        template_sync_on = template_item.get('sync_on')
+                        if (template_sync_on and
+                            template_sync_on.lower() != sync_on.lower()):
                             # The item matches on sync_on but the template
                             # does not.
                             template_item = item
@@ -176,10 +180,12 @@ def cart_insert_item(request, **kwargs):
                                         if template_item.get('use') != use:
                                             template_item = item
                                             continue
-                    if (template_item and
-                        template_item.get('sync_on') == sync_on):
-                        # We already have a template matching on `sync_on`.
-                        continue
+                    if template_item:
+                        template_sync_on = template_item.get('sync_on')
+                        if (template_sync_on and
+                            template_sync_on.lower() == sync_on.lower()):
+                            # We already have a template matching on `sync_on`.
+                            continue
                 # Couldn't match on `sync_on`. next is `option`.
                 if option:
                     item_option = item.get('option')
@@ -227,7 +233,8 @@ def cart_insert_item(request, **kwargs):
             # Can we use that template?
             if sync_on:
                 template_sync_on = template_item.get('sync_on')
-                if template_sync_on and template_sync_on != sync_on:
+                if (template_sync_on and
+                    template_sync_on.lower() != sync_on.lower()):
                     # conflicting sync_on. we cannot use the template.
                     template_item = None
             if template_item and option:
@@ -311,7 +318,7 @@ def session_cart_to_database(request):
                         email != cart_item.email)):
                         continue
                     if (sync_on and (not cart_item.sync_on or
-                        sync_on != cart_item.sync_on)):
+                        sync_on.lower() != cart_item.sync_on.lower())):
                         continue
                     # We found a `CartItem` in the database that was can be
                     # further constrained by the cookie session item.

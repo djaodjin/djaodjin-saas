@@ -777,7 +777,7 @@ class AbstractOrganization(models.Model):
             if cart_items.exists():
                 # We are doing a groupBuy for a specified email.
                 bulk_items = cart_items.filter(
-                    sync_on=subscription.organization.email)
+                    sync_on__iexact=subscription.organization.email)
                 if bulk_items.exists():
                     cart_item = bulk_items.get()
                 else:
@@ -2357,9 +2357,13 @@ class ChargeItemManager(models.Manager):
         Returns charges which have been paid and a 3rd party asked
         to be notified about.
         """
-        results = self.filter(Q(sync_on=user.username) | Q(sync_on=user.email)
-            | Q(sync_on__in=get_organization_model().objects.accessible_by(user).values(
-                'slug').distinct()),
+        results = self.filter(Q(sync_on__iexact=user.email) |
+            # We don't do case-insensitive search here (i.e. `sync_on__in`)
+            # because we assume the case for sync_on field and username/slug
+            # are in sync here.
+            Q(sync_on=user.username) |
+            Q(sync_on__in=get_organization_model().objects.accessible_by(
+                user).values('slug').distinct()),
             charge__state=Charge.DONE, invoice_key__isnull=False)
         return results
 
