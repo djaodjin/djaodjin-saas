@@ -105,11 +105,10 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.20.3
+0.20.4
 
-  * adds back `created_at` in registered-not-subscribed API
-  * uses db router for lifetime and balances-due APIs
-  * fixes bad refactoring of balance sheet API
-  * restores group buy checkbox as default option
+  * accounts for upper/lower case email during group buy
+  * enables filter by provider in /api/pricing
+  * removes b'' marker in downloads while being py27-compatible
 
 [previous release notes](changelog)

@@ -17,6 +17,14 @@ Roadmap
 Released versions
 =================
 
+0.20.4
+
+  * accounts for upper/lower case email during group buy
+  * enables filter by provider in /api/pricing
+  * removes b'' marker in downloads while being py27-compatible
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 1 May 2024 16:25:00 -0700
+
 0.20.3
 
   * adds back `created_at` in registered-not-subscribed API
