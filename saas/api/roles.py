@@ -227,18 +227,21 @@ class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
                     organization_data['full_name'] = \
                         serializer.validated_data.get('full_name',
                             default_full_name)
+                manager = None
                 organization = self.create_organization(organization_data)
                 if organization.is_personal:
                     # We have created the attached User as part of creating
                     # the Organization.
                     manager = organization.attached_user()
-                else:
+                if not manager:
                     user_model = get_user_model()
                     try:
                         manager = user_model.objects.get(email__iexact=email)
+                        organization.add_manager(manager)
                     except user_model.DoesNotExist:
-                        manager = create_user_from_email(email, request=request)
-                    organization.add_manager(manager)
+                        # If we are not creating a personal profile, it is OK
+                        # no user is associated.
+                        pass
                 organizations = [organization]
                 invite = True
 

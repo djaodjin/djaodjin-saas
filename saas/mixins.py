@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -815,6 +815,11 @@ class PlanMixin(ProviderMixin):
             slug = slugify('%s-%d' % (slug_base, i))
             i += 1
         return slug
+
+    def get_context_data(self, **kwargs):
+        context = super(PlanMixin, self).get_context_data(**kwargs)
+        context.update({self.plan_url_kwarg: self.plan})
+        return context
 
 
 class CouponMixin(ProviderMixin):

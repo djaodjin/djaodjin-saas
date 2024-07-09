@@ -69,7 +69,10 @@ class OrganizationMixinBase(object):
         if not organization:
             return context
 
-        context.update({'organization': organization})
+        context.update({
+            self.organization_url_kwarg: organization,
+            'organization': organization,  # XXX until templates are rewritten
+        })
         # XXX These might be moved to a higher-level
         urls = {
             'api_cart': reverse('saas_api_cart'),

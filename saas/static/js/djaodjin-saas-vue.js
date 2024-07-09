@@ -908,6 +908,11 @@ var roleListMixin = {
                     vm.profileRequestDone = true;
                     vm.unregistered = item;
                     vm.$emit('invite');
+                    if( vm.$refs.full_name ) {
+                        vm.$nextTick(function(){
+                            vm.$refs.full_name.focus();
+                        });
+                    }
                 }
             );
         },
@@ -1456,6 +1461,11 @@ Vue.component('coupon-list', {
         }
     },
     methods: {
+        refresh: function() {
+            var vm = this;
+            vm.params = {};
+            vm.get();
+        },
         remove: function(idx){
             var vm = this;
             var code = this.items.results[idx].code;
@@ -1470,7 +1480,8 @@ Vue.component('coupon-list', {
             for( var key in vm.newCoupon ) {
                 if( vm.newCoupon.hasOwnProperty(key) ) {
                     if( key === 'discount_value' ) {
-                        data[key] = vm.newCoupon[key] * 100;
+                        data[key] =  vm.newCoupon.discount_type == 'period' ?
+                            vm.newCoupon[key] : vm.newCoupon[key] * 100;
                     } else {
                         data[key] = vm.newCoupon[key];
                     }
@@ -1478,7 +1489,7 @@ Vue.component('coupon-list', {
             }
             vm.reqPost(vm.url, data,
             function() {
-                vm.get();
+                vm.refresh();
                 vm.newCoupon = {
                     code: '',
                     discount_type: 'percentage',
@@ -1891,6 +1902,11 @@ Vue.component('plan-subscriber-list', {
                     vm.profileRequestDone = true;
                     vm.newItem = item;
                     vm.$emit('invite');
+                    if( vm.$refs.full_name ) {
+                        vm.$nextTick(function(){
+                            vm.$refs.full_name.focus();
+                        });
+                    }
                 }
             );
         },
@@ -2240,13 +2256,15 @@ Vue.component('profile-update', {
             picture_url: this.$urls.organization.api_profile_picture,
             verify_url: null,
             redirect_url: this.$urls.profile_redirect,
+            profile_url: this.$urls.user_profiles,
             formFields: {},
             countries: countries,
             regions: regions,
             currentPicture: null,
+            emailCode: null,
+            phoneCode: null,
             picture: null,
             codeSent: false,
-            profile_url: this.$urls.user_profiles,
         }
     },
     methods: {

@@ -27,6 +27,7 @@ import logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.views.generic.base import (ContextMixin, TemplateResponseMixin,
     RedirectView)
@@ -34,19 +35,20 @@ from django.views.generic.base import (ContextMixin, TemplateResponseMixin,
 from .. import settings
 from ..compat import reverse
 from ..mixins import product_url
-from ..models import RoleDescription
+from ..models import CartItem, RoleDescription
 from ..utils import (get_organization_model, get_role_model,
     validate_redirect_url)
 
 LOGGER = logging.getLogger(__name__)
 
 
-class RoleImplicitGrantAcceptView(ContextMixin, TemplateResponseMixin,
+class RoleImplicitGrantAcceptView(TemplateResponseMixin, ContextMixin,
                                   RedirectView):
     """
     Accept implicit role on an organization if no role exists for the user.
     """
     permanent = False
+    implicit_create_on_none = False
     slug_url_kwarg = settings.PROFILE_URL_KWARG
     role_model = get_role_model()
     user_model = get_user_model()
@@ -58,6 +60,21 @@ class RoleImplicitGrantAcceptView(ContextMixin, TemplateResponseMixin,
                              next_url=None):
         #pylint:disable=unused-argument
         return True
+
+
+    def create_organization_from_user(self, user):
+        with transaction.atomic():
+            organization = self.organization_model.objects.create(
+                slug=user.username,
+                full_name=user.get_full_name(),
+                email=user.email)
+            organization.add_manager(user)
+        return organization
+
+
+    def get_implicit_create_on_none(self):
+        return (self.implicit_create_on_none or
+            CartItem.objects.get_personal_cart(self.request.user).exists())
 
 
     def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
@@ -96,9 +113,13 @@ class RoleImplicitGrantAcceptView(ContextMixin, TemplateResponseMixin,
                 request.user, user, organization)
         else:
             user = request.user
-            organization = \
-                self.organization_model.objects.find_candidates_by_domain(
-                domain).get()
+            try:
+                organization = self.organization_model.objects.filter(
+                    email__iexact=user.email).get()
+            except self.organization_model.DoesNotExist:
+                organization = \
+                    self.organization_model.objects.find_candidates_by_domain(
+                        domain).get()
         return user, organization
 
     def get_redirect_url(self, *args, **kwargs):
@@ -178,6 +199,16 @@ class RoleImplicitGrantAcceptView(ContextMixin, TemplateResponseMixin,
                     " we cannot grant one implicitely because there is"
                     " no profiles with @%s e-mail domain.",
                     request.user, domain)
+                if self.get_implicit_create_on_none():
+                    try:
+                        kwargs.update({self.slug_url_kwarg: str(
+                            self.create_organization_from_user(
+                            request.user))})
+                        redirect_to = self.get_redirect_url(*args, **kwargs)
+                    except IntegrityError:
+                        LOGGER.warning("tried to implicitely create"\
+                            " an organization that already exists.",
+                            extra={'request': request})
             except self.organization_model.MultipleObjectsReturned:
                 LOGGER.debug("'%s' does not have a role on any profile but"
                     " we cannot grant one implicitely because @%s is"

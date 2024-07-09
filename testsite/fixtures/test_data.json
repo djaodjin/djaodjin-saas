@@ -334,7 +334,7 @@
       "slug": "xia-card7",
       "full_name": "Xia Card7",
       "created_at": "2024-01-01T00:00:00+00:00",
-      "email": "noreply@djaodjin.com",
+      "email": "noreply@localhost.localdomain",
       "phone": "+1 415 857 3526",
       "street_address": "588 Sutter St. #237A",
       "locality":  "San Francisco",
@@ -629,7 +629,7 @@
 {
     "fields": {
       "slug": "dibaggio-parents",
-      "email": "cowork@djaodjin.com",
+      "email": "cowork@localhost.localdomain",
       "full_name": "Di Baggio Middle School Parents Association",
       "created_at": "2024-01-01T00:00:00+00:00",
       "processor": 1,
@@ -656,7 +656,7 @@
 {
     "fields": {
       "slug": "tennis-club",
-      "email": "cowork@djaodjin.com",
+      "email": "cowork@localhost.localdomain",
       "full_name": "Tennis Club of North Beach",
       "created_at": "2024-01-01T00:00:00+00:00",
       "processor": 1,
@@ -1130,4 +1130,60 @@
       "is_active": 1
     },
     "model": "saas.Organization", "pk": 30
+},
+
+{
+    "fields": {
+      "slug": "cowork2",
+      "email": "cowork2@localhost.localdomain",
+      "full_name": "Cowork2 for pricing tests",
+      "created_at": "2024-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 11
+},
+{
+  "fields": {
+    "slug": "basic-cowork",
+    "title": "Basic",
+    "description": "Basic Plan",
+    "created_at": "2024-01-01T00:00:00+00:00",
+    "setup_amount": 0,
+    "period_amount": 24900,
+    "broker_fee_percent": 0,
+    "period_type": 4,
+    "organization": 11,
+    "is_active": 1
+  },
+  "model": "saas.Plan", "pk": 4
+},
+{
+  "fields": {
+    "slug": "medium-cowork",
+    "title": "Medium",
+    "created_at":"2024-01-01T00:00:00+00:00",
+    "setup_amount": 0,
+    "period_amount": 24900,
+    "period_type": 4,
+    "description": "Medium Plan",
+    "organization": 11,
+    "is_active": 1
+  },
+  "model": "saas.Plan", "pk": 5
+},
+{
+  "fields": {
+    "slug": "managed",
+    "title": "Managed",
+    "created_at": "2024-01-01T00:00:00+00:00",
+    "setup_amount": 0,
+    "period_amount": 18900,
+    "period_type": 4,
+    "description": "",
+    "organization": 11,
+    "is_active": 1
+  },
+  "model": "saas.Plan", "pk": 6
 }]

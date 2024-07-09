@@ -107,6 +107,10 @@ def datetime_or_now(dtime_at=None, tzinfo=None):
             if as_date:
                 as_datetime = datetime.datetime.combine(
                     as_date, datetime.time.min)
+    elif (not isinstance(dtime_at, datetime.datetime) and
+          isinstance(dtime_at, datetime.date)):
+        as_datetime = datetime.datetime.combine(
+            dtime_at, datetime.time.min)
     if not as_datetime:
         as_datetime = datetime.datetime.now(tz=tzinfo)
     if (as_datetime.tzinfo is None or
