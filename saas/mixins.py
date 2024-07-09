@@ -1355,7 +1355,9 @@ def _as_html_description(transaction_descr,
             descr = groups.get('descr')
             if descr:
                 groups.update({'descr': _as_html_description(descr)})
-
+            if 'subscriber' in groups and 'plan' in groups:
+                groups.update({'subscription': "%s:%s" % (
+                    groups.get('subscriber'), groups.get('plan'))})
             result = trans % groups
             pos = transaction_descr.rfind(' - ')
             if pos > 0:

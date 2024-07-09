@@ -134,6 +134,7 @@ REGEXES = {
     'refund_type': r'(?P<refund_type>\S+)',
     'subscriber_full_name': r'(?P<subscriber_full_name>(\S| )+)',
     'subscription': r'(?P<subscriber>\S+):(?P<plan>\S+)',
+    'subscriber': r'(?P<subscriber>\S+)',
     'sync_on': r'(?P<sync_on>\S+)',
     'use_charge': r'(?P<use_charge>\S+)',
     'unlock_event': r'(?P<unlock_event>\S+)',
