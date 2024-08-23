@@ -135,16 +135,16 @@ class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
 
     def add_relations(self, organizations, user, ends_at=None):
         #pylint:disable=unused-argument
-        roles = []
-        created = False
+        requests = []
+        new_requests = []
         for organization in organizations:
-            role = organization.add_role_request(
+            role, created = organization.add_role_request(
                 user, role_descr=self.role_descr)
-            if role:
-                created = True
-                roles += [role]
+            requests += [role]
+            if created:
+                new_requests += [role]
         self.decorate_personal(organizations)
-        return roles, created
+        return requests, new_requests
 
     def send_signals(self, relations, user, reason=None, invite=False):
         #pylint:disable=unused-argument
@@ -260,14 +260,12 @@ class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
         # while expecting a single object.
         # XXX There is currently a single relation created due to statement
         # `organizations = [organization]` earlier in the code.
-        if notified:
-            resp_serializer = self.serializer_class(
-                instance=notified[0], context=self.get_serializer_context())
-            result = resp_serializer.data
-        else:
-            result = None
-        return Response(result, status=resp_status,
-            headers=self.get_success_headers(serializer.validated_data))
+        resp_serializer = self.serializer_class(
+            instance=notified[0], context=self.get_serializer_context())
+        result = resp_serializer.data
+
+        return Response(resp_serializer.data, status=resp_status,
+            headers=self.get_success_headers(resp_serializer.data))
 
 
 class InvitedRequestedListMixin(object):

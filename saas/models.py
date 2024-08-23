@@ -603,15 +603,39 @@ class AbstractOrganization(models.Model):
         return m2m, force_insert
 
     def add_role_request(self, user, at_time=None, role_descr=None):
+        force_insert = False
         if role_descr and not isinstance(role_descr, RoleDescription):
             role_descr = self.get_role_description(role_descr)
         # OK to use ``filter`` in both subsequent queries as we are dealing
         # with the whole QuerySet related to a user.
         queryset = get_role_model().objects.db_manager(
             using=self._state.db).filter(organization=self, user=user)
-        if not queryset.exists():
-            # Otherwise a role already exists
-            # or a request was previously sent.
+        if queryset.exists():
+            # We have a role for the user on this organization, or a request
+            # was previously sent.
+            m2m = queryset.get()
+            at_time = datetime_or_now(at_time)
+            if role_descr:
+                if role_descr.implicit_create_on_none:
+                    m2m.role_descr = role_descr
+                    m2m.grant_key = None
+                    m2m.request_key = None
+                    m2m.created_at = at_time
+                    m2m.save()
+                elif m2m.grant_key and m2m.role_descr == role_descr:
+                    m2m.grant_key = None
+                    m2m.created_at = at_time
+                    m2m.save()
+                elif m2m.request_key and m2m.role_descr != role_descr:
+                    m2m.role_descr = role_descr
+                    m2m.created_at = at_time
+                    m2m.save()
+            else:
+                if m2m.grant_key:
+                    m2m.grant_key = None
+                    m2m.created_at = at_time
+                    m2m.save()
+        else:
             at_time = datetime_or_now(at_time)
             if role_descr and role_descr.implicit_create_on_none:
                 request_key = None
@@ -621,8 +645,8 @@ class AbstractOrganization(models.Model):
                 user=user, role_description=role_descr,
                 request_key=request_key)
             m2m.save(using=self._state.db, force_insert=True)
-            return m2m
-        return None
+            force_insert = True
+        return m2m, force_insert
 
     def add_manager(self, user, extra=None, at_time=None):
         """

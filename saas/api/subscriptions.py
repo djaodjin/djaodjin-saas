@@ -604,7 +604,7 @@ class PlanActiveSubscribersAPIView(SubscriptionSmartListMixin,
     def add_relations(self, organizations, user, ends_at=None):
         ends_at = datetime_or_now(ends_at)
         subscriptions = []
-        created = False
+        new_subscriptions = []
         self.decorate_personal(organizations)
         for organization in organizations:
             # Be careful that `self.plan` must exist otherwise the API will
@@ -621,7 +621,7 @@ class PlanActiveSubscribersAPIView(SubscriptionSmartListMixin,
                 if not self.plan.skip_optin_on_grant:
                     subscription.grant_key = generate_random_slug()
                 subscription.save()
-                created = True
+                new_subscriptions += [subscription]
             else:
                 # We set subscription.organization to the object that was
                 # loaded and initialized with `is_personal` otherwise we
@@ -629,7 +629,7 @@ class PlanActiveSubscribersAPIView(SubscriptionSmartListMixin,
                 # when we sent the serialized data back.
                 subscription.organization = organization
             subscriptions += [subscription]
-        return subscriptions, created
+        return subscriptions, new_subscriptions
 
     @extend_schema(parameters=[QueryParamForceSerializer], responses={
       201: OpenApiResponse(ProvidedSubscriptionSerializer)})
