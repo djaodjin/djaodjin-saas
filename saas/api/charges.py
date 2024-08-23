@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ from rest_framework.generics import (CreateAPIView, ListAPIView,
 from rest_framework.response import Response
 
 from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
-    RefundChargeSerializer, ValidationErrorSerializer)
+    RefundChargeSerializer, ValidationDetailSerializer)
 from .. import signals
 from ..compat import gettext_lazy as _
 from ..docs import OpenApiResponse, extend_schema
@@ -258,7 +258,7 @@ class ChargeRefundAPIView(ChargeMixin, CreateAPIView):
 
     @extend_schema(responses={
         200: OpenApiResponse(ChargeSerializer),
-        400: OpenApiResponse(ValidationErrorSerializer)})
+        400: OpenApiResponse(ValidationDetailSerializer)})
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

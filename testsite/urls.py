@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,8 @@ from django.core.exceptions import ImproperlyConfigured
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
-from rules.urldecorators import include, re_path
+from rules.urldecorators import include, re_path # because we want to use
+                                                # `fail_` decorators redirects.
 from saas import settings as saas_settings
 from saas.compat import reverse_lazy
 from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,

@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,7 @@ from ..utils import datetime_or_now, get_user_serializer
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
-    ValidationErrorSerializer, CartItemUpdateSerializer,
+    ValidationDetailSerializer, CartItemUpdateSerializer,
     UserCartItemCreateSerializer, QueryParamCartItemSerializer)
 
 
@@ -358,11 +358,10 @@ class CouponRedeemAPIView(generics.GenericAPIView):
     """
     serializer_class = RedeemCouponSerializer
 
-    # XXX This is not a ValidationErrorSerializer but we return a message.
     # XXX Should many return the updated cart but we are dealing with users,
     # not organizations here.
     @extend_schema(responses={
-        200: OpenApiResponse(ValidationErrorSerializer)})
+        200: OpenApiResponse(ValidationDetailSerializer)})
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():

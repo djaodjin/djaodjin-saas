@@ -830,7 +830,8 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
             order_executed_items = record_use_charge(
                 subscription, use_charge, quantity=quantity)
             serializer = self.serializer_class(instance=order_executed_items[0])
-            return http.Response(serializer.data, status=status.HTTP_201_CREATED)
+            return http.Response(
+                serializer.data, status=status.HTTP_201_CREATED)
         return http.Response({}, status=status.HTTP_200_OK)
 
 

@@ -98,6 +98,7 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredQuerysetMixin,
                 {
                     "slug": "alice",
                     "username": "alice",
+                    "full_name": "Alice Cooper",
                     "printable_name": "Alice Cooper",
                     "picture": null
                 }

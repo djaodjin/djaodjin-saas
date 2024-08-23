@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -102,10 +102,15 @@ class ExtraField(serializers.CharField):
 
     def to_internal_value(self, data):
         if isinstance(data, dict):
-            return json.dumps(data)
+            try:
+                return json.dumps(data)
+            except (TypeError, ValueError):
+                pass
         return super(ExtraField, self).to_internal_value(data)
 
     def to_representation(self, value):
+        if isinstance(value, dict):
+            return value
         try:
             return json.loads(value)
         except (TypeError, ValueError):
@@ -1193,6 +1198,8 @@ class RoleSerializer(serializers.ModelSerializer):
         help_text=_("User with the role"))
     role_description = RoleDescriptionSerializer(read_only=True,
         help_text=_("Description of the role"))
+    extra = ExtraField(required=False,
+        help_text=_("Extra meta data (can be stringify JSON)"))
     accept_request_api_url = serializers.SerializerMethodField(
         help_text=_("URL API endpoint to grant the role"))
     remove_api_url = serializers.SerializerMethodField(
@@ -1203,7 +1210,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = get_role_model()
-        fields = ('created_at', 'user', 'grant_key',
+        fields = ('created_at', 'user', 'extra', 'grant_key',
             'role_description', 'accept_request_api_url',
             'remove_api_url', 'detail')
         read_only_fields = ('created_at', 'grant_key', 'role_description',
@@ -1242,8 +1249,11 @@ class RoleCreateSerializer(NoModelSerializer):
     full_name = serializers.CharField(required=False,
         help_text=_("Full name of user to grant role onto profile"\
             " (potentially generating an invite to the site)"))
+    extra = ExtraField(required=False,
+        help_text=_("Extra meta data (can be stringify JSON)"))
     message = serializers.CharField(max_length=255, required=False,
         help_text=_("Message to send along the invitation"))
+
 
     @staticmethod
     def validate_slug(data):
@@ -1365,7 +1375,7 @@ class LifetimeSerializer(OrganizationSerializer):
             'cash_payments', 'deferred_revenue', 'unit')
 
 
-class ValidationErrorSerializer(NoModelSerializer):
+class ValidationDetailSerializer(NoModelSerializer):
     """
     Details on why token is invalid.
     """

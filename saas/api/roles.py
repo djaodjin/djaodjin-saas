@@ -33,8 +33,9 @@ from django.http import Http404
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
-    DestroyAPIView, RetrieveUpdateDestroyAPIView,
-    GenericAPIView, get_object_or_404)
+    RetrieveUpdateDestroyAPIView, GenericAPIView, get_object_or_404)
+from rest_framework.mixins import (RetrieveModelMixin, DestroyModelMixin,
+    UpdateModelMixin)
 from rest_framework.response import Response
 
 from .. import settings, signals
@@ -1081,18 +1082,21 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_str(reason)
-        created = self.organization.add_role(
-            user, self.role_description, grant_key=grant_key, reason=reason,
-            request_user=request.user)
+        role, created = self.organization.add_role(
+            user, self.role_description, grant_key=grant_key,
+            extra=serializer.validated_data.get('extra'),
+            reason=reason, request_user=request.user)
         if created:
             resp_status = status.HTTP_201_CREATED
         else:
             resp_status = status.HTTP_200_OK
-        # We were going to return the list of managers here but
-        # angularjs complains about deserialization of a list
-        # while expecting a single object.
-        return Response(serializer.validated_data, status=resp_status,
-            headers=self.get_success_headers(serializer.validated_data))
+
+        resp_serializer_class = super(
+            RoleByDescrListAPIView, self).get_serializer_class()
+        resp_serializer = resp_serializer_class(#pylint:disable=not-callable
+            role, context=self.get_serializer_context())
+        return Response(resp_serializer.data, status=resp_status,
+            headers=self.get_success_headers(resp_serializer.data))
 
     @extend_schema(operation_id='profile_roles_list_by_role')
     def get(self, request, *args, **kwargs):
@@ -1149,9 +1153,60 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             request, *args, **kwargs)
 
 
-class RoleDetailAPIView(RoleMixin, DestroyAPIView):
+class RoleDetailBaseAPIView(RoleMixin, RetrieveModelMixin, DestroyModelMixin,
+                            GenericAPIView):
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self.kwargs.pop('role') # If we leave 'role' in kwargs, we can't deny
+                                # requests that haven't been accepted yet.
+        queryset = self.get_queryset()
+        roles = [str(role.role_description) for role in queryset
+            if role.role_description]
+        LOGGER.info("Remove roles %s for user '%s' on organization '%s'",
+            roles, self.user, self.organization,
+            extra={'event': 'remove-roles', 'user': self.user,
+                'organization': self.organization.slug, 'roles': roles})
+        queryset.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RoleDetailAPIView(UpdateModelMixin, RoleDetailBaseAPIView):
     """
-    Re-sends and delete role for a user on a profile.
+    Retrieves a role through a profile
+
+    Retrieves the role of a user on a profile.
+
+    **Tags**: rbac, subscriber, rolemodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/xia/roles/manager/xia HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "created_at": "2023-01-01T00:00:00Z",
+            "role_description": {
+                "created_at": "2023-01-01T00:00:00Z",
+                "title": "Profile Manager",
+                "slug": "manager",
+                "is_global": true
+            },
+            "user": {
+                "slug": "xia",
+                "username": "xia",
+                "printable_name": "Xia Lee",
+                "picture": null
+            },
+            "grant_key": null
+        }
     """
     serializer_class = get_role_serializer()
 
@@ -1201,9 +1256,55 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         serializer = self.get_serializer(role)
         return Response(serializer.data)
 
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates role meta information
+
+        Updates meta information for a role.
+
+        **Tags**: rbac, subscriber, rolemodel
+
+        **Examples**
+
+        .. code-block:: http
+
+            PUT /api/profile/xia/roles/manager/xia HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "extra": {"kinship": "self"}
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2023-01-01T00:00:00Z",
+                "role_description": {
+                    "created_at": "2023-01-01T00:00:00Z",
+                    "title": "Profile Manager",
+                    "slug": "manager",
+                    "is_global": true
+                },
+                "user": {
+                    "slug": "xia",
+                    "username": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null
+                },
+                "grant_key": null,
+                "extra": {"kinship": "self"}
+            }
+        """
+        return self.update(request, *args, **kwargs)
+
+
     def delete(self, request, *args, **kwargs):
         """
-        Deletes a role
+        Deletes a role through a profile
 
         Dettaches a {user} from one or all roles with regards to the
         specified billing profile, typically resulting in revoking
@@ -1217,25 +1318,43 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
             DELETE /api/profile/xia/roles/manager/xia HTTP/1.1
         """
-        return super(RoleDetailAPIView, self).delete(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        self.kwargs.pop('role') # If we leave 'role' in kwargs, we can't deny
-                                # requests that haven't been accepted yet.
-        queryset = self.get_queryset()
-        roles = [str(role.role_description) for role in queryset
-            if role.role_description]
-        LOGGER.info("Remove roles %s for user '%s' on organization '%s'",
-            roles, self.user, self.organization,
-            extra={'event': 'remove-roles', 'user': self.user,
-                'organization': self.organization.slug, 'roles': roles})
-        queryset.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return self.destroy(request, *args, **kwargs)
 
 
-class AccessibleDetailAPIView(RoleDetailAPIView):
+class AccessibleDetailAPIView(RoleDetailBaseAPIView):
     """
-    Re-sends and delete role for a user on a profile.
+    Retrieves a role through a user
+
+    Retrieves the accessible role for a profile by a user.
+
+    **Tags**: rbac, subscriber, rolemodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/users/xia/accessibles/manager/cowork HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "created_at": "2023-01-01T00:00:00Z",
+            "role_description": {
+                "created_at": "2023-01-01T00:00:00Z",
+                "title": "Profile Manager",
+                "slug": "manager",
+                "is_global": true
+            },
+            "profile": {
+                "slug": "cowork",
+                "printable_name": "ABC Corp.",
+                "type": "organization",
+                "credentials": false
+            },
+            "request_key": null
+        }
     """
     serializer_class = AccessibleSerializer
 
@@ -1248,6 +1367,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         queryset = queryset.select_related('user').select_related(
             'role_description')
         return queryset
+
 
     @extend_schema(operation_id='users_accessibles_invite', request=None)
     def post(self, request, *args, **kwargs):
@@ -1295,7 +1415,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes a role by type
+        Deletes a role through a user
 
         Dettaches {user} from one or all roles with regards to the
         specified billing profile, typically resulting in revoking
@@ -1313,8 +1433,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
 
             DELETE /api/users/xia/accessibles/manager/cowork HTTP/1.1
         """
-        return super(AccessibleDetailAPIView, self).delete(
-            request, *args, **kwargs)
+        return self.destroy(request, *args, **kwargs)
 
 
 class RoleAcceptAPIView(UserMixin, GenericAPIView):
@@ -1486,7 +1605,6 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         .. code-block:: json
 
             {
-              "slug": "myproject",
               "full_name": "My Project"
             }
 

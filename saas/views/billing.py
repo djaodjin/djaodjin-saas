@@ -960,6 +960,7 @@ reference/djaoapp/latest/api/#listCouponListCreate>`
     """
     model = Coupon
     template_name = 'saas/billing/coupons.html'
+    forced_date_range = False
 
     def get_context_data(self, **kwargs):
         context = super(CouponListView, self).get_context_data(**kwargs)

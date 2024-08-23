@@ -65,6 +65,8 @@ class RoleGrantAcceptView(RedirectView):
             organization=obj.organization, user=request.user).exclude(
             pk=obj.pk).first()
         if existing_role:
+            # We could have an `existing_role` that is actually a pending
+            # request, in which case `existing_role.role_description is None`.
             messages.error(request, _("You already have a %(existing_role)s"\
                 " role on %(organization)s. Please drop this role first if"\
                 " you want to accept a role of %(role)s instead.") % {

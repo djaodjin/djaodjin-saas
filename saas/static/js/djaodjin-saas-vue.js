@@ -1448,7 +1448,7 @@ Vue.component('coupon-list', {
             url: this.$urls.provider.api_coupons,
             api_plans_url: this.$urls.provider.api_plans,
             params: {
-                o: 'ends_at',
+                o: '-ends_at',
             },
             newCoupon: {
                 code: '',
@@ -1463,8 +1463,8 @@ Vue.component('coupon-list', {
     methods: {
         refresh: function() {
             var vm = this;
-            vm.params = {};
-            vm.get();
+            vm.params = {o: '-ends_at',};
+            vm.get(); // XXX reload()?
         },
         remove: function(idx){
             var vm = this;

@@ -590,16 +590,17 @@ class AbstractOrganization(models.Model):
                 grant_key = generate_random_slug()
             m2m = get_role_model()(
                 organization=self, user=user, grant_key=grant_key)
-            m2m.extra = extra
             force_insert = True
         m2m.role_description = role_descr
         m2m.request_key = None
+        if extra:
+            m2m.extra = extra
         if at_time:
             m2m.created_at = at_time
         m2m.save(using=self._state.db, force_insert=force_insert)
         signals.role_grant_created.send(sender=__name__,
             role=m2m, reason=reason, request_user=request_user)
-        return force_insert
+        return m2m, force_insert
 
     def add_role_request(self, user, at_time=None, role_descr=None):
         if role_descr and not isinstance(role_descr, RoleDescription):
