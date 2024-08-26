@@ -105,10 +105,11 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.20.4
+0.20.5
 
-  * accounts for upper/lower case email during group buy
-  * enables filter by provider in /api/pricing
-  * removes b'' marker in downloads while being py27-compatible
+  * fixes role request while a role grant is pending
+  * saves meta information in role
+  * repares profile/user relationship whenever possible
+  * shows discount type correctly in template
 
 [previous release notes](changelog)

@@ -17,6 +17,15 @@ Roadmap
 Released versions
 =================
 
+0.20.5
+
+  * fixes role request while a role grant is pending
+  * saves meta information in role
+  * repares profile/user relationship whenever possible
+  * shows discount type correctly in template
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Mon, 26 Jul 2024 07:15:00 -0700
+
 0.20.4
 
   * accounts for upper/lower case email during group buy
