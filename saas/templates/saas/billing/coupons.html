@@ -30,27 +30,32 @@
             </tr>
           </thead>
           <tr>
-                <form>
-                    <td>
-                        <input type="text" placeholder="Code"
-                               ng-model="newCoupon.code"
-                               v-model="newCoupon.code">
-                    </td>
-                    <td>
-                        <input type="text" placeholder="Percent"
-                            ng-model="newCoupon.discount_value"
-                            v-model="newCoupon.discount_value">
-                    </td>
-                    <td>
-                        <button ng-click="save()" @click="save">Create Coupon</button>
-                    </td>
-                </form>
-            </tr>
-            <tr ng-prop-id="coupon.code" ng-repeat="coupon in items.results" ng-cloak
+            <td colspan="5">
+              <form id="couponCreate" method="post" @submit.prevent="save">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+                <input type="text" placeholder="Code"
+                       name="code"
+                       ng-model="newCoupon.code"
+                       v-model="newCoupon.code"></input>
+                <input type="text" placeholder="Percent"
+                       name="discount_value"
+                       ng-model="newCoupon.discount_value"
+                       v-model="newCoupon.discount_value"></input>
+                <select class="form-control form-select input-group-suffix"
+                    name="discount_type" v-model="newCoupon.discount_type">
+                  <option value="percentage">%</option>
+                  <option value="currency">Currency (ex: usd)</option>
+                  <option value="period">Period (ex: month)</option>
+                </select>
+                <button type="submit">Create Coupon</button>
+              </form>
+            </td>
+          </tr>
+          <tr ng-prop-id="coupon.code" ng-repeat="coupon in items.results" ng-cloak
                 v-bind:id="coupon.code" v-for="(coupon, index) in items.results" v-cloak>
             <td><a ng-prop-href="getCouponUrl(coupon)"
                    v-bind:href="'{{urls.provider.metrics_coupons}}' + coupon.code + '/'">[[coupon.code]]</a></td>
-                <td>[[coupon.discount_value / 100]]%</td>
+                <td>[[coupon.discount_type == 'period' ? ('' + coupon.discount_value + ' period(s)') : (coupon.discount_type == 'currency' ? '$' + (coupon.discount_value / 100).toFixed(0) : ('' + (coupon.discount_value / 100).toFixed(0) + '%'))]]</td>
                 <td ng-if="coupon.ends_at"
                     v-if="coupon.ends_at">[[coupon.ends_at]]
                 </td>
