@@ -216,7 +216,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                             next_url = None
                     if self.check_email_verified(request, user,
                             next_url=next_url):
-                        role = organization.add_role_request(
+                        role, created = organization.add_role_request(
                             user, role_descr=role_descr)
                         # We create a profile-qualified url after the role
                         # has been granted otherwise the redirect specified

@@ -170,7 +170,7 @@ class RoleImplicitGrantAcceptView(TemplateResponseMixin, ContextMixin,
                     # Create a granted role implicitely, but only if the e-mail
                     # was verified.
                     if is_email_verified:
-                        role = organization.add_role_request(
+                        role, created = organization.add_role_request(
                             user, role_descr=role_descr)
                         if role.request_key:
                             # We have done an implicit grant of a manager role.
