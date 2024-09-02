@@ -5,6 +5,7 @@
 srcDir        ?= .
 installTop    ?= $(VIRTUAL_ENV)
 binDir        ?= $(installTop)/bin
+libDir        ?= $(installTop)/lib
 CONFIG_DIR    ?= $(srcDir)
 # XXX CONFIG_DIR should really be $(installTop)/etc/testsite
 LOCALSTATEDIR ?= $(installTop)/var
@@ -12,10 +13,10 @@ LOCALSTATEDIR ?= $(installTop)/var
 installDirs   ?= install -d
 installFiles  ?= install -p -m 644
 NPM           ?= npm
-PYTHON        := $(binDir)/python
-PIP           := $(binDir)/pip
+PYTHON        := python
+PIP           := pip
 SQLITE        := sqlite3
-TWINE         := $(binDir)/twine
+TWINE         := twine
 
 RUN_DIR       ?= $(srcDir)
 DB_NAME       ?= $(RUN_DIR)/db.sqlite
@@ -35,9 +36,6 @@ install::
 
 install-conf:: $(DESTDIR)$(CONFIG_DIR)/credentials \
                 $(DESTDIR)$(CONFIG_DIR)/gunicorn.conf
-	$(installDirs) $(DESTDIR)$(LOCALSTATEDIR)/db
-	$(installDirs) $(DESTDIR)$(LOCALSTATEDIR)/run
-	$(installDirs) $(DESTDIR)$(LOCALSTATEDIR)/log/gunicorn
 
 
 dist::
@@ -83,7 +81,7 @@ doc:
 	cd $(srcDir) && sphinx-build -b html ./docs $(PWD)/build/docs
 
 
-vendor-assets-prerequisites: $(installTop)/.npm/djaodjin-saas-packages
+vendor-assets-prerequisites: $(libDir)/.npm/djaodjin-saas-packages
 
 
 $(DESTDIR)$(CONFIG_DIR)/credentials: $(srcDir)/testsite/etc/credentials
@@ -103,18 +101,19 @@ $(DESTDIR)$(CONFIG_DIR)/credentials: $(srcDir)/testsite/etc/credentials
 $(DESTDIR)$(CONFIG_DIR)/gunicorn.conf: $(srcDir)/testsite/etc/gunicorn.conf
 	$(installDirs) $(dir $@)
 	[ -f $@ ] || sed \
-		-e 's,%(LOCALSTATEDIR)s,$(LOCALSTATEDIR),' $< > $@
+		-e 's,%(LOCALSTATEDIR)s,$(LOCALSTATEDIR),' \
+		-e 's,%(RUN_DIR)s,$(RUN_DIR),' $< > $@
 
 
-$(installTop)/.npm/djaodjin-saas-packages: $(srcDir)/testsite/package.json
-	$(installFiles) $^ $(installTop)
-	$(NPM) install --loglevel verbose --cache $(installTop)/.npm --tmp $(installTop)/tmp --prefix $(installTop)
+$(libDir)/.npm/djaodjin-saas-packages: $(srcDir)/testsite/package.json
+	$(installFiles) $^ $(libDir)
+	$(NPM) install --loglevel verbose --cache $(libDir)/.npm --prefix $(libDir)
 	$(installDirs) -d $(srcDir)/testsite/static/vendor
-	$(installFiles) $(installTop)/node_modules/jquery/dist/jquery.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(installTop)/node_modules/moment/moment.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(installTop)/node_modules/moment-timezone/builds/moment-timezone-with-data.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(installTop)/node_modules/vue/dist/vue.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(installTop)/node_modules/vue-croppa/dist/vue-croppa.js $(srcDir)/testsite/static/vendor
+	$(installFiles) $(libDir)/node_modules/jquery/dist/jquery.js $(srcDir)/testsite/static/vendor
+	$(installFiles) $(libDir)/node_modules/moment/moment.js $(srcDir)/testsite/static/vendor
+	$(installFiles) $(libDir)/node_modules/moment-timezone/builds/moment-timezone-with-data.js $(srcDir)/testsite/static/vendor
+	$(installFiles) $(libDir)/node_modules/vue/dist/vue.js $(srcDir)/testsite/static/vendor
+	$(installFiles) $(libDir)/node_modules/vue-croppa/dist/vue-croppa.js $(srcDir)/testsite/static/vendor
 	touch $@
 
 
