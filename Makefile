@@ -18,8 +18,10 @@ PIP           := pip
 SQLITE        := sqlite3
 TWINE         := twine
 
-RUN_DIR       ?= $(srcDir)
+RUN_DIR       ?= $(abspath $(srcDir))
 DB_NAME       ?= $(RUN_DIR)/db.sqlite
+
+$(info Path to python executable (i.e. PYTHON) while running make: $(shell which $(PYTHON)))
 
 MANAGE        := TESTSITE_SETTINGS_LOCATION=$(CONFIG_DIR) RUN_DIR=$(RUN_DIR) $(PYTHON) manage.py
 
