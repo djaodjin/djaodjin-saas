@@ -88,15 +88,15 @@
 {
     "fields": {
       "date_joined": "2024-01-01T00:00:00+00:00",
-      "email": "alice@localhost.localdomain",
-      "first_name": "Alice",
+      "email": "donny@localhost.localdomain",
+      "first_name": "Donny",
       "is_active": true,
       "is_staff": true,
       "is_superuser": true,
       "last_login": "2024-01-01T00:00:00+00:00",
-      "last_name": "Doe",
+      "last_name": "Broker",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
-      "username": "alice"
+      "username": "donny"
     },
     "model": "auth.User", "pk": 1
 },
@@ -120,15 +120,15 @@
 {
     "fields": {
       "date_joined": "2024-01-01T00:00:00+00:00",
-      "email": "donny@localhost.localdomain",
-      "first_name": "Donny",
+      "email": "alice@localhost.localdomain",
+      "first_name": "Alice",
       "is_active": true,
       "is_staff": false,
       "is_superuser": false,
       "last_login": "2024-01-01T00:00:00+00:00",
       "last_name": "Manager",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
-      "username": "donny"
+      "username": "alice"
     },
     "model": "auth.User", "pk": 3
 },
@@ -1186,4 +1186,59 @@
     "is_active": 1
   },
   "model": "saas.Plan", "pk": 6
+},
+{
+    "fields": {
+      "slug": "yoga-club",
+      "email": "cowork@localhost.localdomain",
+      "full_name": "Yoga Club of North Beach",
+      "created_at": "2024-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 31
+},
+{ "fields": {
+    "slug":"tier1-members",
+    "title":"Alliance member",
+    "created_at":"2024-01-01T00:00:00+00:00",
+    "is_not_priced": 1,
+    "period_type": 4,
+    "description": "Alliance membership",
+    "organization": 2,
+    "skip_optin_on_grant": false,
+    "is_active" : 1
+  },
+  "model" : "saas.Plan", "pk": 7
+},
+{
+  "fields": {
+    "slug": "dibaggio-additional",
+    "title": "Basic",
+    "description": "Basic Plan",
+    "created_at": "2024-01-01T00:00:00+00:00",
+    "setup_amount": 0,
+    "period_amount": 24900,
+    "broker_fee_percent": 0,
+    "period_type": 4,
+    "organization": 13,
+    "is_active": 1
+  },
+  "model": "saas.Plan", "pk": 8
+},
+{
+  "fields": {
+    "slug": "premium-additional",
+    "title": "Basic",
+    "description": "Basic Plan",
+    "created_at": "2024-01-01T00:00:00+00:00",
+    "setup_amount": 0,
+    "period_amount": 24900,
+    "broker_fee_percent": 0,
+    "period_type": 4,
+    "organization": 31,
+    "is_active": 1
+  },
+  "model": "saas.Plan", "pk": 9
 }]

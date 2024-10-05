@@ -3,12 +3,13 @@
 -include $(buildTop)/share/dws/prefix.mk
 
 srcDir        ?= .
-installTop    ?= $(VIRTUAL_ENV)
+installTop    ?= $(if $(VIRTUAL_ENV),$(VIRTUAL_ENV),$(abspath $(srcDir))/.venv)
 binDir        ?= $(installTop)/bin
 libDir        ?= $(installTop)/lib
-CONFIG_DIR    ?= $(srcDir)
-# XXX CONFIG_DIR should really be $(installTop)/etc/testsite
+CONFIG_DIR    ?= $(installTop)/etc/testsite
 LOCALSTATEDIR ?= $(installTop)/var
+# because there is no site.conf
+RUN_DIR       ?= $(abspath $(srcDir))
 
 installDirs   ?= install -d
 installFiles  ?= install -p -m 644
@@ -18,7 +19,6 @@ PIP           := pip
 SQLITE        := sqlite3
 TWINE         := twine
 
-RUN_DIR       ?= $(abspath $(srcDir))
 DB_NAME       ?= $(RUN_DIR)/db.sqlite
 
 $(info Path to python executable (i.e. PYTHON) while running make: $(shell which $(PYTHON)))

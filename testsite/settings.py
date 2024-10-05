@@ -9,7 +9,7 @@ from saas.compat import reverse_lazy
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Default values that can be overriden by `update_settings` later on.
-APP_NAME = os.path.basename(BASE_DIR)
+APP_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 RUN_DIR = os.getenv('RUN_DIR', os.getcwd())
 DB_NAME = os.path.join(RUN_DIR, 'db.sqlite')
 LOG_FILE = os.path.join(RUN_DIR, 'testsite-app.log')
