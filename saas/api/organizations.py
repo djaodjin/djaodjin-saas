@@ -232,8 +232,22 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             # Removes all roles on the organization such that the organization
             # is not picked up inadvertently.
             get_role_model().objects.filter(organization=obj).delete()
+            # Two queries instead of one because there might be subscriptions
+            # that auto-renew with an ends_at date in the past (might be an
+            # error, but still better to auto-correct when we can).
             Subscription.objects.filter(
                 organization=obj, ends_at__gt=at_time).update(ends_at=at_time)
+            Subscription.objects.filter(
+                organization=obj, auto_renew=True).update(auto_renew=False)
+
+            # If we are deleting a provider, freeze all its plans as well
+            # subscriptions to these plans.
+            obj.plans.subscriptions.filter(
+                ends_at__gt=at_time).update(ends_at=at_time)
+            obj.plans.subscriptions.filter(
+                auto_renew=True).update(auto_renew=False)
+            obj.plans.update(is_active=False)
+
             obj.slug = slug
             obj.email = email
             obj.is_active = False
