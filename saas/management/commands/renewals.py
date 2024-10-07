@@ -89,12 +89,14 @@ on credit cards"""
         except Exception as err:
             LOGGER.exception("recognize_income: %s", err)
         try:
-            extend_subscriptions(end_period, dry_run=dry_run)
+            nb_renewals = extend_subscriptions(end_period, dry_run=dry_run)
+            self.stdout.write("  %d subscriptions renewed" % nb_renewals)
         except Exception as err:
             LOGGER.exception("extend_subscriptions: %s", err)
         try:
-            create_charges_for_balance(
+            nb_charges = create_charges_for_balance(
                 end_period, dry_run=dry_run or no_charges)
+            self.stdout.write("  %d charges initiated" % nb_charges)
         except Exception as err:
             LOGGER.exception(
                 "Unable to create charges for balance on broker '%s'",
@@ -108,5 +110,7 @@ on credit cards"""
         # Trigger 'expires soon' notifications
         expiration_periods = settings.EXPIRE_NOTICE_DAYS
         for period in expiration_periods:
-            trigger_expiration_notices(
+            nb_notices = trigger_expiration_notices(
                 end_period, nb_days=period, dry_run=dry_run)
+            self.stdout.write("  %d %d-days expiration notices sent" % (
+                nb_notices, period))

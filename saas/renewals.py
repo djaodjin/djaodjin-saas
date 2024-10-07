@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,7 @@ from django.db import transaction
 from . import humanize, settings, signals
 from .backends import CardError, ProcessorError
 from .compat import gettext_lazy as _, six
+from .humanize import describe_period_name
 from .models import (Charge, Plan, Price, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
 from .utils import datetime_or_now, get_organization_model
@@ -217,10 +218,12 @@ def extend_subscriptions(at_time=None, dry_run=False):
     """
     Extend active subscriptions
     """
+    nb_renewals = 0
     at_time = datetime_or_now(at_time)
     LOGGER.info("extend subscriptions at %s ...", at_time)
-    for subscription in Subscription.objects.valid_for(
-            auto_renew=True, created_at__lte=at_time, ends_at__gt=at_time):
+    for subscription in Subscription.objects.valid_for(auto_renew=True,
+            created_at__lte=at_time, ends_at__gt=at_time).select_related(
+            'organization', 'plan'):
         lower, upper = subscription.clipped_period_for(at_time)
         # `relativedelta` will compute number of years, months, days, etc.
         # `days` represents the difference in days after years and months have
@@ -233,8 +236,12 @@ def extend_subscriptions(at_time=None, dry_run=False):
         if (upper == subscription.ends_at
             and (days_from_end >= 0 and days_from_end < 1)):
             # We are in the last day of the last period.
-            LOGGER.info("EXTENDS subscription %s ending at %s for 1 period",
-                subscription, subscription.ends_at)
+            LOGGER.info("EXTENDS subscription %s ending at %s for %d %s",
+                subscription, subscription.ends_at,
+                subscription.plan.period_length, describe_period_name(
+                    subscription.plan.period_type,
+                    subscription.plan.period_length))
+            nb_renewals += 1
             if not dry_run:
                 try:
                     with transaction.atomic():
@@ -247,6 +254,7 @@ def extend_subscriptions(at_time=None, dry_run=False):
                     LOGGER.exception(
                         "error: extending subscription for %s ending at %s: %s",
                         subscription, subscription.ends_at, err)
+    return nb_renewals
 
 
 def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
@@ -255,6 +263,7 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
     """
 
     def _handle_organization_notices(organization):
+        nb_notices = 0
         if organization.processor_card_key:
             card = organization.retrieve_card()
             try:
@@ -264,6 +273,7 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
                 if lower >= exp_date:
                     LOGGER.info("payment method expires soon for %s",
                         organization)
+                    nb_notices += 1
                     if not dry_run:
                         signals.card_expires_soon.send(
                             sender=__name__, organization=organization,
@@ -274,10 +284,13 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
         else:
             LOGGER.info("%s doesn't have a payment method attached",
                 organization)
+            nb_notices += 1
             if not dry_run:
                 signals.payment_method_absent.send(sender=__name__,
                     organization=organization)
+        return nb_notices
 
+    nb_notices = 0
     at_time = datetime_or_now(at_time)
     lower = at_time + relativedelta(days=nb_days)
     upper = at_time + relativedelta(days=nb_days + 1)
@@ -295,18 +308,20 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
             if subscription.auto_renew:
                 if plan.renewal_type == plan.AUTO_RENEW:
                     if org.id != prev_organization:
-                        _handle_organization_notices(org)
+                        nb_notices += _handle_organization_notices(org)
 
                     prev_organization = org.id
             else:
                 if plan.renewal_type == plan.ONE_TIME:
                     LOGGER.info("trigger upgrade soon for %s", subscription)
+                    nb_notices += 1
                     if not dry_run:
                         signals.subscription_upgrade.send(sender=__name__,
                             subscription=subscription, nb_days=nb_days)
 
                 elif plan.renewal_type == plan.REPEAT:
                     LOGGER.info("trigger expires soon for %s", subscription)
+                    nb_notices += 1
                     if not dry_run:
                         signals.expires_soon.send(sender=__name__,
                             subscription=subscription, nb_days=nb_days)
@@ -321,7 +336,9 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
     if subscription and subscription.organization.id != prev_organization:
         if subscription.auto_renew:
             if subscription.plan.renewal_type == subscription.plan.AUTO_RENEW:
-                _handle_organization_notices(subscription.organization)
+                nb_notices += _handle_organization_notices(
+                    subscription.organization)
+    return nb_notices
 
 
 def create_charges_for_balance(until=None, dry_run=False):
@@ -329,6 +346,7 @@ def create_charges_for_balance(until=None, dry_run=False):
     Create charges for all accounts payable.
     """
     #pylint:disable=too-many-nested-blocks
+    nb_charges = 0
     until = datetime_or_now(until)
     LOGGER.info("create charges for balance at %s ...", until)
     for organization in get_organization_model().objects.filter(
@@ -366,6 +384,7 @@ def create_charges_for_balance(until=None, dry_run=False):
                         if not organization.processor_card_key:
                             raise CardError(_("No payment method attached"),
                                 'card_absent')
+                        nb_charges += 1
                         if not dry_run:
                             Charge.objects.charge_card(
                                 organization, invoiceables,
@@ -417,6 +436,7 @@ def create_charges_for_balance(until=None, dry_run=False):
         else:
             LOGGER.info('SKIP   %s (one charge already in flight)',
                 organization)
+    return nb_charges
 
 
 def complete_charges():
