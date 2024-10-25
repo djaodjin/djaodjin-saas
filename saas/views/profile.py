@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -376,6 +376,12 @@ class DashboardView(OrganizationMixin, DetailView):
 
     def get_object(self, queryset=None):
         return self.organization
+
+    def get(self, request, *args, **kwargs):
+        if not self.organization.is_provider:
+            return http.HttpResponseRedirect(
+                reverse('saas_organization_profile', args=(self.organization,)))
+        return super(DashboardView, self).get(request, *args, **kwargs)
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):

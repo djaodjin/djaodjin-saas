@@ -19,6 +19,7 @@ PIP           := pip
 SQLITE        := sqlite3
 TWINE         := twine
 
+ASSETS_DIR    := $(srcDir)/testsite/static
 DB_NAME       ?= $(RUN_DIR)/db.sqlite
 
 $(info Path to python executable (i.e. PYTHON) while running make: $(shell which $(PYTHON)))
@@ -110,12 +111,12 @@ $(DESTDIR)$(CONFIG_DIR)/gunicorn.conf: $(srcDir)/testsite/etc/gunicorn.conf
 $(libDir)/.npm/djaodjin-saas-packages: $(srcDir)/testsite/package.json
 	$(installFiles) $^ $(libDir)
 	$(NPM) install --loglevel verbose --cache $(libDir)/.npm --prefix $(libDir)
-	$(installDirs) -d $(srcDir)/testsite/static/vendor
-	$(installFiles) $(libDir)/node_modules/jquery/dist/jquery.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(libDir)/node_modules/moment/moment.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(libDir)/node_modules/moment-timezone/builds/moment-timezone-with-data.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(libDir)/node_modules/vue/dist/vue.js $(srcDir)/testsite/static/vendor
-	$(installFiles) $(libDir)/node_modules/vue-croppa/dist/vue-croppa.js $(srcDir)/testsite/static/vendor
+	$(installDirs) -d $(ASSETS_DIR)/vendor
+	$(installFiles) $(libDir)/node_modules/jquery/dist/jquery.js $(ASSETS_DIR)/vendor
+	$(installFiles) $(libDir)/node_modules/moment/moment.js $(ASSETS_DIR)/vendor
+	$(installFiles) $(libDir)/node_modules/moment-timezone/builds/moment-timezone-with-data.js $(ASSETS_DIR)/vendor
+	$(installFiles) $(libDir)/node_modules/vue/dist/vue.js $(ASSETS_DIR)/vendor
+	$(installFiles) $(libDir)/node_modules/vue-croppa/dist/vue-croppa.js $(ASSETS_DIR)/vendor
 	touch $@
 
 
