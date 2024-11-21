@@ -837,6 +837,9 @@ class AbstractOrganization(models.Model):
                 subscription.save()
                 if cart_item:
                     cart_item.recorded = True
+                    if (cart_item.coupon and cart_item.coupon.once_per_user and
+                            user not in cart_item.coupon.uses.all()):
+                        cart_item.coupon.uses.add(user)
                     cart_item.save()
 
         # At this point we have gathered all the ``Organization``
@@ -3049,6 +3052,11 @@ class Coupon(models.Model):
         help_text=_("Number of times the coupon can be used"))
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
+    once_per_user = models.BooleanField(default=False,
+        help_text=_("Flag indicating if the coupon can be used only once per user"))
+    uses = models.ManyToManyField(settings.AUTH_USER_MODEL,
+        related_name='uses', blank=True,
+        help_text=_("Users who have already redeemed this coupon"))
 
     class Meta:
         unique_together = ('organization', 'code')
@@ -3178,6 +3186,8 @@ class CartItemManager(models.Manager):
         for item in self.get_cart(user):
             redeemed = Coupon.objects.active(
                 item.plan.organization, coupon_code, at_time=at_time).first()
+            if redeemed and redeemed.once_per_user and user in redeemed.uses.all():
+                continue
             if redeemed and redeemed.is_valid(item.plan, at_time=at_time):
                 coupon_applied = True
                 item.coupon = redeemed
