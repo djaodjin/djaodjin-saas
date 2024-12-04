@@ -273,15 +273,6 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
         update_context_urls(context, urls)
         return context
 
-    def create_organization_from_user(self, user):
-        with transaction.atomic():
-            organization = self.organization_model.objects.create(
-                slug=user.username,
-                full_name=user.get_full_name(),
-                email=user.email)
-            organization.add_manager(user)
-        return organization
-
     def get_implicit_create_on_none(self):
         return self.implicit_create_on_none
 
@@ -326,7 +317,8 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
             if self.get_implicit_create_on_none():
                 try:
                     #pylint:disable=attribute-defined-outside-init
-                    self.object = self.create_organization_from_user(
+                    self.object = \
+                self.organization_model.objects.create_organization_from_user(
                         request.user)
                     return http.HttpResponseRedirect(self.get_success_url())
                 except IntegrityError:

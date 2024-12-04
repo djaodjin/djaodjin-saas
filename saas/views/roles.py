@@ -27,7 +27,7 @@ import logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError
 from django.db.models import Q
 from django.views.generic.base import (ContextMixin, TemplateResponseMixin,
     RedirectView)
@@ -60,17 +60,6 @@ class RoleImplicitGrantAcceptView(TemplateResponseMixin, ContextMixin,
                              next_url=None):
         #pylint:disable=unused-argument
         return True
-
-
-    def create_organization_from_user(self, user):
-        with transaction.atomic():
-            organization = self.organization_model.objects.create(
-                slug=user.username,
-                full_name=user.get_full_name(),
-                email=user.email)
-            organization.add_manager(user)
-        return organization
-
 
     def get_implicit_create_on_none(self):
         return (self.implicit_create_on_none or
@@ -202,7 +191,7 @@ class RoleImplicitGrantAcceptView(TemplateResponseMixin, ContextMixin,
                 if self.get_implicit_create_on_none():
                     try:
                         kwargs.update({self.slug_url_kwarg: str(
-                            self.create_organization_from_user(
+                self.organization_model.objects.create_organization_from_user(
                             request.user))})
                         redirect_to = self.get_redirect_url(*args, **kwargs)
                     except IntegrityError:

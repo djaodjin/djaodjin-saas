@@ -1034,7 +1034,8 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             return RoleCreateSerializer
         return super(RoleByDescrListAPIView, self).get_serializer_class()
 
-    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+    def create(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument,too-many-locals
         grant_key = None
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

@@ -117,22 +117,14 @@ def get_extra_field_class():
 
 class OrganizationManager(models.Manager):
 
-    def create_organization(self, name, creation_time):
-        # XXX This method seems deprecated
-        creation_time = datetime.datetime.fromtimestamp(creation_time)
-        billing_start = creation_time
-        if billing_start.day > 28:
-            # Insures that the billing cycle will be on the same day
-            # every month.
-            if billing_start.month >= 12:
-                billing_start = datetime.datetime(billing_start.year + 1,
-                    1, 1)
-            else:
-                billing_start = datetime.datetime(billing_start.year,
-                    billing_start.month + 1, 1)
-        customer = self.create(created_at=creation_time,
-            slug=name, billing_start=billing_start)
-        return customer
+    def create_organization_from_user(self, user):
+        with transaction.atomic():
+            organization = self.organization_model.objects.create(
+                slug=user.username,
+                full_name=user.get_full_name(),
+                email=user.email)
+            organization.add_manager(user)
+        return organization
 
     def attached(self, user):
         """
