@@ -820,19 +820,28 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        created_at = datetime_or_now(
+            serializer.validated_data.get('created_at'))
         plan = serializer.validated_data.get('plan')
         use_charge = serializer.validated_data.get('use')
         quantity = serializer.validated_data.get('quantity')
-        if use_charge:
-            subscription = Subscription.objects.valid_for(
-                organization=self.organization, plan=plan,
-                ends_at__gt=datetime_or_now()).first()
-            order_executed_items = record_use_charge(
-                subscription, use_charge, quantity=quantity)
-            serializer = self.serializer_class(instance=order_executed_items[0])
-            return http.Response(
-                serializer.data, status=status.HTTP_201_CREATED)
-        return http.Response({}, status=status.HTTP_200_OK)
+        if not use_charge:
+            raise ValidationError({'detail': _("No UseCharge specified.")})
+
+        subscription = Subscription.objects.valid_for(
+            organization=self.organization, plan=plan,
+            ends_at__gt=created_at).first()
+        if not subscription:
+            raise ValidationError({'detail':_("Couldn't find a subscription"\
+                " to %(plan)s that covers %(at_time)s.") % {
+                'plan': plan, 'at_time': created_at.isoformat()}})
+
+        order_executed_items = record_use_charge(
+            subscription, use_charge,
+            quantity=quantity, created_at=created_at)
+
+        serializer = self.serializer_class(instance=order_executed_items[0])
+        return http.Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
     def delete(self, request, *args, **kwargs):

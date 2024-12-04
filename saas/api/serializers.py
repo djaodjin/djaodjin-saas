@@ -198,6 +198,12 @@ class NoModelSerializer(serializers.Serializer):
         raise RuntimeError('`update()` should not be called.')
 
 
+class AtTimeSerializer(NoModelSerializer):
+
+    at_time = serializers.DateTimeField(required=False,
+      help_text=_("Date/time at which action is recorded (in ISO 8601 format)"))
+
+
 class PriceSerializer(NoModelSerializer):
 
     amount = serializers.IntegerField(
@@ -1036,13 +1042,16 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
         help_text=_("The plan to add into the request.user cart."))
     use = UseChargeRelatedField(required=False,
         help_text=_("The use charge to add into the request.user cart."))
+    # Without declaring `created_at` we cannot override the creation date
+    # even though the fields is not specified as read-only in the `Meta` class.
+    created_at = serializers.DateTimeField(required=False,
+      help_text=_("Date/time at which item is recorded (in ISO 8601 format)"))
 
     class Meta:
         model = CartItem
         fields = ('created_at', 'plan', 'option',
-                  'use', 'quantity',
-                  'sync_on', 'full_name', 'email')
-        read_only_fields = ('created_at',)
+                  'use', 'quantity', 'sync_on', 'full_name', 'email')
+
 
 class UserCartItemCreateSerializer(CartItemCreateSerializer):
     """

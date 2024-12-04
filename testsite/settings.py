@@ -155,6 +155,8 @@ MESSAGE_TAGS = {
     messages.ERROR: 'danger'
 }
 
+# debug panel
+# -----------
 DEBUG_TOOLBAR_PATCH_SETTINGS = False
 DEBUG_TOOLBAR_CONFIG = {
     'JQUERY_URL': '/static/vendor/jquery.js',

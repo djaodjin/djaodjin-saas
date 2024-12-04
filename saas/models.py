@@ -309,7 +309,9 @@ class AbstractOrganization(models.Model):
     # allow one processor per organization at a time.
     subscribes_to = models.ManyToManyField('saas.Plan',
         related_name='subscribers', through='saas.Subscription')
-    billing_start = models.DateField(null=True, auto_now_add=True)
+    billing_start = models.DateField(null=True, auto_now_add=True,
+        help_text=_("Date at which the next automatic charge"\
+        " will be generated (in ISO format)"))
 
     funds_balance = models.PositiveIntegerField(default=0,
         help_text=_("Funds escrowed in currency unit"))
@@ -834,6 +836,12 @@ class AbstractOrganization(models.Model):
                     extra={'event': 'upsert-subscription',
                         'organization': subscription.organization.slug,
                         'plan': subscription.plan.slug})
+                if not subscription.organization.billing_start:
+                    # If we don't have an automatic invoicing schedule yet,
+                    # let's create one.
+                    subscription.organization.billing_start = (
+                        subscription.created_at + relativedelta(months=1))
+                    subscription.organization.save()
                 subscription.save()
                 if cart_item:
                     cart_item.recorded = True
@@ -4700,8 +4708,10 @@ def get_sub_event_id(subscription, use_charge=None):
     return substr
 
 
-def record_use_charge(subscription, use_charge, quantity=1):
-
+def record_use_charge(subscription, use_charge, quantity=1, created_at=None):
+    """
+    Adds a use charge to the balance due by the subscriber
+    """
     usage = get_period_usage(subscription, use_charge,
         subscription.created_at, subscription.ends_at)
     amount = None
@@ -4725,8 +4735,9 @@ def record_use_charge(subscription, use_charge, quantity=1):
                                               subscription=subscription)
 
     return Transaction.objects.record_order([
-        Transaction.objects.new_use_charge(subscription,
-            use_charge, quantity, custom_amount=amount, descr=descr)])
+        Transaction.objects.new_use_charge(subscription, use_charge,
+            quantity, custom_amount=amount, created_at=created_at,
+            descr=descr)])
 
 
 def sum_balance_amount(dest_balances, orig_balances):

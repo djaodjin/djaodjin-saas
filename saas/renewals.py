@@ -214,6 +214,60 @@ def recognize_income(until=None, dry_run=False):
             pass
 
 
+def extend_subscription(subscription, at_time=None, dry_run=False):
+    nb_renewals = 0
+    at_time = datetime_or_now(at_time)
+    lower, upper = subscription.clipped_period_for(at_time)
+    # `relativedelta` will compute number of years, months, days, etc.
+    # `days` represents the difference in days after years and months have
+    # been substracted instead of a total number of days as `timedelta`
+    # does.
+    days_from_end = (subscription.ends_at - at_time).days
+    LOGGER.debug("at_time (%s) in period [%s, %s[ of %s ending at %s,"
+        " %d days from renewal", at_time, lower, upper, subscription,
+        subscription.ends_at, days_from_end)
+    if (upper == subscription.ends_at
+        and (days_from_end >= 0 and days_from_end < 1)):
+        # We are in the last day of the last period.
+        LOGGER.info("EXTENDS subscription %s ending at %s for %d %s",
+            subscription, subscription.ends_at,
+            subscription.plan.period_length, describe_period_name(
+                subscription.plan.period_type,
+                subscription.plan.period_length))
+        nb_renewals += 1
+        if not dry_run:
+            try:
+                with transaction.atomic():
+                    Transaction.objects.record_order([
+                        Transaction.objects.new_subscription_order(
+                            subscription, created_at=at_time)])
+            except Exception as err: #pylint:disable=broad-except
+                # logs any kind of errors
+                # and move on to the next subscription.
+                LOGGER.exception(
+                    "error: extending subscription for %s ending at %s: %s",
+                    subscription, subscription.ends_at, err)
+    return nb_renewals
+
+
+def extend_subscriptions_organization(organization,
+                                      at_time=None, dry_run=False):
+    """
+    Extend active subscriptions
+    """
+    nb_renewals = 0
+    at_time = datetime_or_now(at_time)
+    LOGGER.info("extend subscriptions for %s at %s ...", organization, at_time)
+    for subscription in Subscription.objects.filter(
+            organization=organization).valid_for(auto_renew=True,
+            created_at__lte=at_time, ends_at__gt=at_time).select_related(
+            'organization', 'plan'):
+        nb_renewals += extend_subscription(
+            subscription, at_time=at_time, dry_run=dry_run)
+
+    return nb_renewals
+
+
 def extend_subscriptions(at_time=None, dry_run=False):
     """
     Extend active subscriptions
@@ -224,36 +278,9 @@ def extend_subscriptions(at_time=None, dry_run=False):
     for subscription in Subscription.objects.valid_for(auto_renew=True,
             created_at__lte=at_time, ends_at__gt=at_time).select_related(
             'organization', 'plan'):
-        lower, upper = subscription.clipped_period_for(at_time)
-        # `relativedelta` will compute number of years, months, days, etc.
-        # `days` represents the difference in days after years and months have
-        # been substracted instead of a total number of days as `timedelta`
-        # does.
-        days_from_end = (subscription.ends_at - at_time).days
-        LOGGER.debug("at_time (%s) in period [%s, %s[ of %s ending at %s,"
-            " %d days from renewal", at_time, lower, upper, subscription,
-            subscription.ends_at, days_from_end)
-        if (upper == subscription.ends_at
-            and (days_from_end >= 0 and days_from_end < 1)):
-            # We are in the last day of the last period.
-            LOGGER.info("EXTENDS subscription %s ending at %s for %d %s",
-                subscription, subscription.ends_at,
-                subscription.plan.period_length, describe_period_name(
-                    subscription.plan.period_type,
-                    subscription.plan.period_length))
-            nb_renewals += 1
-            if not dry_run:
-                try:
-                    with transaction.atomic():
-                        Transaction.objects.record_order([
-                            Transaction.objects.new_subscription_order(
-                                subscription, created_at=at_time)])
-                except Exception as err: #pylint:disable=broad-except
-                    # logs any kind of errors
-                    # and move on to the next subscription.
-                    LOGGER.exception(
-                        "error: extending subscription for %s ending at %s: %s",
-                        subscription, subscription.ends_at, err)
+        nb_renewals += extend_subscription(
+            subscription, at_time=at_time, dry_run=dry_run)
+
     return nb_renewals
 
 
@@ -341,101 +368,135 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
     return nb_notices
 
 
+def create_charge_for_balance_organization(organization,
+                                           until=None, dry_run=False):
+    #pylint:disable=too-many-locals
+    nb_charges = 0
+
+    if not organization.billing_start:
+        LOGGER.info('SKIP   %s (no automated billing date)', organization)
+        return nb_charges
+
+    automatic_billing_at = datetime_or_now(organization.billing_start)
+    nb_days = relativedelta(automatic_billing_at, until).days
+    if nb_days < 0 or nb_days > settings.MAX_RENEWAL_ATTEMPTS:
+        LOGGER.info('SKIP   %s (automated billing date (%s)'\
+            ' not within %d days prior to %s - %d days)', organization,
+            automatic_billing_at, settings.MAX_RENEWAL_ATTEMPTS, until,
+            nb_days)
+        return nb_charges
+
+    # We will create charges only when we have no charges
+    # already in flight for this customer.
+    charges = Charge.objects.in_progress_for_customer(organization)
+    if charges.exists():
+        LOGGER.info('SKIP   %s (one charge already in flight)', organization)
+        return nb_charges
+
+    invoiceables = Transaction.objects.get_invoiceables(
+        organization, until=organization.billing_start)
+    LOGGER.debug("invoicables for %s until %s:",
+        organization, organization.billing_start)
+    for invoicable in invoiceables:
+        LOGGER.debug("\t#%d %s %s %s %s", invoicable.pk,
+            invoicable.dest_amount, invoicable.dest_unit,
+            invoicable.created_at.isoformat(), invoicable.descr)
+
+    balances = sum_dest_amount(invoiceables)
+    if len(balances) > 1:
+        raise ValueError("balances with multiple currency units (%s)" %
+            str(balances))
+
+    # `sum_dest_amount` guarentees at least one result.
+    invoiceable_amount = balances[0]['amount']
+    invoiceable_unit = balances[0]['unit']
+    if invoiceable_amount > 50:
+        # Stripe will not processed charges less than 50 cents.
+        active_subscriptions = Subscription.objects.active_for(
+            organization, ends_at=organization.billing_start).filter(
+            auto_renew=True)
+        if not active_subscriptions.exists():
+            # If we have a past due but it is not coming from a renewal
+            # generated earlier, we will make a note of it but do not
+            # charge the Card. Each provider needs to decide what to do
+            # about collections.
+            LOGGER.warning('REVIEW %d %s to %s (requires manual charge)',
+                invoiceable_amount, invoiceable_unit, organization)
+        else:
+            with transaction.atomic():
+                try:
+                    if not organization.processor_card_key:
+                        raise CardError(_("No payment method attached"),
+                            'card_absent')
+                    nb_charges += 1
+                    if not dry_run:
+                        Charge.objects.charge_card(
+                            organization, invoiceables,
+                            created_at=until)
+                        # XXX It might be too early, and we don't know yet
+                        # if the charge succeeded (ex: under funded).
+                        organization.billing_start += relativedelta(months=1)
+                        organization.nb_renewal_attempts = 0
+                        organization.save()
+                    LOGGER.info('CHARGE %d %s to %s',
+                        invoiceable_amount, invoiceable_unit,
+                        organization)
+                except CardError as err:
+                    # There was a problem with the Card (i.e. expired,
+                    # underfunded, etc.)
+                    charge_processor_key = getattr(
+                        err, 'charge_processor_key', None)
+                    LOGGER.info('FAILED CHARGE %d %s to %s (%s: %s)',
+                        invoiceable_amount, invoiceable_unit,
+                        organization.slug, charge_processor_key,
+                        err, extra={
+                            'event': 'card-error',
+                            'charge': charge_processor_key,
+                            'detail': err.processor_details(),
+                            'organization': organization.slug,
+                            'amount': invoiceable_amount,
+                            'unit': invoiceable_unit})
+                    organization.nb_renewal_attempts = (
+                        organization.nb_renewal_attempts + 1)
+                    final_notice = False
+                    if (organization.nb_renewal_attempts >=
+                        settings.MAX_RENEWAL_ATTEMPTS):
+                        final_notice = True
+                        if not dry_run:
+                            active_subscriptions.unsubscribe(at_time=until)
+                    if not dry_run:
+                        organization.save()
+                        signals.renewal_charge_failed.send(
+                            sender=__name__,
+                            invoiced_items=invoiceables,
+                            total_price=Price(
+                                invoiceable_amount, invoiceable_unit),
+                            final_notice=final_notice)
+                except ProcessorError:
+                    # An error from the processor which indicates
+                    # the logic might be incorrect, the network down,
+                    # etc. We have already notified the admin
+                    # in `charge_card_one_processor`.
+                    pass
+    elif invoiceable_amount > 0:
+        LOGGER.info('SKIP   %d %s to %s (less than 50 %s)',
+            invoiceable_amount, invoiceable_unit, organization,
+            invoiceable_unit)
+
+    return nb_charges
+
+
 def create_charges_for_balance(until=None, dry_run=False):
     """
     Create charges for all accounts payable.
     """
-    #pylint:disable=too-many-nested-blocks
     nb_charges = 0
     until = datetime_or_now(until)
     LOGGER.info("create charges for balance at %s ...", until)
     for organization in get_organization_model().objects.filter(
             nb_renewal_attempts__lt=settings.MAX_RENEWAL_ATTEMPTS):
-        charges = Charge.objects.in_progress_for_customer(organization)
-        # We will create charges only when we have no charges
-        # already in flight for this customer.
-        if not charges.exists():
-            invoiceables = Transaction.objects.get_invoiceables(
-                organization, until=until)
-            LOGGER.debug("invoicables for %s until %s:", organization, until)
-            for invoicable in invoiceables:
-                LOGGER.debug("\t#%d %s %s", invoicable.pk,
-                    invoicable.dest_amount, invoicable.dest_unit)
-            balances = sum_dest_amount(invoiceables)
-            if len(balances) > 1:
-                raise ValueError("balances with multiple currency units (%s)" %
-                    str(balances))
-            # `sum_dest_amount` guarentees at least one result.
-            invoiceable_amount = balances[0]['amount']
-            invoiceable_unit = balances[0]['unit']
-            if invoiceable_amount > 50:
-                # Stripe will not processed charges less than 50 cents.
-                active_subscriptions = Subscription.objects.active_for(
-                    organization, ends_at=until).filter(auto_renew=True)
-                if not active_subscriptions.exists():
-                    # If we have a past due but it is not coming from a renewal
-                    # generated earlier, we will make a note of it but do not
-                    # charge the Card. Each provider needs to decide what to do
-                    # about collections.
-                    LOGGER.info('REVIEW %d %s to %s (requires manual charge)',
-                        invoiceable_amount, invoiceable_unit, organization)
-                else:
-                    try:
-                        if not organization.processor_card_key:
-                            raise CardError(_("No payment method attached"),
-                                'card_absent')
-                        nb_charges += 1
-                        if not dry_run:
-                            Charge.objects.charge_card(
-                                organization, invoiceables,
-                                created_at=until)
-                        LOGGER.info('CHARGE %d %s to %s',
-                            invoiceable_amount, invoiceable_unit,
-                            organization)
-                    except CardError as err:
-                        # There was a problem with the Card (i.e. expired,
-                        # underfunded, etc.)
-                        charge_processor_key = getattr(
-                            err, 'charge_processor_key', None)
-                        LOGGER.info('FAILED CHARGE %d %s to %s (%s: %s)',
-                            invoiceable_amount, invoiceable_unit,
-                            organization.slug, charge_processor_key,
-                            err, extra={
-                                'event': 'card-error',
-                                'charge': charge_processor_key,
-                                'detail': err.processor_details(),
-                                'organization': organization.slug,
-                                'amount': invoiceable_amount,
-                                'unit': invoiceable_unit})
-                        organization.nb_renewal_attempts = (
-                            organization.nb_renewal_attempts + 1)
-                        final_notice = False
-                        if (organization.nb_renewal_attempts >=
-                            settings.MAX_RENEWAL_ATTEMPTS):
-                            final_notice = True
-                            if not dry_run:
-                                active_subscriptions.unsubscribe(at_time=until)
-                        if not dry_run:
-                            organization.save()
-                            signals.renewal_charge_failed.send(
-                                sender=__name__,
-                                invoiced_items=invoiceables,
-                                total_price=Price(
-                                    invoiceable_amount, invoiceable_unit),
-                                final_notice=final_notice)
-                    except ProcessorError:
-                        # An error from the processor which indicates
-                        # the logic might be incorrect, the network down,
-                        # etc. We have already notified the admin
-                        # in `charge_card_one_processor`.
-                        pass
-            elif invoiceable_amount > 0:
-                LOGGER.info('SKIP   %d %s to %s (less than 50 %s)',
-                    invoiceable_amount, invoiceable_unit, organization,
-                    invoiceable_unit)
-        else:
-            LOGGER.info('SKIP   %s (one charge already in flight)',
-                organization)
+        nb_charges += create_charge_for_balance_organization(
+            organization, until=until, dry_run=dry_run)
     return nb_charges
 
 

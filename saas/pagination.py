@@ -55,6 +55,9 @@ class BalancePagination(PageNumberPagination):
         #pylint:disable=attribute-defined-outside-init
         self.start_at = getattr(view, 'start_at', None)
         self.ends_at = getattr(view, 'ends_at', datetime_or_now())
+        organization = getattr(view, 'organization', None)
+        self.next_billing_at = (
+            organization.billing_start if organization else None)
         if hasattr(view, 'balance_amount') and hasattr(view, 'balance_unit'):
             self.balance_amount = view.balance_amount
             self.balance_unit = view.balance_unit
@@ -77,6 +80,7 @@ class BalancePagination(PageNumberPagination):
         return Response(OrderedDict([
             ('start_at', self.start_at),
             ('ends_at', self.ends_at),
+            ('next_billing_at', self.next_billing_at),
             ('balance_amount', self.balance_amount),
             ('balance_unit', self.balance_unit),
             ('count', self.page.paginator.count),
@@ -102,6 +106,12 @@ class BalancePagination(PageNumberPagination):
                     'format': 'date',
                     'description': "End of the date range for which"\
                         " the balance was computed"
+                },
+                'next_billing_at': {
+                    'type': 'string',
+                    'format': 'date',
+                    'description': "Date at which the next automated charge"\
+                        " will be created"
                 },
                 'balance_amount': {
                     'type': 'integer',

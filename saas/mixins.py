@@ -258,8 +258,8 @@ class CartMixin(object):
         prorate_to_billing = False
         prorate_to = None
         if prorate_to_billing:
-            # XXX First we add enough periods to get the next billing date later
-            # than created_at but no more than one period in the future.
+            # XXX First we add enough periods to get the next billing date
+            # later than created_at but no more than one period in the future.
             prorate_to = customer.billing_start
         subscriber = customer
         organization_model = get_organization_model()
