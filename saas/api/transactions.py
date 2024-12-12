@@ -836,12 +836,15 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
                 " to %(plan)s that covers %(at_time)s.") % {
                 'plan': plan, 'at_time': created_at.isoformat()}})
 
+        resp = {}
         order_executed_items = record_use_charge(
             subscription, use_charge,
             quantity=quantity, created_at=created_at)
-
-        serializer = self.serializer_class(instance=order_executed_items[0])
-        return http.Response(serializer.data, status=status.HTTP_201_CREATED)
+        if order_executed_items:
+            serializer = self.serializer_class(instance=order_executed_items[0])
+            resp = serializer.data
+        return http.Response(
+          resp, status=status.HTTP_201_CREATED if resp else status.HTTP_200_OK)
 
 
     def delete(self, request, *args, **kwargs):

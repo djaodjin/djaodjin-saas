@@ -26,9 +26,9 @@ class Migration(migrations.Migration):
             name='Agreement',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('slug', models.SlugField(unique=True)),
-                ('title', models.CharField(max_length=150, unique=True)),
-                ('modified', models.DateTimeField(auto_now_add=True)),
+                ('slug', models.SlugField(help_text='Unique identifier shown in the URL bar', unique=True)),
+                ('title', models.CharField(help_text='Short description of the agreement', max_length=150, unique=True)),
+                ('modified', models.DateTimeField(auto_now_add=True, help_text='Date/time the agreement was last updated (in ISO format)')),
             ],
         ),
         migrations.CreateModel(
@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
                 ('first_name', models.CharField(blank=True, max_length=30, verbose_name='first name')),
                 ('last_name', models.CharField(blank=True, max_length=30, verbose_name='last name')),
                 ('email', models.EmailField(blank=True, max_length=254, verbose_name='email address')),
-                ('claim_code', models.SlugField(blank=True, null=True)),
+                ('claim_code', models.SlugField(blank=True, help_text='Code used to assign the cart item to a user in group buy', null=True)),
             ],
         ),
         migrations.CreateModel(
@@ -102,7 +102,7 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True)),
                 ('is_bulk_buyer', models.BooleanField(default=False,
                     help_text=mark_safe(_("Enable GroupBuy ("\
-                    "<a href=\"https://djaodjin.com/docs/#group-billing\""\
+                "<a href=\"https://www.djaodjin.com/docs/faq/#group-billing\""\
                     " target=\"_blank\">what is it?</a>)")))),
                 ('is_provider', models.BooleanField(default=False, help_text='The profile can fulfill the provider side of a subscription.')),
                 ('full_name', models.CharField(blank=True, max_length=100, verbose_name='Profile name')),
@@ -113,7 +113,7 @@ class Migration(migrations.Migration):
                 ('region', models.CharField(max_length=50, verbose_name='State/Province/County')),
                 ('postal_code', models.CharField(max_length=50, verbose_name='Zip/Postal code')),
                 ('country', django_countries.fields.CountryField(max_length=2)),
-                ('billing_start', models.DateField(auto_now_add=True, null=True)),
+                ('billing_start', models.DateField(help_text='Date at which the next automatic charge will be generated (in ISO format)', null=True)),
                 ('funds_balance', models.PositiveIntegerField(default=0, help_text='Funds escrowed in currency unit')),
                 ('processor_card_key', models.SlugField(blank=True, max_length=255, null=True)),
                 ('processor_deposit_key', models.SlugField(blank=True, help_text='Used to deposit funds to the organization bank account', max_length=255, null=True)),
@@ -130,8 +130,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('slug', models.SlugField(unique=True)),
-                ('title', models.CharField(max_length=50, null=True)),
-                ('description', models.TextField()),
+                ('title', models.CharField(help_text='Short description of the plan', max_length=50, null=True)),
+                ('description', models.TextField(help_text='Long description of the plan')),
                 ('is_active', models.BooleanField(default=False)),
                 ('is_not_priced', models.BooleanField(default=False, help_text='True if the plan has no pricing (i.e. contact us)')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),

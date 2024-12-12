@@ -242,9 +242,9 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
             # If we are deleting a provider, freeze all its plans as well
             # subscriptions to these plans.
-            obj.plans.subscriptions.filter(
+            Subscription.objects.filter(plan__organization=obj,
                 ends_at__gt=at_time).update(ends_at=at_time)
-            obj.plans.subscriptions.filter(
+            Subscription.objects.filter(plan__organization=obj,
                 auto_renew=True).update(auto_renew=False)
             obj.plans.update(is_active=False)
 

@@ -339,6 +339,8 @@ class StripeBackend(object):
 
         if self.mode == self.LOCAL and orig_total_broker_fee_amount:
             distribute_amount += processor_fee_amount
+            assert broker_fee_amount >= processor_fee_amount
+            broker_fee_amount -= processor_fee_amount
 
         if not distribute_unit:
             distribute_unit = stripe_charge.currency

@@ -152,18 +152,35 @@ class PhoneField(serializers.Field):
 
 class PlanRelatedField(serializers.RelatedField):
 
+    default_error_messages = {
+      'required': _('This field is required.'),
+      'does_not_exist': _("Plan '{pk_value}' does not exist or is inactive."),
+    }
+
     def __init__(self, **kwargs):
+        is_active = kwargs.pop('is_active', None)
         super(PlanRelatedField, self).__init__(
-            queryset=Plan.objects.all(), **kwargs)
+            queryset=Plan.objects.filter(is_active=True) if is_active
+            else Plan.objects.all(), **kwargs)
 
     def to_representation(self, value):
         return value.slug
 
     def to_internal_value(self, data):
-        return get_object_or_404(Plan.objects.all(), slug=data)
+        try:
+            return self.queryset.get(slug=data)
+        except Plan.DoesNotExist:
+            self.fail('does_not_exist', pk_value=data)
+        return None
 
 
 class UseChargeRelatedField(serializers.RelatedField):
+
+    default_error_messages = {
+      'required': _('This field is required.'),
+      'does_not_exist':
+        _("UseCharge '{pk_value}' does not exist or is inactive."),
+    }
 
     def __init__(self, **kwargs):
         super(UseChargeRelatedField, self).__init__(
@@ -173,7 +190,11 @@ class UseChargeRelatedField(serializers.RelatedField):
         return value.slug
 
     def to_internal_value(self, data):
-        return get_object_or_404(UseCharge.objects.all(), slug=data)
+        try:
+            return self.queryset.get(slug=data)
+        except UseCharge.DoesNotExist:
+            self.fail('does_not_exist', pk_value=data)
+        return None
 
 
 class RoleDescriptionRelatedField(serializers.RelatedField):
@@ -998,16 +1019,17 @@ class CartItemSerializer(serializers.ModelSerializer):
     """
     user = get_user_serializer()(
         help_text=_("User the cart belongs to"))
-    plan = PlanSerializer(
-        help_text=_("Item in the cart (if plan)"))
+    plan = PlanSerializer(help_text=_("Plan in the cart"))
+    use = UseChargeSerializer(help_text=_("Use charge in the cart"))
+
     detail = serializers.SerializerMethodField(read_only=True, required=False,
         help_text=_("Describes the result of the action"\
             " in human-readable form"))
 
     class Meta:
         model = CartItem
-        fields = ('created_at', 'user', 'claim_code',
-            'plan', 'option', 'use', 'quantity',
+        fields = ('created_at', 'user', 'plan', 'use',
+            'option', 'quantity', 'claim_code',
             'sync_on', 'full_name', 'email', 'detail')
         read_only_fields = ('created_at', 'user', 'claim_code', 'detail')
 
@@ -1038,7 +1060,7 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
     """
     Serializer to build a request.user set of plans to subscribe to (i.e. cart).
     """
-    plan = PlanRelatedField(read_only=False, required=True,
+    plan = PlanRelatedField(is_active=True, read_only=False, required=True,
         help_text=_("The plan to add into the request.user cart."))
     use = UseChargeRelatedField(required=False,
         help_text=_("The use charge to add into the request.user cart."))
@@ -1051,6 +1073,16 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = ('created_at', 'plan', 'option',
                   'use', 'quantity', 'sync_on', 'full_name', 'email')
+
+    def validate(self, attrs):
+        use = attrs.get('use')
+        if use:
+            plan = attrs.get('plan')
+            if use.plan != plan:
+                raise ValidationError(
+                _("UseCharge %(use)s does not belong to plan %(plan)s")
+                % {'use': use, 'plan': plan})
+        return super(CartItemCreateSerializer, self).validate(attrs)
 
 
 class UserCartItemCreateSerializer(CartItemCreateSerializer):

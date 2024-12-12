@@ -262,8 +262,6 @@ class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
         # `organizations = [organization]` earlier in the code.
         resp_serializer = self.serializer_class(
             instance=notified[0], context=self.get_serializer_context())
-        result = resp_serializer.data
-
         return Response(resp_serializer.data, status=resp_status,
             headers=self.get_success_headers(resp_serializer.data))
 

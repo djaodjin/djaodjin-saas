@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='usecharge',
             name='maximum_limit',
-            field=models.PositiveIntegerField(default=0, null=True),
+            field=models.PositiveIntegerField(default=0, help_text='Maximum spend limit per period above which the subscriber is notified (in currency unit)', null=True),
         )
     ]

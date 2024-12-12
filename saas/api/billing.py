@@ -30,10 +30,9 @@ from __future__ import unicode_literals
 import csv, logging
 
 from django.contrib import messages
-from rest_framework import generics
+from rest_framework import generics, serializers, status
 from rest_framework.mixins import CreateModelMixin
 from rest_framework import response as http
-from rest_framework import status
 
 from ..backends import ProcessorError
 from ..compat import gettext_lazy as _, is_authenticated, StringIO
@@ -543,7 +542,8 @@ of Xia",
         serializer = self.get_serializer(resp_data)
         return http.Response(serializer.data)
 
-    def create(self, request, *args, **kwargs):#pylint:disable=unused-argument
+    def create(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument,too-many-locals
         serializer = CheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -559,6 +559,12 @@ of Xia",
                     continue
                 selected = queryset[index]['options'][opt_index]
                 queryset[index]['lines'].append(selected)
+                queryset[index].update({'options': []})
+        for invoicable in queryset:
+            if invoicable['options']:
+                raise serializers.ValidationError({'detail':
+            _("Cannot checkout when there are still options to choose from.")})
+
         self.organization.update_address_if_empty(country=data.get('country'),
             region=data.get('region'), locality=data.get('locality'),
             street_address=data.get('street_address'),

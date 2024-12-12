@@ -931,7 +931,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
         update_context_urls(context, urls)
 
         for rank, line in enumerate(context['charge_items']):
-            event = line.invoiced.get_event()
+            event = line.invoiced.get_event() # Subscription,
+                                              # or Coupon (i.e. Group buy)
             setattr(line, 'rank', rank)
             setattr(line, 'refundable',
                 event and _valid_manager(self.request, [event.provider]))

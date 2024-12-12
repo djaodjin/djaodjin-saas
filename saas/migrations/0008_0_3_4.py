@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='usecharge',
             name='quota',
-            field=models.PositiveIntegerField(default=0),
+            field=models.PositiveIntegerField(default=0, help_text='Usage included in the plan (in units defined by the provider)'),
         ),
         migrations.AlterField(
             model_name='balanceline',
@@ -309,10 +309,5 @@ class Migration(migrations.Migration):
             model_name='usecharge',
             name='extra',
             field=models.TextField(help_text='Extra meta data (can be stringify JSON)', null=True),
-        ),
-        migrations.AlterField(
-            model_name='usecharge',
-            name='plan',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='use_charges', to='saas.Plan'),
         ),
     ]

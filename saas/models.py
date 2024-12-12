@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -119,7 +119,7 @@ class OrganizationManager(models.Manager):
 
     def create_organization_from_user(self, user):
         with transaction.atomic():
-            organization = self.organization_model.objects.create(
+            organization = self.create(
                 slug=user.username,
                 full_name=user.get_full_name(),
                 email=user.email)
@@ -212,7 +212,8 @@ class OrganizationManager(models.Manager):
             assert invoiced_item.orig_account in (Transaction.RECEIVABLE,
                 Transaction.SETTLED)
             results |= set([invoiced_item.orig_organization])
-            event = invoiced_item.get_event()
+            event = invoiced_item.get_event() # Subscription,
+                                              # or Coupon (i.e. Group buy)
             if event:
                 results |= set([event.provider])
         return list(results)
@@ -301,7 +302,7 @@ class AbstractOrganization(models.Model):
     # allow one processor per organization at a time.
     subscribes_to = models.ManyToManyField('saas.Plan',
         related_name='subscribers', through='saas.Subscription')
-    billing_start = models.DateField(null=True, auto_now_add=True,
+    billing_start = models.DateField(null=True,
         help_text=_("Date at which the next automatic charge"\
         " will be generated (in ISO format)"))
 
@@ -774,79 +775,124 @@ class AbstractOrganization(models.Model):
 
     def execute_order(self, invoicables, user):
         """
-        From the list of *invoicables*, clear the user Cart, create
-        the required Transaction to record the order, create/extends
-        Subscription and generate the claim codes for GroupBuy.
+        Records and executes the order described by *invoicables*
+
+        This method takes *invoicables* (a dictionnary structured
+        by the checkout API JSON format) and a *user* cart.
+        It records
+        `Transaction` for the order, and creates or extends
+        `Subscription` and `SubscriptionUse` for profiles already
+        in the system, while generating claim codes for other cart items,
+        after a generated 100% discount coupon as been attached to them.
+        These claim codes can then be shared with profiles to register
+        and access "free" (i.e. paid by this profile) subscriptions.
+
+        This method then returns the list of `Transaction` recorded
+        for the order, and a list of (claim_code, `Organization`) pairs
+        for profiles to invite to the system.
+
+        **Examples**
+
+        .. code-block:: python
+
+        invoiceables = [{
+           'subscription': Subscription(
+               organization='xia170', plan='club170-basic',
+               ends_at='2024-12-09 19:41:20.555505+00:00'),
+           'lines': [
+             Transaction(descr='Subscription to club170-basic'\
+                 ' until 2025/12/09 (12 months) - a 10% discount'),
+             Transaction(descr='Buy 1 club170-basic Requests')
+             Transaction(descr='Buy 1 club170-basic Storage')
+           ],
+           'name': 'cart-club170-basic',
+           'descr': 'Club170 Basic from Club170'
+         }]
+
         """
-        #pylint: disable=too-many-locals, too-many-statements
-        claim_carts = {}
-        invoiced_items = []
-        new_organizations = []
-        coupon_by_plans = {}
+        #pylint:disable=too-many-locals,too-many-statements
+        order_executed_items = [] # list of `Transaction` recording the order
+        nb_invites_by_plans = {}  # list nb of coupon use indexed by `Plan.id`
+        # `invites_by_profiles` collects the 'organization', 'cart_items' and
+        # 'claim_code' for profiles which are not present in the database.
+        invites_by_profiles = {}
         for invoicable in invoicables:
             subscription = invoicable['subscription']
+            key = subscription.organization.email
             # If the invoicable we are checking out is somehow related to
             # a user shopping cart, we mark that cart item as recorded
             # unless the organization does not exist in the database,
             # in which case we will create a claim_code for it.
-            cart_item = None
-            # XXX Two use charges, sync_on is username will raise a 500 error
-            # because of multiple CartItem.
             cart_items = CartItem.objects.get_cart(user, plan=subscription.plan)
-            if cart_items.exists():
-                # We are doing a groupBuy for a specified email.
-                bulk_items = cart_items.filter(
-                    sync_on__iexact=subscription.organization.email)
-                if bulk_items.exists():
-                    cart_item = bulk_items.get()
-                else:
-                    cart_item = cart_items.get()
-            # XXX We have the cart_item here for an invoicable,
-            # or invoicable['lines'] which will end up as ChargeItems.
-            if cart_item:
+            if subscription.organization.id:
+                sync_on_cart_items = cart_items.filter(
+                    Q(sync_on=key) | Q(sync_on="") | Q(sync_on__isnull=True))
+                # We have an organization in the database, but it might
+                # be a new subscription.
                 for invoiced_item in invoicable['lines']:
-                    setattr(invoiced_item, 'invoice_key', cart_item.claim_code)
-                    setattr(invoiced_item, 'sync_on', cart_item.sync_on)
+                    if (invoiced_item.is_sub_event_id and
+                        not invoiced_item.is_sub_use_event_id):
+                        subscription.extends(
+                          subscription.plan.period_number(invoiced_item.descr))
+                        break
+                # If it exists in the invoicable line items, the subscription
+                # is now recorded in the database, hence as a `pk`.
+                sub_event_id = get_sub_event_id(subscription)
+                for invoiced_item in invoicable['lines']:
+                    # We rely on `get_sub_event_id` to create a generic 'sub_0/'
+                    # prefix for subscription which have not yet been committed
+                    # to the database.
+                    invoiced_item.event_id = re.sub(r'^sub_0/',
+                        sub_event_id, invoiced_item.event_id)
+                    invoiced_item.save()
+                    order_executed_items += [invoiced_item]
+                    look = re.match(r'^sub_(\d+)/(\d+)/',
+                        invoiced_item.event_id)
+                    if not look:
+                        continue
+                    use_charge = UseCharge.objects.get(pk=int(look.group(2)))
+                    cart_item = sync_on_cart_items.filter(use=use_charge).get()
+                    quantity = cart_item.quantity
+                    if not quantity:
+                        quantity = 1
+                    try:
+                        usage = SubscriptionUse.objects.get(
+                            subscription=subscription, use=use_charge)
+                        usage.rollover_quota += quantity
+                    except SubscriptionUse.DoesNotExist:
+                        SubscriptionUse.objects.create(
+                            subscription=subscription, use=use_charge,
+                            expiring_quota=use_charge.quota,
+                            rollover_quota=quantity)
+                sync_on_cart_items.update(recorded=True)
 
-            if not subscription.organization.id:
+            else:
                 # When the organization does not exist into the database,
                 # we will create a random (i.e. hard to guess) claim code
                 # that will be emailed to the expected subscriber.
-                key = subscription.organization.email
-                if not key in new_organizations:
-                    claim_carts[key] = []
-                    new_organizations += [subscription.organization]
-                    if subscription.plan not in coupon_by_plans:
-                        coupon_by_plans.update({subscription.plan: 1})
-                    else:
-                        coupon_by_plans[subscription.plan] += 1
-                assert cart_item is not None
-                claim_carts[key] += [cart_item]
-            else:
-                LOGGER.info("[checkout] save subscription of %s to %s",
-                    subscription.organization, subscription.plan,
-                    extra={'event': 'upsert-subscription',
-                        'organization': subscription.organization.slug,
-                        'plan': subscription.plan.slug})
-                if not subscription.organization.billing_start:
-                    # If we don't have an automatic invoicing schedule yet,
-                    # let's create one.
-                    subscription.organization.billing_start = (
-                        subscription.created_at + relativedelta(months=1))
-                    subscription.organization.save()
-                subscription.save()
-                if cart_item:
-                    cart_item.recorded = True
-                    cart_item.save()
+                sync_on_cart_items = list(cart_items.filter(
+                    sync_on__iexact=key))
+                if not key in invites_by_profiles:
+                    invites_by_profiles.update({
+                        key: {
+                            'organization': subscription.organization,
+                            'cart_items': sync_on_cart_items,
+                            'claim_code': None
+                    }})
+                else:
+                    invites_by_profiles[key]['cart_items'] += sync_on_cart_items
+                if subscription.plan not in nb_invites_by_plans:
+                    nb_invites_by_plans.update({subscription.plan: 1})
+                else:
+                    nb_invites_by_plans[subscription.plan] += 1
 
         # At this point we have gathered all the ``Organization``
         # which have yet to be registered. For these no ``Subscription``
         # has been created yet. We create a claim_code that will
         # be emailed to the expected subscribers such that it will populate
         # their cart automatically.
-        coupons = {}
-        claim_codes = {}
-        for plan, nb_attempts in six.iteritems(coupon_by_plans):
+        coupons = {} # list of `Coupon` indexed by `Plan.id`
+        for plan, nb_attempts in six.iteritems(nb_invites_by_plans):
             coupon = Coupon.objects.create(
                 code='cpn_%s' % generate_random_slug(),
                 organization=plan.organization,
@@ -862,51 +908,46 @@ class AbstractOrganization(models.Model):
                 'coupon': coupon.code, 'auto': True,
                 'provider': plan.organization.slug})
             coupons.update({plan.pk: coupon})
-        for key, cart_items in six.iteritems(claim_carts):
-            claim_code = None
-            for cart_item in cart_items:
+
+        for key, invite in six.iteritems(invites_by_profiles):
+            claim_code = generate_random_slug()
+            invite['claim_code'] = claim_code
+            for cart_item in invite['cart_items']:
                 cart_item.sync_on = ""
                 cart_item.user = None
                 cart_item.full_name = self.printable_name
-                if cart_item.claim_code:
-                    claim_codes.update({key: cart_item.claim_code})
-                else:
-                    if not claim_code:
-                        claim_code = generate_random_slug()
-                    cart_item.claim_code = claim_code
+                cart_item.claim_code = claim_code
                 cart_item.coupon = coupons[cart_item.plan.pk]
                 cart_item.save()
-            if claim_code:
-                nb_cart_items = len(cart_items)
-                LOGGER.info("Generated claim code '%s' for %d cart items",
-                    claim_code, nb_cart_items, extra={
-                        'event': 'create-claim',
-                        'claim_code': claim_code,
-                        'nb_cart_items': nb_cart_items})
-                claim_codes.update({key: claim_code})
+            nb_cart_items = len(cart_items)
+            LOGGER.info("Generated claim code '%s' for %d cart items",
+                claim_code, nb_cart_items, extra={
+                    'event': 'create-claim',
+                    'claim_code': claim_code,
+                    'nb_cart_items': nb_cart_items})
 
         # We now either have a ``subscription.id`` (subscriber present
         # in the database) or a ``Coupon`` (subscriber absent from
         # the database).
         for invoicable in invoicables:
             subscription = invoicable['subscription']
-            if subscription.id:
-                event_id = get_sub_event_id(subscription)
-            else:
+            if not subscription.organization.id:
                 coupon = coupons[subscription.plan.pk]
-                # XXX should we not use a `cpn_` prefixed event_id here?
-                #     see also InvoicedItem.get_event()
-                event_id = coupon.code
-            for invoiced_item in invoicable['lines']:
-                # definitely invoice_key should be set by then.
-                invoiced_item.event_id = event_id
-                invoiced_items += [invoiced_item]
+                # Coupon.code will be the `cpn_` prefixed event_id as it was
+                # generated earlier.
+                for invoiced_item in invoicable['lines']:
+                    invoiced_item.event_id = coupon.code
+                    invoiced_item.save()
+                    order_executed_items += [invoiced_item]
 
-        # Insures all invoiced_items have been stored
-        # as ``Transaction`` into the database.
-        order_executed_items = Transaction.objects.record_order(
-            invoiced_items, user)
-        return new_organizations, claim_codes, order_executed_items
+        if order_executed_items:
+            signals.order_executed.send(
+                sender=__name__, invoiced_items=order_executed_items, user=user)
+
+        return (order_executed_items,
+            [(invite['claim_code'], invite['organization'])
+            for invite in six.itervalues(invites_by_profiles)])
+
 
     def checkout(self, invoicables, user, token=None, remember_card=True):
         """
@@ -916,18 +957,17 @@ class AbstractOrganization(models.Model):
         """
         charge = None
         with transaction.atomic():
-            new_organizations, claim_codes, invoiced_items = self.execute_order(
+            invoiced_items, invited_organizations = self.execute_order(
                 invoicables, user)
             charge = Charge.objects.charge_card(self, invoiced_items,
                 user=user, token=token, remember_card=remember_card)
 
-            # We email users which have yet to be registerd after the charge
-            # is created, just that we don't inadvertently email new subscribers
-            # in case something goes wrong.
-            for organization in new_organizations:
-                signals.claim_code_generated.send(
-                    sender=__name__, subscriber=organization,
-                    claim_code=claim_codes[organization.email], user=user)
+        # We email users which have yet to be registerd after the charge
+        # is created, just that we don't inadvertently email new subscribers
+        # in case something goes wrong.
+        for claim_code, organization in invited_organizations:
+            signals.claim_code_generated.send(sender=__name__,
+                subscriber=organization, claim_code=claim_code, user=user)
 
         return charge
 
@@ -1461,8 +1501,24 @@ class ChargeManager(models.Manager):
     def by_customer(self, organization):
         return self.filter(customer=organization)
 
+    def get_by_event_id(self, event_id):
+        """
+        Returns a `Charge` based on a `Transaction.event_id` key.
+        """
+        if not event_id:
+            return None
+        look = re.match(r'^cha_(\d+)/', event_id)
+        if not look:
+            return None
+        try:
+            return self.get(pk=int(look.group(1)))
+        except Charge.DoesNotExist:
+            pass
+        return None
+
     def in_progress_for_customer(self, organization):
         return self.by_customer(organization).filter(state=Charge.CREATED)
+
 
     def settle_customer_payments(self, organization):
         """
@@ -1549,7 +1605,7 @@ class ChargeManager(models.Manager):
             return None
 
         broker_fee_amount = 0
-        for invoiced_item in transactions:
+        for invoiced_item in transactions: # XXX same code as `Charge.broker_fee_amount`
             if invoiced_item.subscription:
                 broker_fee_amount += \
                     invoiced_item.subscription.plan.prorate_transaction(
@@ -2045,15 +2101,21 @@ class Charge(models.Model):
             # 2014/01/15 charge on xia card
             #     stripe:Funds                                 15800
             #     xia:Liability
-            orig_total_broker_fee_amount = self.broker_fee_amount
+            orig_total = self.amount
+            orig_broker_fee = self.broker_fee_amount
             charge_available_amount, funds_unit, \
                 charge_processor_fee_amount, processor_funds_unit, \
                 charge_broker_fee_amount, broker_funds_unit \
                 = self.processor_backend.charge_distribution(self,
-                    orig_total_broker_fee_amount=orig_total_broker_fee_amount)
+                    orig_total_broker_fee_amount=orig_broker_fee)
             charge_amount = (charge_available_amount
                 + charge_processor_fee_amount + charge_broker_fee_amount)
             assert isinstance(charge_amount, six.integer_types)
+
+            dest_total = charge_amount
+            dest_distribute = charge_available_amount
+            dest_broker_fee = charge_broker_fee_amount
+            # dest_processor_fee = charge_processor_fee_amount
 
             charge_transaction = Transaction.objects.create(
                 event_id=get_charge_event_id(self),
@@ -2061,11 +2123,11 @@ class Charge(models.Model):
                 created_at=self.created_at,
                 dest_unit=self.unit,
                 # XXX provider and processor must have same units.
-                dest_amount=self.amount,
+                dest_amount=orig_total,
                 dest_account=Transaction.FUNDS,
                 dest_organization=self.processor,
                 orig_unit=self.unit,
-                orig_amount=self.amount,
+                orig_amount=orig_total,
                 orig_account=Transaction.LIABILITY,
                 orig_organization=self.customer)
 
@@ -2073,6 +2135,8 @@ class Charge(models.Model):
             # redistribute the funds to their rightful owners.
             for charge_item in self.charge_items.all():
                 invoiced_item = charge_item.invoiced
+                item_orig_total = invoiced_item.dest_amount
+                item_orig_unit = invoiced_item.dest_unit
 
                 # If there is still an amount on the ``Payable`` account,
                 # we create Payable to Liability transaction in order to correct
@@ -2082,7 +2146,7 @@ class Charge(models.Model):
                     invoiced_item.event_id, account=Transaction.PAYABLE)
                 balance_payable = balance['amount']
                 if balance_payable > 0:
-                    available = min(invoiced_item.dest_amount, balance_payable)
+                    available = min(item_orig_total, balance_payable)
                     # Example:
                     # 2014/01/15 keep a balanced ledger
                     #     xia:Liability                                 15800
@@ -2103,79 +2167,76 @@ class Charge(models.Model):
                 # XXX event_id is used for provider and in description.
                 event = None
                 event_id = invoiced_item.event_id
-                orig_item_amount = invoiced_item.dest_amount
-                if invoiced_item.event_id:
-                    event = invoiced_item.get_event()
                 broker = get_broker()
-                orig_broker_fee_amount = 0
+                item_orig_broker_fee = 0
+                event = invoiced_item.get_event() # Subscription,
+                                                  # or Coupon (i.e. Group buy)
                 if event:
                     # XXX event shouldn't be anything but a Subscription here.
                     # How could it be Coupon?
                     provider = event.provider
-                    if invoiced_item.subscription:
-                        orig_broker_fee_amount = \
-                            invoiced_item.subscription.plan.prorate_transaction(
-                                orig_item_amount)
+                    if isinstance(event, Subscription):
+                        item_orig_broker_fee = event.plan.prorate_transaction(
+                            item_orig_total)
                 else:
                     provider = broker
-                # self.amount = orig_item_amount_1 + orig_item_amount_2
-                # orig_item_amount_1 = (orig_distribute_amount_1
-                #     + orig_processor_fee_amount_1 + orig_broker_fee_amount_1)
+                # orig_total = item_orig_total_1 + item_orig_total_2
+                # item_orig_total_1 = (item_orig_distribute_1
+                #     + item_orig_processor_fee_1 + item_orig_broker_fee_1)
 
                 # As long as we have only one item and charge/funds are using
                 # same unit, multiplication and division are carefully crafted
                 # to keep full precision.
                 # XXX to check with transfer btw currencies and multiple items.
                 # integer divisions
-                # `orig_processor_fee_amount = (orig_charge_processor_fee_amount
-                #    * orig_item_amount // self.amount)`
-                # simplifies to:
-                orig_processor_fee_amount = (orig_item_amount
-                    * charge_processor_fee_amount // charge_amount)
-                orig_distribute_amount = (orig_item_amount
-                    - orig_processor_fee_amount - orig_broker_fee_amount)
-                assert isinstance(orig_processor_fee_amount, six.integer_types)
-                assert isinstance(orig_broker_fee_amount, six.integer_types)
-                assert isinstance(orig_distribute_amount, six.integer_types)
+                item_orig_distribute = (
+                    item_orig_total * dest_distribute // dest_total)
+                item_orig_processor_fee = (item_orig_total
+                    - item_orig_distribute - item_orig_broker_fee)
+
+                assert isinstance(item_orig_processor_fee, six.integer_types)
+                assert isinstance(item_orig_broker_fee, six.integer_types)
+                assert isinstance(item_orig_distribute, six.integer_types)
 
                 # integer divisions
+                item_dest_total = item_orig_total * dest_total // orig_total
+
                 # The charge_broker_fee_amount must be split amongst all items
                 # with a broker fee rather than equaly amongst all items.
-                processor_fee_amount = (charge_processor_fee_amount
-                    * orig_item_amount // self.amount)
-                if orig_total_broker_fee_amount:
-                    broker_fee_amount = (
-                        charge_broker_fee_amount * orig_broker_fee_amount
-                        // orig_total_broker_fee_amount)
+                if orig_broker_fee:
+                    item_dest_broker_fee = (
+                      item_orig_broker_fee * dest_broker_fee // orig_broker_fee)
                 else:
-                    broker_fee_amount = 0
-                distribute_amount = (
-                    (charge_available_amount + charge_broker_fee_amount)
-                    * orig_item_amount // self.amount) - broker_fee_amount
-                item_amount = ((distribute_amount
-                    + processor_fee_amount + broker_fee_amount)
-                    if self.unit != funds_unit else orig_item_amount)
+                    item_dest_broker_fee = 0
+                item_dest_distribute = (
+                    item_dest_total * dest_distribute // dest_total)
+                item_dest_processor_fee = (item_dest_total
+                    - item_dest_distribute - item_dest_broker_fee)
 
-                assert isinstance(processor_fee_amount, six.integer_types)
-                assert isinstance(broker_fee_amount, six.integer_types)
-                assert isinstance(distribute_amount, six.integer_types)
+                assert isinstance(item_dest_processor_fee, six.integer_types)
+                assert isinstance(item_dest_broker_fee, six.integer_types)
+                assert isinstance(item_dest_distribute, six.integer_types)
 
                 LOGGER.debug("payment_successful(charge=%s)"\
+                    " distribute: %d %s (%d %s),"\
+                    " broker fee: %d %s (%d %s),"\
+                    " processor fee: %d %s (%d %s) out of total"\
                     " distribute: %d %s,"\
-                    " broker fee: %d %s,"\
-                    " processor fee: %d %s out of total"\
-                    " distribute: %d %s,"\
-                    " broker fee: %d %s,"\
+                    " broker fee: %d %s (%d %s),"\
                     " processor fee: %d %s",
                     self.processor_key,
-                    distribute_amount, funds_unit,
-                    broker_fee_amount, broker_funds_unit,
-                    processor_fee_amount, processor_funds_unit,
+                    item_dest_distribute, funds_unit,
+                    item_orig_distribute, item_orig_unit,
+                    item_dest_broker_fee, broker_funds_unit,
+                    item_orig_broker_fee, item_orig_unit,
+                    item_dest_processor_fee, processor_funds_unit,
+                    item_orig_processor_fee, item_orig_unit,
                     charge_available_amount, funds_unit,
                     charge_broker_fee_amount, broker_funds_unit,
+                    orig_broker_fee, item_orig_unit,
                     charge_processor_fee_amount, processor_funds_unit)
 
-                if processor_fee_amount > 0:
+                if item_dest_processor_fee > 0:
                     # Example:
                     # 2014/01/15 processor fee to cowork
                     #     cowork:Expenses                             900
@@ -2187,18 +2248,18 @@ class Charge(models.Model):
                             'charge': self.processor_key, 'event': event_id},
                         event_id=get_charge_event_id(self),
                         dest_unit=funds_unit,
-                        dest_amount=processor_fee_amount,
+                        dest_amount=item_dest_processor_fee,
                         dest_account=Transaction.EXPENSES,
                         dest_organization=broker,
                         orig_unit=self.unit,
-                        orig_amount=orig_processor_fee_amount,
+                        orig_amount=item_orig_processor_fee,
                         orig_account=Transaction.BACKLOG,
                         orig_organization=self.processor)
                     # pylint:disable=no-member
-                    self.processor.funds_balance += processor_fee_amount
+                    self.processor.funds_balance += item_dest_processor_fee
                     self.processor.save()
 
-                if broker_fee_amount > 0:
+                if item_dest_broker_fee > 0:
                     # Example:
                     # 2014/01/15 broker fee to cowork
                     #     cowork:Expenses                             900
@@ -2214,11 +2275,11 @@ class Charge(models.Model):
                             'charge': self.processor_key, 'event': event_id},
                         event_id=get_charge_event_id(self),
                         dest_unit=funds_unit,
-                        dest_amount=item_amount - distribute_amount,
+                        dest_amount=item_dest_total - item_dest_distribute,
                         dest_account=Transaction.EXPENSES,
                         dest_organization=provider,
                         orig_unit=self.unit,
-                        orig_amount=orig_item_amount - orig_distribute_amount,
+                        orig_amount=item_orig_total - item_orig_distribute,
                         orig_account=Transaction.BACKLOG,
                         orig_organization=broker)
                     Transaction.objects.create(
@@ -2227,16 +2288,14 @@ class Charge(models.Model):
                         descr=humanize.DESCRIBE_CHARGED_CARD_BROKER % {
                                 'charge': self.processor_key, 'event': event},
                         dest_unit=funds_unit,
-                        dest_amount=(item_amount -
-                            processor_fee_amount - distribute_amount),
+                        dest_amount=item_dest_broker_fee,
                         dest_account=Transaction.FUNDS,
                         dest_organization=broker,
                         orig_unit=self.unit,
-                        orig_amount=(orig_item_amount -
-                            orig_processor_fee_amount - orig_distribute_amount),
+                        orig_amount=item_orig_broker_fee,
                         orig_account=Transaction.FUNDS,
                         orig_organization=self.processor)
-                    broker.funds_balance += broker_fee_amount
+                    broker.funds_balance += item_dest_broker_fee
                     broker.save()
 
                 # Example:
@@ -2260,34 +2319,36 @@ class Charge(models.Model):
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
                             'charge': self.processor_key, 'event': event},
                     dest_unit=self.unit,
-                    dest_amount=orig_item_amount,
+                    dest_amount=item_orig_total,
                     dest_account=Transaction.RECEIVABLE,
                     dest_organization=provider,
                     orig_unit=funds_unit,
-                    orig_amount=item_amount,
+                    orig_amount=item_dest_total,
                     orig_account=Transaction.BACKLOG,
                     orig_organization=provider)
 
                 # See comment above for use of `event`.
+                if self.unit == funds_unit:
+                    assert item_orig_distribute == item_dest_distribute
                 charge_item.invoiced_distribute = Transaction.objects.create(
                     event_id=get_charge_event_id(self),
                     created_at=self.created_at,
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
                             'charge': self.processor_key, 'event': event},
                     dest_unit=funds_unit,
-                    dest_amount=distribute_amount,
+                    dest_amount=item_dest_distribute,
                     dest_account=Transaction.FUNDS,
                     dest_organization=provider,
                     orig_unit=self.unit,
-                    orig_amount=orig_distribute_amount,
+                    orig_amount=item_orig_distribute,
                     orig_account=Transaction.FUNDS,
                     orig_organization=self.processor)
                 charge_item.save()
-                provider.funds_balance += distribute_amount
+                provider.funds_balance += item_dest_distribute
                 provider.save()
 
             invoiced_amount = self.invoiced_total.amount
-            if invoiced_amount > self.amount:
+            if invoiced_amount > orig_total:
                 raise IntegrityError("The total amount of invoiced items for "\
                     "charge %s exceed the amount of the charge." %
                     self.processor_key)
@@ -3006,6 +3067,21 @@ class CouponManager(models.Manager):
             code__iexact=code, # case incensitive search.
             organization=organization)
 
+    def get_by_event_id(self, event_id):
+        """
+        Returns a `Coupon` based on a `Transaction.event_id` key.
+        """
+        if not event_id:
+            return None
+        look = re.match(r'^cpn_(\S+)', event_id)
+        if not look:
+            return None
+        try:
+            return self.get(code=event_id)
+        except Coupon.DoesNotExist:
+            pass
+        return None
+
 
 @python_2_unicode_compatible
 class Coupon(models.Model):
@@ -3103,7 +3179,9 @@ class Coupon(models.Model):
             if str(self.ends_at) == 'never':
                 self.ends_at = None
         else:
+            # Coupon expires in 30 days by default.
             self.ends_at = self.created_at + datetime.timedelta(days=30)
+
         super(Coupon, self).save(force_insert=force_insert,
              force_update=force_update, using=using,
              update_fields=update_fields)
@@ -3129,10 +3207,11 @@ class UseCharge(SlugTitleMixin, models.Model):
     use_amount = models.PositiveIntegerField(default=0,
         help_text=_("Amount of the use charge in plan currency unit"))
     quota = models.PositiveIntegerField(default=0,
-        help_text=_("Number of use charge included in the plan"))
+        help_text=_("Usage included in the plan"\
+            " (in units defined by the provider)"))
     maximum_limit = models.PositiveIntegerField(default=0, null=True,
-        help_text=_("Maximum number of use charge added per period"\
-            " before notififying subscriber"))
+        help_text=_("Maximum spend limit per period above which"\
+            " the subscriber is notified (in currency unit)"))
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -3153,7 +3232,7 @@ class CartItemManager(models.Manager):
         # Order by plan then id so the order is consistent between
         # billing/cart(-.*)/ pages.
         return self.filter(user=user, recorded=False,
-            *args, **kwargs).order_by('plan', 'id')
+            *args, **kwargs).order_by('plan', 'sync_on', 'id')
 
     def get_personal_cart(self, user):
         return self.get_cart(user).filter(plan__is_personal=True)
@@ -3267,7 +3346,8 @@ class CartItem(models.Model):
         help_text=_("Code used to assign the cart item to a user in group buy"))
 
     def __str__(self):
-        return '%s-%s' % (self.user, self.plan)
+        user_plan = '%s-%s' % (self.user, self.plan)
+        return '%s-%s' % (user_plan, self.use) if self.use else user_plan
 
     @property
     def descr(self):
@@ -3282,8 +3362,16 @@ class CartItem(models.Model):
     @property
     def name(self):
         result = 'cart-%s' % self.plan.slug
+        if self.use:
+            result = '%s-%s' % (result, self.use)
         if self.sync_on:
             result = '%s-%s' % (result, urlquote(self.sync_on))
+        return result
+
+    def merge_invoicable(self, cart_item):
+        result = bool(self.plan == cart_item.plan)
+        if self.sync_on and cart_item.sync_on:
+            result = bool(result and self.sync_on == cart_item.sync_on)
         return result
 
 
@@ -3369,10 +3457,19 @@ class SubscriptionManager(models.Manager):
         """
         Returns a `Subscription` based on a `Transaction.event_id` key.
         """
-        look = re.match(r'sub_(\d+)(_(\d+))?', event_id)
-        assert look is not None   # We have a big pb if this is not
-                                  # an subscription-formatted event_id
-        return self.get(pk=int(look.group(1)))
+        if not event_id:
+            return None
+        look = re.match(r'^sub_(\d+)/', event_id)
+        if not look:
+            return None
+        sub_id = int(look.group(1))
+        if not sub_id:
+            return None
+        try:
+            return self.get(pk=sub_id)
+        except Subscription.DoesNotExist:
+            pass
+        return None
 
     def new_instance(self, organization, plan, ends_at=None):
         """
@@ -3595,6 +3692,98 @@ class Subscription(models.Model):
         if queryset.exists():
             return queryset.first()
         return None
+
+    def extends(self, nb_periods=1):
+        """
+        Extends a Subscription by a number of periods
+
+        The Subscription might not have been recorded in the database yet
+        """
+        self.ends_at = self.plan.end_of_period(
+            self.ends_at if self.ends_at else self.created_at, nb_periods)
+        if self.pk is None and self.plan.optin_on_request:
+            self.request_key = generate_random_slug()
+        LOGGER.info(
+            "extends subscription of %s to %s until %s",
+            self.organization, self.plan,
+            self.ends_at, extra={
+                'event': 'upsert-subscription',
+                'organization': self.organization.slug,
+                'plan': self.plan.slug,
+                'ends_at': self.ends_at})
+        self.save()
+
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        super(Subscription, self).save(force_insert=force_insert,
+            force_update=force_update, using=using, update_fields=update_fields)
+        if not self.organization.billing_start:
+            # If we don't have an automatic invoicing schedule yet,
+            # let's create one.
+            self.organization.billing_start = (
+                self.created_at + relativedelta(months=1))
+            self.organization.save()
+
+
+class SubscriptionUseManager(models.Manager):
+
+    def get_by_event_id(self, event_id):
+        """
+        Returns a `SubscriptionUse` based on a `Transaction.event_id` key.
+        """
+        if not event_id:
+            return None
+        look = re.match(r'^sub_(\d+)/(\d+)/', event_id)
+        if not look:
+            return None
+        sub_id = int(look.group(1))
+        if not sub_id:
+            return None
+        try:
+            use_id = int(look.group(2))
+            return self.get(subscription__pk=sub_id, use__pk=use_id)
+        except Subscription.DoesNotExist:
+            pass
+        return None
+
+
+@python_2_unicode_compatible
+class SubscriptionUse(models.Model):
+    """
+    Tracks ``UseCharge`` on a ``Subscription``
+    """
+    objects = SubscriptionUseManager()
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE,
+        help_text=_("Subscription usage is added to"), related_name='uses')
+    use = models.ForeignKey(UseCharge, on_delete=models.CASCADE,
+        help_text=_("UseCharge refered to"))
+    expiring_quota = models.PositiveIntegerField(default=0,
+        help_text=_("Number of use events that expire at the end of the current period"))
+    rollover_quota = models.PositiveIntegerField(default=0,
+        help_text=_("Number of use events that rollover to the next period"))
+    used_quantity = models.PositiveIntegerField(default=0,
+        help_text=_("Number of use events generated over the life"\
+        " of the subscription"))
+    extra = get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
+
+    def __str__(self):
+        return '%s%s%s' % (str(self.subscription), Subscription.SEP,
+            str(self.use))
+
+    def extends(self):
+        """
+        Extends a SubscriptionUse by one period will replentish the quota
+        for the period.
+        """
+        self.expiring_quota = self.use.quota
+        self.save()
+
+    @property
+    def provider(self):
+        return self.subscription.provider
 
 
 class TransactionQuerySet(models.QuerySet):
@@ -3939,47 +4128,6 @@ class TransactionManager(models.Manager):
                 | {val['dest_account']
                     for val in self.all().values('dest_account').distinct()})
 
-    @staticmethod
-    def record_order(invoiced_items, user=None):
-        """
-        Save invoiced_items, a set of ``Transaction`` and update when
-        each associated ``Subscription`` ends.
-
-        This method returns the invoiced items as a QuerySet.
-
-        Constraints: All invoiced_items to same customer
-        """
-        # XXX need more explainations here !!!
-        order_executed_items = []
-        for invoiced_item in invoiced_items:
-            # When an customer pays on behalf of an organization
-            # which does not exist in the database, we cannot create
-            # a ``Subscription`` since we don't have an ``Organization`` yet.
-            pay_now = True
-            subscription = invoiced_item.get_event()
-            if subscription and isinstance(subscription, Subscription):
-                # There are some applications that are automatically extending
-                # subscriptions to a free plan and do not wish to notify
-                # subscribers about it.
-                pay_now = not subscription.plan.is_not_priced
-                subscription.ends_at = subscription.plan.end_of_period(
-                    subscription.ends_at,
-                    subscription.plan.period_number(invoiced_item.descr))
-                if subscription.plan.optin_on_request:
-                    subscription.request_key = generate_random_slug()
-                subscription.save()
-                if (subscription.plan.unlock_event
-                    and invoiced_item.dest_amount == 0):
-                    # We are dealing with access now, pay later, orders.
-                    invoiced_item.dest_amount = subscription.plan.period_amount
-                    pay_now = False
-            if pay_now:
-                invoiced_item.save()
-                order_executed_items += [invoiced_item]
-        if order_executed_items:
-            signals.order_executed.send(
-                sender=__name__, invoiced_items=order_executed_items, user=user)
-        return order_executed_items
 
     def get_invoiceables(self, organization, until=None):
         """
@@ -4187,9 +4335,13 @@ class TransactionManager(models.Manager):
             amount = custom_amount * quantity
         else:
             amount = use_charge.use_amount * quantity
-        event_id = get_sub_event_id(subscription, use_charge)
         if not descr:
             descr = humanize.describe_buy_use(use_charge, quantity)
+        # If the subscription has not yet been recorded in the database
+        # we don't have an id for it (see order/checkout pages). We store
+        # a 'sub_0/{user_charge.pk}' event_id. The 'sub_0/' prefix can later
+        # be replaced once the subscription is committed to the database.
+        event_id = get_sub_event_id(subscription, use_charge)
         return self.new_payable(
             subscription.organization, Price(amount, subscription.plan.unit),
             subscription.plan.organization, descr,
@@ -4232,11 +4384,11 @@ class TransactionManager(models.Manager):
             LOGGER.warning("creating a `new_subscription_order` for %s"\
                 " with amount %d has no description.",
                 subscription, amount)
-        event_id = None
-        if subscription.id:
-            # If the subscription has not yet been recorded in the database
-            # we don't have an id for it (see order/checkout pages).
-            event_id = get_sub_event_id(subscription)
+        # If the subscription has not yet been recorded in the database
+        # we don't have an id for it (see order/checkout pages). We thus
+        # record a 'sub_0/' event id that can later be replaced once
+        # the subscription is committed to the database.
+        event_id = get_sub_event_id(subscription)
         return self.new_payable(
             subscription.organization,
             Price(amount, subscription.plan.unit),
@@ -4451,7 +4603,8 @@ class TransactionManager(models.Manager):
         results = {}
         default_processor_key = get_broker().processor_backend.pub_key
         for invoiced_item in invoiced_items:
-            event = invoiced_item.get_event()
+            event = invoiced_item.get_event() # Subscription, SubscriptionUse,
+                                              # or Coupon (i.e. Group buy)
             if event:
                 processor_key = event.provider.processor_backend.pub_key
                 if not processor_key:
@@ -4549,6 +4702,21 @@ class Transaction(models.Model):
         return Price(self.orig_amount, self.orig_unit)
 
     @property
+    def is_sub_event_id(self):
+        """
+        Returns `True` if the `Transaction` refers to a `Subscription` or
+        `SubscriptionUse`.
+        """
+        return re.match(r'^sub_(\d+)/', self.event_id) is not None
+
+    @property
+    def is_sub_use_event_id(self):
+        """
+        Returns `True` if the `Transaction` refers to a `SubscriptionUse`.
+        """
+        return re.match(r'^sub_(\d+)/(\d+)/', self.event_id) is not None
+
+    @property
     def subscription(self):
         """
         Returns the `Subscription` object associated to the `Transaction`
@@ -4556,12 +4724,8 @@ class Transaction(models.Model):
         """
         #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_subscription'):
-            self._subscription = None
-            if self.event_id:
-                look = re.match(r'sub_(\d+)(_(\d+))?', self.event_id)
-                if look:
-                    self._subscription = Subscription.objects.get_by_event_id(
-                        self.event_id)
+            self._subscription = Subscription.objects.get_by_event_id(
+                self.event_id)
         return self._subscription
 
     def is_debit(self, organization):
@@ -4575,17 +4739,23 @@ class Transaction(models.Model):
 
     def get_event(self):
         """
-        Returns the associated 'event' (Subscription, Coupon, etc)
-        if available.
+        Returns the associated 'event' (SubscriptionUse, Subscription,
+        Charge, or Coupon) if available.
         """
-        if self.event_id:
-            look = re.match(r'sub_(\d+)(_(\d+))?', self.event_id)
-            if look:
-                return Subscription.objects.get_by_event_id(self.event_id)
-            try:
-                return Coupon.objects.get(code=self.event_id)
-            except (Coupon.DoesNotExist, ValueError):
-                pass
+        if not self.event_id:
+            return None
+        usage = SubscriptionUse.objects.get_by_event_id(self.event_id)
+        if usage:
+            return usage
+        subscription = Subscription.objects.get_by_event_id(self.event_id)
+        if subscription:
+            return subscription
+        charge = Charge.objects.get_by_event_id(self.event_id)
+        if charge:
+            return charge
+        coupon = Coupon.objects.get_by_event_id(self.event_id)
+        if coupon:
+            return coupon
         return None
 
 
@@ -4670,14 +4840,6 @@ def is_sqlite3(db_key=None):
     return connections.databases[db_key]['ENGINE'].endswith('sqlite3')
 
 
-def get_period_usage(subscription, use_charge, starts_at, ends_at):
-    return Transaction.objects.filter(
-        orig_account=Transaction.RECEIVABLE,
-        dest_account=Transaction.PAYABLE, created_at__lt=ends_at,
-        created_at__gte=starts_at,
-        event_id=get_sub_event_id(subscription, use_charge)).count()
-
-
 def get_charge_event_id(charge, charge_item=None):
     """
     Returns a formatted id for a charge (or a charge_item
@@ -4693,43 +4855,79 @@ def get_sub_event_id(subscription, use_charge=None):
     """
     Returns a formatted id for a subscription (or a use_charge
     on that subscription) that can be used as `event_id` in a `Transaction`.
+
+    When we are building a cart order, subscriptions might not yet be present
+    in the database (i.e. `subscription.pk is None`). In that case we use
+    a generic 'sub_0/' prefix that can be later overriden when the subscription
+    has been committed to the database.
     """
-    substr = "sub_%d/" % subscription.id
+    if subscription.pk:
+        substr = "sub_%d/" % subscription.pk
+    else:
+        substr = "sub_0/"
     if use_charge:
-        substr += "%d/" % use_charge.id
+        substr += "%d/" % use_charge.pk
     return substr
+
+
+def get_period_usage(subscription, use_charge, starts_at, ends_at):
+    return sum_dest_amount(Transaction.objects.filter(
+        orig_account=Transaction.RECEIVABLE,
+        dest_account=Transaction.PAYABLE, created_at__lt=ends_at,
+        created_at__gte=starts_at,
+        event_id=get_sub_event_id(subscription, use_charge)))
 
 
 def record_use_charge(subscription, use_charge, quantity=1, created_at=None):
     """
     Adds a use charge to the balance due by the subscriber
     """
-    usage = get_period_usage(subscription, use_charge,
-        subscription.created_at, subscription.ends_at)
-    amount = None
+    results = []
+    invoiced_item = None
+    invoiced_quantity = 0
     if not quantity:
         quantity = 1
-    descr = humanize.describe_buy_use(use_charge, quantity)
-    if usage < use_charge.quota:
-        amount = 0
-        descr += " (complimentary in plan)"
 
-    if usage >= use_charge.quota:
-        signals.quota_reached.send(sender=__name__,
-                                   usage=usage,
-                                   use_charge=use_charge,
-                                   subscription=subscription)
+    with transaction.atomic():
+        usage, unused_created = SubscriptionUse.objects.get_or_create(
+            subscription=subscription, use=use_charge, defaults={
+                'expiring_quota': use_charge.quota
+        })
+        if usage.expiring_quota >= quantity:
+            # We are still below period quota
+            usage.expiring_quota -= quantity
+        else:
+            invoiced_quantity = quantity - usage.expiring_quota
+            usage.expiring_quota = 0
+            if usage.rollover_quota >= invoiced_quantity:
+                # We are still below reserved usage paid in advance
+                usage.rollover_quota -= invoiced_quantity
+                invoiced_quantity = 0
+            else:
+                invoiced_quantity = invoiced_quantity - usage.rollover_quota
+                usage.rollover_quota = 0
+                invoiced_item = Transaction.objects.new_use_charge(
+                    subscription, use_charge, invoiced_quantity,
+                    created_at=created_at)
 
-    if use_charge.maximum_limit and usage >= use_charge.maximum_limit:
-        signals.use_charge_limit_crossed.send(sender=__name__,
-                                              usage=usage,
-                                              use_charge=use_charge,
-                                              subscription=subscription)
+        usage.used_quantity += quantity
+        usage.save()
 
-    return Transaction.objects.record_order([
-        Transaction.objects.new_use_charge(subscription, use_charge,
-            quantity, custom_amount=amount, created_at=created_at,
-            descr=descr)])
+        if invoiced_item:
+            invoiced_item.save()
+            results = [invoiced_item]
+            signals.quota_reached.send(sender=__name__, usage=invoiced_quantity,
+                use_charge=use_charge, subscription=subscription)
+
+    period_balances = get_period_usage(subscription, use_charge,
+        subscription.created_at, subscription.ends_at)
+    for row in period_balances:
+        amount = row['amount']
+        if use_charge.maximum_limit and amount >= use_charge.maximum_limit:
+            signals.use_charge_limit_crossed.send(sender=__name__,
+                usage=amount, use_charge=use_charge, subscription=subscription)
+
+    return results
 
 
 def sum_balance_amount(dest_balances, orig_balances):

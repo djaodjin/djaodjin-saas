@@ -67,7 +67,7 @@ def _recognize_subscription_income(subscription, until=None):
         # the subset of the subscription lifetime the order paid for.
         # It covers ``order_periods`` plan periods.
         order_amount = order.dest_amount
-        order_periods = order.get_event().plan.period_number(order.descr)
+        order_periods = order.subscription.plan.period_number(order.descr)
 
         if order.created_at > subscription.created_at:
             candidate_recognize_period_idx = int(subscription.nb_periods(
@@ -139,12 +139,9 @@ def _recognize_subscription_income(subscription, until=None):
             # recognizing use charges for subscription
             use_charges = subscription.plan.use_charges.all()
             for use_charge in use_charges:
-                quantity = get_period_usage(subscription, use_charge,
+                to_recognize = get_period_usage(subscription, use_charge,
                     recognize_start, recognize_end)
-                extra = quantity - use_charge.quota
-                to_recognize_amount = 0
-                if extra > 0:
-                    to_recognize_amount = extra * use_charge.use_amount
+                to_recognize_amount = to_recognize[0]['amount']
 
                 balance = Transaction.objects.get_use_charge_balance(
                     subscription, use_charge, recognize_start, recognize_end)
@@ -238,9 +235,12 @@ def extend_subscription(subscription, at_time=None, dry_run=False):
         if not dry_run:
             try:
                 with transaction.atomic():
-                    Transaction.objects.record_order([
-                        Transaction.objects.new_subscription_order(
-                            subscription, created_at=at_time)])
+                    subscription.extends()
+                    for use in subscription.uses.all():
+                        use.extends()
+                    invoiced_item = Transaction.objects.new_subscription_order(
+                            subscription, created_at=at_time)
+                    invoiced_item.save()
             except Exception as err: #pylint:disable=broad-except
                 # logs any kind of errors
                 # and move on to the next subscription.

@@ -3104,10 +3104,6 @@ Vue.component('active-carts', {
                 return item.username === cartItemId;
             });
             if( foundUser ) {
-                var plan = vm.plans[cartItem.plan.slug];
-                if (plan) {
-                    foundUser.totalAmount += cartItem.quantity * plan.period_amount * 0.01;
-                }
                 foundUser.totalItems++;
                 if (cartItem.created_at > foundUser.latestUpdate) {
                     foundUser.latestUpdate = cartItem.created_at;

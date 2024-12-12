@@ -254,6 +254,7 @@ class CartMixin(object):
         return option_items
 
     def cart_item_as_invoicable(self, cart_item, customer=None, at_time=None):
+        #pylint:disable=too-many-locals
         created_at = datetime_or_now(at_time)
         prorate_to_billing = False
         prorate_to = None
@@ -276,12 +277,12 @@ class CartMixin(object):
                     | models.Q(email__iexact=cart_item.sync_on))
                 if not user_queryset.exists():
                     # XXX Hacky way to determine GroupBuy vs. notify.
-                    subscriber = get_organization_model()(
+                    subscriber = organization_model(
                         full_name=cart_item.full_name.strip(),
                         email=cart_item.sync_on)
         if not subscriber:
             # We cannot figure out a subscriber from the cart_item
-            # and not profile was passed as a customer to be billed.
+            # and no profile was passed as a customer to be billed.
             raise organization_model.DoesNotExist()
         try:
             # If we can extend a current ``Subscription`` we will.
@@ -298,12 +299,11 @@ class CartMixin(object):
                 subscriber, cart_item.plan, ends_at=ends_at)
         lines = []
         options = []
-        if cart_item.use:
-            # We are dealing with an additional use charge instead
-            # of the base subscription.
-            lines += [Transaction.objects.new_use_charge(subscription,
-                cart_item.use, cart_item.option)]
-        else:
+        if not (subscription.pk and cart_item.use):
+            # We always add billing options for a plan, except in the case
+            # when we have an active subscription and we are adding a UseCharge
+            # to the cart.
+            subscription_line = None
             options = self.get_cart_options(subscription,
                 created_at=created_at, prorate_to=prorate_to,
                 cart_item=cart_item)
@@ -313,16 +313,21 @@ class CartMixin(object):
                 # It could happen when we use a 100% discount coupon
                 # with advance discounts; in which case the advance
                 # discounts would be cancelled. nothing is totally free.
-                line = options[0]
-                lines += [line]
-                options = []
+                subscription_line = options[0]
             elif (cart_item.option > 0 and
                 (cart_item.option - 1) < len(options)):
                 # The number of periods was already selected so we generate
                 # a line instead.
-                line = options[cart_item.option - 1]
-                lines += [line]
+                subscription_line = options[cart_item.option - 1]
+            if subscription_line:
+                lines += [subscription_line]
                 options = []
+        if cart_item.use:
+            # We are dealing with an additional use charge instead
+            # of the base subscription.
+            lines += [Transaction.objects.new_use_charge(subscription,
+                cart_item.use, cart_item.quantity)]
+
         # Both ``TransactionManager.new_use_charge``
         # and ``TransactionManager.new_subscription_order`` will have
         # created a ``Transaction`` with the ultimate subscriber
@@ -371,11 +376,32 @@ class CartMixin(object):
         """
         #pylint: disable=too-many-locals
         created_at = datetime_or_now(at_time)
-        invoicables = []
+        results = []
+        prev = None
         for cart_item in CartItem.objects.get_cart(user=user):
-            invoicables += [self.cart_item_as_invoicable(
-                cart_item, customer, at_time=created_at)]
-        return invoicables
+            # `get_cart` returns a list sorted by plan.
+            invoicable = self.cart_item_as_invoicable(cart_item, customer,
+                at_time=created_at)
+            if prev and prev.merge_invoicable(cart_item):
+                # The cartitem refers to the same subscription plan,
+                # so we merge lines and options together.
+                for invoicable_line in invoicable['lines']:
+                    found = False
+                    for line in results[-1]['lines']:
+                        if line.descr == invoicable_line.descr:
+                            # XXX We rely on the description being identical...
+                            found = True
+                            break
+                    if not found:
+                        results[-1]['lines'] += [invoicable_line]
+                if len(results[-1]['options']) > len(invoicable['options']):
+                    # The invoicable options is more constraint,
+                    # so we use those.
+                    results[-1].update({'options': invoicable['options']})
+            else:
+                results += [invoicable]
+            prev = cart_item
+        return results
 
 
 class UserMixin(object):

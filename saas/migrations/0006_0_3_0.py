@@ -18,11 +18,18 @@ class Migration(migrations.Migration):
             name='UseCharge',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('slug', models.SlugField(unique=True)),
-                ('title', models.CharField(max_length=50, null=True)),
-                ('description', models.TextField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('use_amount', models.PositiveIntegerField(default=0)),
+                ('slug', models.SlugField(
+                    help_text='Unique identifier shown in the URL bar',
+                    unique=True)),
+                ('title', models.CharField(
+                    help_text='Short description of the use charge',
+                    max_length=50, null=True)),
+                ('description', models.TextField(
+                    help_text='Long description of the use charge')),
+                ('created_at', models.DateTimeField(auto_now_add=True,
+                    help_text='Date/time of creation (in ISO format)')),
+                ('use_amount', models.PositiveIntegerField(default=0,
+                  help_text='Amount of the use charge in plan currency unit')),
                 ('extra', models.TextField(null=True)),
             ],
             bases=(saas.utils.SlugTitleMixin, models.Model),
@@ -79,7 +86,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='usecharge',
             name='plan',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='plans', to='saas.Plan'),
+            field=models.ForeignKey(help_text='Plan the use chage is related to', on_delete=django.db.models.deletion.CASCADE, related_name='use_charges', to='saas.Plan'),
         ),
         migrations.AddField(
             model_name='cartitem',

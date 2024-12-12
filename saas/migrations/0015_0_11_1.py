@@ -97,11 +97,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='plan',
-            name='description',
-            field=models.TextField(help_text='Description of the plan'),
-        ),
-        migrations.AlterField(
-            model_name='plan',
             name='discontinued_at',
             field=models.DateTimeField(blank=True, help_text='Date/time the plan was discountinued (in ISO format)', null=True),
         ),
@@ -144,11 +139,6 @@ class Migration(migrations.Migration):
             model_name='plan',
             name='slug',
             field=models.SlugField(help_text='Unique identifier shown in the URL bar', unique=True),
-        ),
-        migrations.AlterField(
-            model_name='plan',
-            name='title',
-            field=models.CharField(help_text='Title of the plan', max_length=50, null=True),
         ),
         migrations.AlterField(
             model_name='plan',
