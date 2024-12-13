@@ -951,16 +951,46 @@ class AbstractOrganization(models.Model):
 
     def checkout(self, invoicables, user, token=None, remember_card=True):
         """
-        *invoicables* is a set of ``Transaction`` that will be recorded
-        in the ledger. Associated subscriptions will be updated such that
-        the ends_at is extended in the future.
+        Executes an order, then charge a payment method
+
+        This method takes *invoicables* (a dictionnary structured
+        by the checkout API JSON format) and a user cart.
+
+        **Examples**
+
+        .. code-block:: python
+
+        invoiceables = [{
+           'subscription': Subscription(
+               organization='xia170', plan='club170-basic',
+               ends_at='2024-12-09 19:41:20.555505+00:00'),
+           'lines': [
+             Transaction(descr='Subscription to club170-basic'\
+                 ' until 2025/12/09 (12 months) - a 10% discount'),
+             Transaction(descr='Buy 1 club170-basic Requests')
+             Transaction(descr='Buy 1 club170-basic Storage')
+           ],
+           'name': 'cart-club170-basic',
+           'descr': 'Club170 Basic from Club170'
+         }]
+
+        It will then charge the balance for that order to the payment method
+        referenced by *token*, or the payment method on file for the profile
+        if *token* is `None`.
+
+        The method returns the `Charge` object created.
         """
         charge = None
         with transaction.atomic():
             invoiced_items, invited_organizations = self.execute_order(
                 invoicables, user)
-            charge = Charge.objects.charge_card(self, invoiced_items,
-                user=user, token=token, remember_card=remember_card)
+            charges = Charge.objects.create_charges_by_processor(
+                self, invoiced_items, user=user)
+            for charge in charges:
+                charge.execute(token, user, remember_card=remember_card)
+        if charges:
+            # It is possible we are subscribing to a free plan.
+            charge = charges[0]
 
         # We email users which have yet to be registerd after the charge
         # is created, just that we don't inadvertently email new subscribers
@@ -970,6 +1000,55 @@ class AbstractOrganization(models.Model):
                 subscriber=organization, claim_code=claim_code, user=user)
 
         return charge
+
+
+    def paylater(self, invoicables, user):
+        """
+        Executes an order
+
+        This method takes *invoicables* (a dictionnary structured
+        by the checkout API JSON format) and a user cart.
+
+        **Examples**
+
+        .. code-block:: python
+
+        invoiceables = [{
+           'subscription': Subscription(
+               organization='xia170', plan='club170-basic',
+               ends_at='2024-12-09 19:41:20.555505+00:00'),
+           'lines': [
+             Transaction(descr='Subscription to club170-basic'\
+                 ' until 2025/12/09 (12 months) - a 10% discount'),
+             Transaction(descr='Buy 1 club170-basic Requests')
+             Transaction(descr='Buy 1 club170-basic Storage')
+           ],
+           'name': 'cart-club170-basic',
+           'descr': 'Club170 Basic from Club170'
+         }]
+
+        The method returns an invoice (`Charge`) for the balance for that order.
+        """
+        charge = None
+        with transaction.atomic():
+            invoiced_items, invited_organizations = self.execute_order(
+                invoicables, user)
+            charges = Charge.objects.create_charges_by_processor(
+                self, invoiced_items, user=user)
+            if charges:
+                # It is possible we are subscribing to a free plan.
+                # XXX works only when we have a single processor?
+                charge = charges[0]
+
+        # We email users which have yet to be registerd after the charge
+        # is created, just that we don't inadvertently email new subscribers
+        # in case something goes wrong.
+        for claim_code, organization in invited_organizations:
+            signals.claim_code_generated.send(sender=__name__,
+                subscriber=organization, claim_code=claim_code, user=user)
+
+        return charge
+
 
     def update_address_if_empty(self, country=None, region=None, locality=None,
         street_address=None, postal_code=None):
@@ -1529,23 +1608,15 @@ class ChargeManager(models.Manager):
             charge.retrieve()
 
     def create_charge(self, customer, transactions, amount, unit,
-                      processor, processor_charge_id, receipt_info,
-                      user=None, descr=None, created_at=None):
+                      user=None, created_at=None):
         #pylint: disable=too-many-arguments
         assert amount > 0
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
-            last4 = receipt_info.get('last4')
-            if last4:
-                last4 = int(last4)
             charge = self.create(
-                processor=processor, processor_key=processor_charge_id,
+                claim_code=generate_random_slug(),
                 amount=amount, unit=unit, customer=customer,
-                created_at=created_at, created_by=user,
-                description=descr,
-                last4=last4,
-                exp_date=receipt_info.get('exp_date'),
-                card_name=receipt_info.get('card_name', ""))
+                created_at=created_at, created_by=user)
             for invoiced in transactions:
                 # XXX Here we need to associate the (invoice_key, sync_on)
                 # to the ChargeItem.
@@ -1553,20 +1624,19 @@ class ChargeManager(models.Manager):
                     invoice_key=getattr(invoiced, 'invoice_key', None),
                     sync_on=getattr(invoiced, 'sync_on', None))
             LOGGER.info("  %s create charge %s of %d %s to %s",
-                charge.created_at, charge.processor_key,
+                charge.created_at, charge.claim_code,
                 charge.amount, charge.unit, customer,
                 extra={'event': 'create-charge',
-                    'charge': charge.processor_key,
+                    'charge': charge.claim_code,
                     'organization': customer.slug,
                     'amount': charge.amount, 'unit': charge.unit})
         return charge
 
-    def charge_card(self, customer, transactions, descr=None,
-                    user=None, token=None, remember_card=True,
-                    created_at=None):
+    def create_charges_by_processor(self, customer, transactions,
+                                    user=None, created_at=None):
         #pylint: disable=too-many-arguments
         created_at = datetime_or_now(created_at)
-        charge = None
+        charges = []
         balances = sum_dest_amount(transactions)
         if len(balances) > 1:
             raise ValueError(_("balances with multiple currency units (%s)") %
@@ -1574,132 +1644,23 @@ class ChargeManager(models.Manager):
         # `sum_dest_amount` guarentees at least one result.
         amount = balances[0]['amount']
         if amount == 0:
-            return charge
+            return []
         for invoice_items in six.itervalues(
                 Transaction.objects.by_processor_key(transactions)):
-            # XXX This is only working if all line items use the same
-            # provider keys to record the charge.
-            charge = self.charge_card_one_processor(
-                customer, invoice_items, descr=descr,
-                user=user, token=token, remember_card=remember_card,
-                created_at=created_at)
-        return charge
+            balances = sum_dest_amount(invoice_items)
+            if len(balances) > 1:
+                raise ValueError(
+                    _("balances with multiple currency units (%s)") % str(
+                    balances))
+            # `sum_dest_amount` guarentees at least one result.
+            amount = balances[0]['amount']
+            unit = balances[0]['unit']
+            if amount == 0:
+                continue
+            charges += [self.create_charge(customer, invoice_items,
+                amount, unit, user=user, created_at=created_at)]
 
-    def charge_card_one_processor(self, customer, transactions, descr=None,
-                    user=None, token=None, remember_card=True, created_at=None):
-        """
-        Create a charge on a customer card.
-
-        Be careful, Stripe will not processed charges less than 50 cents.
-        """
-        #pylint: disable=too-many-arguments,too-many-locals
-        created_at = datetime_or_now(created_at)
-        balances = sum_dest_amount(transactions)
-        if len(balances) > 1:
-            raise ValueError(_("balances with multiple currency units (%s)") %
-                str(balances))
-        # `sum_dest_amount` guarentees at least one result.
-        amount = balances[0]['amount']
-        unit = balances[0]['unit']
-        if amount == 0:
-            return None
-
-        broker_fee_amount = 0
-        for invoiced_item in transactions: # XXX same code as `Charge.broker_fee_amount`
-            if invoiced_item.subscription:
-                broker_fee_amount += \
-                    invoiced_item.subscription.plan.prorate_transaction(
-                        invoiced_item.dest_amount)
-
-        broker = get_broker()
-        organization_model = get_organization_model()
-        providers = organization_model.objects.receivable_providers(
-            transactions)
-        if len(providers) == 1:
-            provider = providers[0]
-        else:
-            provider = broker
-        processor = provider.validate_processor()
-        descr = humanize.DESCRIBE_CHARGED_CARD % {
-            'charge': '', 'organization': customer.printable_name}
-        if user:
-            descr += ' (%s)' % user.username
-        prev_processor_card_key = customer.processor_card_key
-        try:
-            if token and remember_card:
-                customer.update_card(token, user, provider=provider)
-                token = customer.processor_card_key
-            if not token:
-                token = customer.processor_card_key
-
-            if token:
-                (processor_charge_id, created_at,
-                 receipt_info) = provider.processor_backend.create_payment(
-                     amount, unit, token,
-                     descr=descr, created_at=created_at, provider=provider,
-                     broker_fee_amount=broker_fee_amount, broker=broker)
-            else:
-                raise ProcessorError(_("%(organization)s is not associated"\
-                    " to an account on the processor and no token was passed."
-                ) % {'organization': customer})
-            # Create record of the charge in our database
-            descr = humanize.DESCRIBE_CHARGED_CARD % {
-                'charge': processor_charge_id,
-                'organization': receipt_info.get('card_name', "")}
-            if user:
-                descr += ' (%s)' % user.username
-            return self.create_charge(customer, transactions,
-                amount, unit, processor, processor_charge_id, receipt_info,
-                user=user, descr=descr, created_at=created_at)
-
-        except CardError as err:
-            # Implementation Note:
-            # We are going to rollback because of the ``transaction.atomic``
-            # in ``checkout``. There is two choices here:
-            #   1) We persist the created ``Stripe.Customer`` in ``checkout``
-            #      after the rollback.
-            #   2) We forget about the created ``Stripe.Customer`` and
-            #      reset the processor_card_key.
-            # We implement (2) because the UI feedback to a user looks strange
-            # when the Card is persisted while an error message is displayed.
-            customer.processor_card_key = prev_processor_card_key
-            LOGGER.info('error: CardError "%s" processing charge'\
-                ' %s of %d %s to %s',
-                err.processor_details(), err.charge_processor_key,
-                amount, unit, customer,
-                extra={'event': 'card-error',
-                    'charge': err.charge_processor_key,
-                    'detail': err.processor_details(),
-                    'organization': customer.slug,
-                    'amount': amount, 'unit': unit})
-            raise
-        except ProcessorSetupError as err:
-            # When a provider Stripe account is not connected correctly,
-            # it is not obviously a problem with the broker. So we send
-            # a signal to alert the provider instead of triggering an error
-            # that needs to be investigated by the broker hosting platform.
-            LOGGER.info('error: ProcessorSetupError "%s" processing charge'\
-                ' of %d %s to %s',
-                err.processor_details(), amount, unit, customer,
-                extra={'event': 'processor-setup-error',
-                    'detail': err.processor_details(),
-                    'provider': str(err.provider),
-                    'organization': customer.slug,
-                    'amount': amount, 'unit': unit})
-            signals.processor_setup_error.send(sender=__name__,
-                provider=err.provider, error_message=str(err),
-                customer=customer)
-            raise
-        except ProcessorError as err:
-            # An error from the processor which indicates the logic might be
-            # incorrect, the network down, etc. We want to know about it right
-            # away.
-            LOGGER.exception("ProcessorError for charge of %d %s to %s: %s",
-                amount, unit, customer, err)
-            # We are going to rollback because of the ``transaction.atomic``
-            # in ``checkout`` so let's reset the processor_card_key.
-            customer.processor_card_key = prev_processor_card_key
-            raise
+        return charges
 
 
 @python_2_unicode_compatible
@@ -1709,6 +1670,7 @@ class Charge(models.Model):
     We save the name of the card, last4 and expiration date so we are able
     to present a receipt usable for expenses re-imbursement.
     """
+    #pylint:disable=too-many-instance-attributes
     CREATED = 0
     DONE = 1
     FAILED = 2
@@ -1722,6 +1684,8 @@ class Charge(models.Model):
 
     objects = ChargeManager()
 
+    claim_code = models.SlugField(db_index=True, null=True,
+        help_text=_("Unique code used to retrieve the invoice / charge"))
     created_at = models.DateTimeField(
         help_text=_("Date/time of creation (in ISO format)"))
     created_by = models.ForeignKey(
@@ -1731,7 +1695,8 @@ class Charge(models.Model):
         help_text=_("Total amount in currency unit"))
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
         help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
-    customer = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.PROTECT,
+    customer = models.ForeignKey(settings.ORGANIZATION_MODEL,
+        on_delete=models.PROTECT,
         help_text=_("Organization charged"))
     description = models.TextField(null=True,
         help_text=_("Description for the charge as appears on billing"\
@@ -1741,9 +1706,10 @@ class Charge(models.Model):
     exp_date = models.DateField(null=True,
         help_text=_("Expiration date of the credit card used"))
     card_name = models.CharField(max_length=50, null=True)
-    processor = models.ForeignKey(settings.ORGANIZATION_MODEL,
+    processor = models.ForeignKey(settings.ORGANIZATION_MODEL, null=True,
         on_delete=models.PROTECT, related_name='charges')
-    processor_key = models.SlugField(max_length=255, unique=True, db_index=True,
+    processor_key = models.SlugField(max_length=255, unique=True, null=True,
+        db_index=True,
         help_text=_("Unique identifier returned by the payment processor"))
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED,
@@ -1755,10 +1721,11 @@ class Charge(models.Model):
     # customer and invoiced_items account payble should match.
 
     def __str__(self):
-        return str(self.processor_key)
+        return (str(self.processor_key) if self.processor_key
+            else str(self.claim_code))
 
     def get_last4_display(self):
-        return '%04d' % self.last4
+        return "%04d" % self.last4 if self.last4 else ""
 
     @property
     def broker_fee_amount(self):
@@ -1790,6 +1757,29 @@ class Charge(models.Model):
         This is important when identifying line items by an index.
         """
         return self.charge_items.order_by('id')
+
+    @property
+    def line_items_grouped_by_subscription(self):
+        """
+        Returns line items in a format compatible with the checkout API
+        """
+        #pylint:disable=attribute-defined-outside-init
+        if not hasattr(self, '_line_items_grouped_by_subscription'):
+            by_subscriptions = {}
+            for line in self.charge_items.order_by('invoiced__event_id'):
+                subscription = line.subscription
+                if subscription:
+                    lines = by_subscriptions.get(subscription, [])
+                    if not lines:
+                        by_subscriptions.update({subscription: lines})
+                    lines += [line.invoiced]
+            self._line_items_grouped_by_subscription = []
+            for subscription, lines in six.iteritems(by_subscriptions):
+                self._line_items_grouped_by_subscription += [{
+                    'subscription': subscription,
+                    'lines': lines
+                }]
+        return self._line_items_grouped_by_subscription
 
     @property
     def processor_backend(self):
@@ -1978,6 +1968,98 @@ class Charge(models.Model):
         # in state of the `self` currently in memory.
         self.state = self.DONE
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+
+    def execute(self, token, user,
+                descr=None, remember_card=True, created_at=None):
+        #pylint:disable=too-many-arguments
+        created_at = datetime_or_now(created_at)
+        broker = get_broker()
+        provider = self.broker
+        self.processor = provider.validate_processor()
+        prev_processor_card_key = self.customer.processor_card_key
+
+        try:
+            if token and remember_card:
+                self.customer.update_card(token, user, provider=provider)
+                token = self.customer.processor_card_key
+            if not token:
+                token = self.customer.processor_card_key
+
+            if token:
+                (processor_charge_key, created_at,
+                 receipt_info) = provider.processor_backend.create_payment(
+                     self.amount, self.unit, token,
+                     descr=descr, created_at=created_at, provider=provider,
+                     broker_fee_amount=self.broker_fee_amount, broker=broker)
+            else:
+                raise ProcessorError(_("%(organization)s is not associated"\
+                    " to an account on the processor and no token was passed."
+                ) % {'organization': self.customer})
+
+            # Update the record of the charge in our database
+            self.processor_key = processor_charge_key
+            self.last4 = receipt_info.get('last4')
+            if self.last4:
+                self.last4 = int(self.last4)
+            self.exp_date = receipt_info.get('exp_date')
+            self.card_name = receipt_info.get('card_name', "")
+            self.description = humanize.DESCRIBE_CHARGED_CARD % {
+                'charge': processor_charge_key,
+                'organization': self.card_name}
+            if user:
+                self.description += ' (%s)' % user.username
+            self.save()
+        except CardError as err:
+            # Implementation Note:
+            # We are going to rollback because of the ``transaction.atomic``
+            # in ``checkout``. There is two choices here:
+            #   1) We persist the created ``Stripe.Customer``
+            #      in ``checkout`` after the rollback.
+            #   2) We forget about the created ``Stripe.Customer`` and
+            #      reset the processor_card_key.
+            # We implement (2) because the UI feedback to a user looks
+            # strange when the Card is persisted while an error message
+            # is displayed.
+            self.customer.processor_card_key = prev_processor_card_key
+            LOGGER.info('error: CardError "%s" processing charge'\
+                ' %s of %d %s to %s',
+                err.processor_details(), err.charge_processor_key,
+                self.amount, self.unit, self.customer,
+                extra={'event': 'card-error',
+                    'charge': err.charge_processor_key,
+                    'detail': err.processor_details(),
+                    'organization': self.customer.slug,
+                    'amount': self.amount, 'unit': self.unit})
+            raise
+        except ProcessorSetupError as err:
+            # When a provider Stripe account is not connected correctly,
+            # it is not obviously a problem with the broker. So we send
+            # a signal to alert the provider instead of triggering an error
+            # that needs to be investigated by the broker hosting platform.
+            LOGGER.info('error: ProcessorSetupError "%s" processing charge'\
+                ' of %d %s to %s',
+                err.processor_details(), self.amount, self.unit, self.customer,
+                extra={'event': 'processor-setup-error',
+                    'detail': err.processor_details(),
+                    'provider': str(err.provider),
+                    'organization': self.customer.slug,
+                    'amount': self.amount, 'unit': self.unit})
+            signals.processor_setup_error.send(sender=__name__,
+                provider=err.provider, error_message=str(err),
+                customer=self)
+            raise
+        except ProcessorError as err:
+            # An error from the processor which indicates the logic might be
+            # incorrect, the network down, etc. We want to know about it
+            # right away.
+            LOGGER.exception("ProcessorError for charge of %d %s to %s: %s",
+                self.amount, self.unit, self.customer, err)
+            # We are going to rollback because of the ``transaction.atomic``
+            # in ``checkout`` so let's reset the processor_card_key.
+            self.customer.processor_card_key = prev_processor_card_key
+            raise
+
 
     def failed(self, receipt_info=None):
         assert self.state == self.CREATED
@@ -2432,7 +2514,8 @@ class Charge(models.Model):
         """
         Retrieve the state of charge from the processor.
         """
-        self.processor_backend.retrieve_charge(self)
+        if self.processor_key:
+            self.processor_backend.retrieve_charge(self)
         return self
 
 
@@ -2507,6 +2590,25 @@ class ChargeItem(models.Model):
         return Transaction.objects.filter(
             event_id=get_charge_event_id(self.charge, self),
             orig_account=Transaction.REFUNDED)
+
+    @property
+    def subscription(self):
+        """
+        Returns the `Subscription` object associated to the `ChargeItem`
+        or `None` if it could not be deduced from the `invoiced.event_id`.
+        """
+        #pylint:disable=attribute-defined-outside-init
+        if not hasattr(self, '_subscription'):
+            self._subscription = Subscription.objects.get_by_event_id(
+                self.invoiced.event_id)
+            if not self._subscription:
+                coupon = Coupon.objects.get_by_event_id(self.invoiced.event_id)
+                if coupon:
+                    organization_model = get_organization_model()
+                    self._subscription = Subscription.objects.new_instance(
+                        organization_model(email=self.sync_on), coupon.plan)
+        return self._subscription
+
 
     def create_refund_transactions(self, refunded_amount,
         charge_available, charge_processor_fee, charge_broker_fee,

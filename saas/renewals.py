@@ -428,11 +428,12 @@ def create_charge_for_balance_organization(organization,
                     if not organization.processor_card_key:
                         raise CardError(_("No payment method attached"),
                             'card_absent')
-                    nb_charges += 1
+                    charges = Charge.objects.create_charges_by_processor(
+                        organization, invoiceables, created_at=until)
+                    nb_charges += len(charges)
                     if not dry_run:
-                        Charge.objects.charge_card(
-                            organization, invoiceables,
-                            created_at=until)
+                        for charge in charges:
+                            charge.execute()
                         # XXX It might be too early, and we don't know yet
                         # if the charge succeeded (ex: under funded).
                         organization.billing_start += relativedelta(months=1)

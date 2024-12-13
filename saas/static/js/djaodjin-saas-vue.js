@@ -573,41 +573,49 @@ var cardMixin = {
             }
             return "";
         },
-        getUserCard: function(){
+        populateCardData: function(resp) {
+            var vm = this;
+            if( resp.last4 ) {
+                vm.savedCard.last4 = resp.last4;
+            }
+            if( resp.exp_date ) {
+                vm.savedCard.exp_date = resp.exp_date;
+            }
+            if( resp.processor_info &&
+                resp.processor_info.STRIPE_PUB_KEY ) {
+                vm.processor_pub_key = resp.processor_info.STRIPE_PUB_KEY;
+            }
+            if( resp.processor_info &&
+                resp.processor_info.STRIPE_INTENT_SECRET ) {
+                vm.stripe_intent_secret =
+                    resp.processor_info.STRIPE_INTENT_SECRET;
+            }
+            if( resp.processor_info &&
+                resp.processor_info.STRIPE_ACCOUNT ) {
+                vm.stripe_account = resp.processor_info.STRIPE_ACCOUNT;
+            }
+            if( vm.processor_pub_key ) {
+                if( vm.stripe_account ) {
+                    vm.stripe = Stripe(vm.processor_pub_key, {
+                        stripeAccount: vm.stripe_account
+                    });
+                } else {
+                    vm.stripe = Stripe(vm.processor_pub_key);
+                }
+                if( vm.stripe_intent_secret ) {
+                    var elements = vm.stripe.elements();
+                    vm.cardElement = elements.create("card", {
+                        hidePostalCode: true
+                    });
+                    vm.cardElement.mount("#card-element");
+                }
+            }
+        },
+        getUserCard: function() {
             var vm = this;
             vm.reqGet(vm.api_card_url,
             function(resp) {
-                if( resp.last4 ) {
-                    vm.savedCard.last4 = resp.last4;
-                }
-                if( resp.exp_date ) {
-                    vm.savedCard.exp_date = resp.exp_date;
-                }
-                if( resp.processor && resp.processor.STRIPE_PUB_KEY ) {
-                    vm.processor_pub_key = resp.processor.STRIPE_PUB_KEY;
-                }
-                if( resp.processor && resp.processor.STRIPE_INTENT_SECRET ) {
-                    vm.stripe_intent_secret = resp.processor.STRIPE_INTENT_SECRET;
-                }
-                if( resp.processor && resp.processor.STRIPE_ACCOUNT ) {
-                    vm.stripe_account = resp.processor.STRIPE_ACCOUNT;
-                }
-                if( vm.processor_pub_key ) {
-                    if( vm.stripe_account ) {
-                        vm.stripe = Stripe(vm.processor_pub_key, {
-                            stripeAccount: vm.stripe_account
-                        });
-                    } else {
-                        vm.stripe = Stripe(vm.processor_pub_key);
-                    }
-                    if( vm.stripe_intent_secret ) {
-                        var elements = vm.stripe.elements();
-                        vm.cardElement = elements.create("card", {
-                            hidePostalCode: true
-                        });
-                        vm.cardElement.mount("#card-element");
-                    }
-                }
+                vm.populateCardData(resp);
             });
         },
         getCardToken: function(cb){
@@ -2492,7 +2500,6 @@ Vue.component('checkout', {
             url: this.$urls.organization.api_checkout,
             api_cart_url: this.$urls.api_cart,
             api_redeem_url: this.$urls.api_redeem_coupon,
-            receipt_url: this.$urls.organization.receipt,
             plansOption: {},
             plansUser: {},
             coupon: '',
@@ -2542,7 +2549,7 @@ Vue.component('checkout', {
             var seatsConfirmed = results.length > 0 ? true : false;
             results.map(function(elm){
                 var plan = elm.subscription.plan.slug;
-                if( elm.options.length > 0 ){
+                if( elm.options && elm.options.length > 0 ){
                     optionsConfirmed = false;
                     if( vm.init ){
                         periods[plan] = 1;
@@ -2556,16 +2563,19 @@ Vue.component('checkout', {
                 }
             });
 
-            this.items = {
-                results: results,
-                count: results.length
-            }
-            this.itemsLoaded = true;
-            if(this.init){
-                this.plansOption = periods;
-                this.plansUser = users;
-                this.optionsConfirmed = optionsConfirmed;
-                this.seatsConfirmed = seatsConfirmed;
+            // In case of payments submitted by an anonymous visitor
+            // we only get the `processor_info` when retrieving the invoice
+            // through its claim_code.
+            vm.populateCardData(resp);
+
+            vm.items = resp;
+            vm.items.count = results.length;
+            vm.itemsLoaded = true;
+            if( vm.init ){
+                vm.plansOption = periods;
+                vm.plansUser = users;
+                vm.optionsConfirmed = optionsConfirmed;
+                vm.seatsConfirmed = seatsConfirmed;
             }
         },
         addPlanUser: function(plan){
@@ -2633,8 +2643,9 @@ Vue.component('checkout', {
                 data.processor_token = token;
             }
             vm.reqPost(vm.url, data,
-            function(resp) {
-                window.location = vm.receiptUrl(resp.processor_key);
+            function(resp, textStatus, jqXHR) {
+                const location = jqXHR.getResponseHeader('Location');
+                window.location = location;
             });
         },
         nextStep: function(){
@@ -2722,7 +2733,7 @@ Vue.component('checkout', {
             if(this.items.results){
                 this.items.results.map(function(elm) {
                     var plan = elm.subscription.plan.slug;
-                    if( elm.options.length > 0 ) {
+                    if( elm.options && elm.options.length > 0 ) {
                         var option = vm.plansOption[plan];
                         if( option !== undefined ) {
                             total += elm.options[option-1].dest_amount;
@@ -2741,16 +2752,14 @@ Vue.component('checkout', {
             var vm = this;
             return vm.api_cart + plan + "/upload/";
         },
-        receiptUrl: function(processor_key) {
-            var vm = this;
-            return vm.receipt_url.replace('_', processor_key);
-        }
     },
     mounted: function(){
         var vm = this;
         vm.get();
-        vm.getUserCard();
-        var cardData = vm.getCardFormData();
+        if( vm.api_card_url ) {
+            vm.getUserCard();
+        }
+        const cardData = vm.getCardFormData();
         if( !$.isEmptyObject(cardData) ) { // XXX jQuery
             vm.card_name = cardData['card_name'];
             vm.card_address_line1 = cardData['card_address_line1'];
@@ -2759,7 +2768,9 @@ Vue.component('checkout', {
             vm.country = cardData['country'];
             vm.region = cardData['region'];
         } else {
-            vm.getOrgAddress();
+            if( vm.api_profile_url ) {
+                vm.getOrgAddress();
+            }
         }
     }
 });

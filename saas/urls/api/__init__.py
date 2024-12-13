@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@ from ...compat import include, path
 
 urlpatterns = [
     path('', include('saas.urls.api.cart')),
+    path('', include('saas.urls.api.payments')),
     path('', include('saas.urls.api.legal')),
     path('', include('saas.urls.api.users')),
     path('', include('saas.urls.api.headbroker')),

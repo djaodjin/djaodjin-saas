@@ -97,6 +97,7 @@ urlpatterns += \
     # saas urls with provider key to implement marketplace.
     url_prefixed(r'api/', include('saas.backends.urls.api')),
     url_prefixed(r'api/', include('saas.urls.api.cart')),
+    url_prefixed(r'api/', include('saas.urls.api.payments')),
     url_prefixed(r'api/', include('saas.urls.api.legal'),
         redirects=[fail_authenticated]),
     url_prefixed(r'api/', include('saas.urls.api.search'),
@@ -132,6 +133,7 @@ urlpatterns += \
     url_prefixed(r'', include('saas.urls.views.request'),
         redirects=[fail_authenticated]),
     url_prefixed(r'', include('saas.urls.views.noauth')),
+    url_prefixed(r'', include('saas.urls.views.payments')),
     url_prefixed(r'', include('saas.urls.views.headredirects'),
         redirects=[fail_authenticated]),
     url_prefixed(r'', include('saas.urls.views.broker'),

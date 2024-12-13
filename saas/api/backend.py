@@ -202,7 +202,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         if request.query_params.get('update', False):
             broker = get_broker()
             resp_data.update({
-                'processor':
+                'processor_info':
                 broker.processor_backend.get_payment_context(# card update
                     self.organization,
                     provider=broker, broker=broker)

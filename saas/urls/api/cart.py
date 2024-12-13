@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,6 @@ urlpatterns = [
         CartItemUploadAPIView.as_view(), name='saas_api_cart_upload'),
     path('cart', CartItemAPIView.as_view(), name='saas_api_cart'),
     path('legal/<slug:agreement>', AgreementDetailAPIView.as_view(),
-         name='saas_api_legal_detail'),
+        name='saas_api_legal_detail'),
     path('legal', AgreementListAPIView.as_view(), name='saas_api_legal'),
 ]

@@ -29,7 +29,7 @@ Urls specific to the hosting site (i.e. broker).
 from ... import settings
 from ...compat import path, re_path
 from ...views.metrics import BalancesView
-from ...views.billing import (AllTransactions, ChargeListView, VTChargeView,
+from ...views.billing import (AllTransactions, ChargeListView,
     ActiveCartItemsView, UserCartItemsView)
 from ...views.download import (BalancesDownloadView, ChargesDownloadView,
     RegisteredDownloadView, TransactionDownloadView)
@@ -50,8 +50,6 @@ urlpatterns = [
         settings.SELECTOR_RE,
         AllTransactions.as_view(), name='saas_broker_transactions'),
     # Organization refers to the subscriber in the following URL pattern.
-    re_path(r'^billing/(?P<customer>%s)/vtcharge/' % settings.SLUG_RE,
-        VTChargeView.as_view(), name='saas_organization_vtcharge'),
     re_path(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?download/'
         % settings.SLUG_RE,
         BalancesDownloadView.as_view(), name='saas_balances_download'),

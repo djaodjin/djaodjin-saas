@@ -278,7 +278,7 @@ class CardSerializer(NoModelSerializer):
     """
     Information to verify a credit card
     """
-    processor = ProcessorAuthSerializer(required=False,
+    processor_info = ProcessorAuthSerializer(required=False,
       help_text=_("Keys to authenticate the client with the payment processor"))
     last4 = serializers.CharField(
         help_text=_("Last 4 digits of the credit card on file"))
@@ -308,31 +308,6 @@ class CardTokenSerializer(NoModelSerializer):
         help_text=_("Zip/Postal code"))
     country = CountryField(required=False, allow_blank=True,
         help_text=_("Country as 2-letter code (ISO 3166-1)"))
-
-
-class ChargeSerializer(serializers.ModelSerializer):
-
-    state = serializers.CharField(source='get_state_display',
-        help_text=_("Current state (i.e. created, done, failed, disputed)"))
-    readable_amount = serializers.SerializerMethodField(
-        help_text=_("Amount and unit in a commonly accepted readable format"))
-    detail = serializers.CharField(read_only=True, required=False,
-        help_text=_("Feedback for the user in plain text"))
-    last4 = serializers.CharField(source='get_last4_display', read_only=True,
-        help_text=_("Last 4 digits of the credit card used"))
-
-    @staticmethod
-    def get_readable_amount(charge):
-        return as_money(charge.amount, charge.unit)
-
-    class Meta:
-        model = Charge
-        fields = ('created_at', 'amount', 'unit', 'readable_amount',
-            'description', 'last4', 'exp_date', 'processor_key', 'state',
-            'detail')
-        read_only_fields = ('created_at', 'amount', 'unit', 'readable_amount',
-            'description', 'last4', 'exp_date', 'processor_key', 'state',
-            'detail')
 
 
 class PlanSerializer(serializers.ModelSerializer):
@@ -979,6 +954,51 @@ class ChargeItemSerializer(NoModelSerializer):
     refunded = TransactionSerializer(many=True)
 
 
+class InvoicableSubscriptionSerializer(SubscriptionSerializer):
+    """
+    Serializer for `Subscription` which are presented as part of an invoicable
+    """
+    plan = PlanDetailSerializer(read_only=True,
+        help_text=_("Plan the profile is subscribed to"))
+
+
+class InvoicableSerializer(NoModelSerializer):
+    """
+    serializer for an invoicable item with available options.
+    """
+    subscription = InvoicableSubscriptionSerializer(read_only=True, help_text=_(
+        "Subscription lines and options refer to."))
+    lines = TransactionSerializer(many=True, help_text=_(
+        "Line items to charge on checkout."))
+    options = TransactionSerializer(read_only=True, many=True, help_text=(
+        "Options to replace line items."))
+
+
+class ChargeSerializer(serializers.ModelSerializer):
+
+    state = serializers.CharField(source='get_state_display',
+        help_text=_("Current state (i.e. created, done, failed, disputed)"))
+    readable_amount = serializers.SerializerMethodField(
+        help_text=_("Amount and unit in a commonly accepted readable format"))
+    detail = serializers.CharField(read_only=True, required=False,
+        help_text=_("Feedback for the user in plain text"))
+    last4 = serializers.CharField(source='get_last4_display', read_only=True,
+        help_text=_("Last 4 digits of the credit card used"))
+
+    @staticmethod
+    def get_readable_amount(charge):
+        return as_money(charge.amount, charge.unit)
+
+    class Meta:
+        model = Charge
+        fields = ('created_at', 'amount', 'unit', 'state', 'readable_amount',
+            'description', 'claim_code', 'last4', 'exp_date', 'processor_key',
+            'detail')
+        read_only_fields = ('created_at', 'amount', 'unit', 'readable_amount',
+            'description', 'claim_code', 'last4', 'exp_date', 'processor_key',
+            'state', 'detail')
+
+
 class CreateOfflineTransactionSerializer(NoModelSerializer):
     """
     Serializer to validate the input that creates an off-line transaction.
@@ -1109,18 +1129,6 @@ class CartItemUploadSerializer(NoModelSerializer):
         help_text=_("Rows that have been uploaded"))
     failed = CartItemSerializer(many=True,
         help_text=_("Rows that have failed to be created in the cart"))
-
-
-class InvoicableSerializer(NoModelSerializer):
-    """
-    serializer for an invoicable item with available options.
-    """
-    subscription = SubscriptionSerializer(read_only=True, help_text=_(
-        "Subscription lines and options refer to."))
-    lines = TransactionSerializer(many=True, help_text=_(
-        "Line items to charge on checkout."))
-    options = TransactionSerializer(read_only=True, many=True, help_text=(
-        "Options to replace line items."))
 
 
 class RoleDescriptionSerializer(serializers.ModelSerializer):
@@ -1428,10 +1436,44 @@ class OrganizationCartSerializer(NoModelSerializer):
     """
     Items which will be charged on an order checkout action.
     """
-    processor = ProcessorAuthSerializer(required=False,
+    processor_info = ProcessorAuthSerializer(required=False,
       help_text=_("Keys to authenticate the client with the payment processor"))
     results = InvoicableSerializer(many=True,
-      help_text=_("Items that will be charged"))
+      help_text=_("Line items included in the invoice"))
+
+    class Meta:
+        fields = ('processor_info', 'results')
+        read_only_fields = ('processor_info', 'results')
+
+
+class PaymentSerializer(OrganizationCartSerializer):
+    """
+    Serializer for payment API
+    """
+    claim_code = serializers.CharField(
+        help_text=_("Unique identifier"))
+    created_at = serializers.DateTimeField(
+        help_text=_("Date/time of creation (in ISO 8601 format)"))
+    amount = serializers.IntegerField(
+        help_text=_("amount in unit"))
+    unit = serializers.CharField(
+        help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
+    state = serializers.CharField(source='get_state_display',
+        help_text=_("Current state (i.e. created, done, failed, disputed)"))
+    processor_key = serializers.CharField(allow_null=True,
+        help_text=_("Unique identifier returned by the payment processor"))
+    last4 = serializers.CharField(source='get_last4_display', read_only=True,
+        help_text=_("Last 4 digits of the credit card used"))
+    exp_date = serializers.CharField(
+        help_text=_("Expiration date of the credit card on file"))
+
+    class Meta(OrganizationCartSerializer.Meta):
+        fields = OrganizationCartSerializer.Meta.fields + (
+            'claim_code', 'created_at', 'amount', 'unit', 'state',
+            'processor_key', 'last4', 'exp_date')
+        read_only_fields = OrganizationCartSerializer.Meta.fields + (
+            'claim_code', 'created_at', 'amount', 'unit', 'state',
+            'processor_key', 'last4', 'exp_date')
 
 
 class CheckoutItemSerializer(NoModelSerializer):

@@ -35,13 +35,13 @@ from rest_framework.mixins import CreateModelMixin
 from rest_framework import response as http
 
 from ..backends import ProcessorError
-from ..compat import gettext_lazy as _, is_authenticated, StringIO
+from ..compat import gettext_lazy as _, is_authenticated, reverse, StringIO
 from ..docs import extend_schema, OpenApiResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import (BalanceAndCartMixin, CartMixin, InvoicablesMixin,
                       UserMixin)
 from ..models import CartItem, get_broker
-from ..utils import datetime_or_now, get_user_serializer
+from ..utils import build_absolute_uri, datetime_or_now, get_user_serializer
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
@@ -505,6 +505,7 @@ a coupon code for a potential discount, and
         .. code-block:: json
 
             {
+                items: [{option: 1}],
                 "remember_card": true,
                 "processor_token": "tok_23prgoqpstf56todq"
             }
@@ -530,7 +531,7 @@ of Xia",
     def get(self, request, *args, **kwargs):
         provider = self.invoicables_provider
         resp_data = {
-            'processor':
+            'processor_info':
             provider.processor_backend.get_payment_context(# checkout
                 self.organization,
                 amount=self.invoicables_lines_price.amount,
@@ -541,6 +542,7 @@ of Xia",
         }
         serializer = self.get_serializer(resp_data)
         return http.Response(serializer.data)
+
 
     def create(self, request, *args, **kwargs):
         #pylint:disable=unused-argument,too-many-locals
@@ -577,10 +579,106 @@ of Xia",
                 remember_card=data.get('remember_card', False))
             if charge and charge.invoiced_total.amount > 0:
                 result = ChargeSerializer(charge)
-                return http.Response(result.data, status=status.HTTP_200_OK)
+                return http.Response(result.data,
+                    status=status.HTTP_201_CREATED,
+                    headers={'Location': build_absolute_uri(
+                        self.request, reverse('saas_charge_receipt',
+                        args=(charge.customer, charge.processor_key)))})
         except ProcessorError as err:
             return http.Response({
                 'detail': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+        return http.Response({}, status=status.HTTP_200_OK)
+
+
+class PaylaterAPIView(CheckoutAPIView):
+
+    @extend_schema(responses={
+        201: OpenApiResponse(ChargeSerializer)})
+    def post(self, request, *args, **kwargs):
+        """
+        Places an order to be paid later
+
+        Places an order for the subscription items in the cart.
+
+        The cart is manipulated through various API endpoints:
+
+        - `Redeems a discount code </docs/api/#createCouponRedeem>`_ applies \
+a coupon code for a potential discount, and
+        - `Adds an item to the request user cart </docs/api/#createCartItem>`_,\
+ `Removes an item from the request user cart </docs/api/#destroyCartItem>`_\
+ to update a cart.
+
+        The API is typically used within an HTML
+        `checkout page </docs/guides/themes/#workflow_billing_cart>`_
+        as present in the default theme.
+
+        **Tags**: billing, subscriber, cartmodel
+
+        **Examples**
+
+        .. code-block:: http
+
+            POST /api/billing/xia/checkout/paylater HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                items: [{option: 1}]
+            }
+
+        responds
+
+        .. code-block:: json
+
+           {
+                "claim_code": "pay_5lK5TacFH3gbKe",
+                "created_at": "2016-06-21T23:42:44.270977Z",
+                "amount": 2000,
+                "unit": "usd",
+                "description": "",
+                "state": "created"
+            }
+        """
+        return self.create(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        # same as Checkout.create ...
+        #pylint:disable=unused-argument,too-many-locals
+        serializer = CheckoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        queryset = self.get_queryset()
+        items_options = data.get('items')
+        if items_options:
+            for index, item in enumerate(items_options):
+                opt_index = item['option'] - 1
+                if index >= len(queryset):
+                    continue
+                if (opt_index < 0 or
+                    opt_index >= len(queryset[index]['options'])):
+                    continue
+                selected = queryset[index]['options'][opt_index]
+                queryset[index]['lines'].append(selected)
+                queryset[index].update({'options': []})
+        for invoicable in queryset:
+            if invoicable['options']:
+                raise serializers.ValidationError({'detail':
+            _("Cannot checkout when there are still options to choose from.")})
+
+        self.organization.update_address_if_empty(country=data.get('country'),
+            region=data.get('region'), locality=data.get('locality'),
+            street_address=data.get('street_address'),
+            postal_code=data.get('postal_code'))
+        # XXX ... until here
+
+        charge = self.organization.paylater(queryset, self.request.user)
+        if charge and charge.invoiced_total.amount > 0:
+            result = ChargeSerializer(charge)
+            return http.Response(result.data, status=status.HTTP_201_CREATED,
+                headers={'Location': build_absolute_uri(
+                  self.request, reverse('saas_payment', args=(
+                charge.claim_code,)))})
+
         return http.Response({}, status=status.HTTP_200_OK)
 
 

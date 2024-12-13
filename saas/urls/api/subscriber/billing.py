@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@ URLs billing API for subscribers
 """
 
 from .... import settings
-from ....api.billing import CheckoutAPIView
+from ....api.billing import CheckoutAPIView, PaylaterAPIView
 from ....api.backend import PaymentMethodDetailAPIView
 from ....api.transactions import BillingsAPIView, StatementBalanceAPIView
 from ....compat import path
@@ -43,6 +43,9 @@ urlpatterns = [
     path('billing/<slug:%s>/card' %
         settings.PROFILE_URL_KWARG,
         PaymentMethodDetailAPIView.as_view(), name='saas_api_card'),
+    path('billing/<slug:%s>/checkout/paylater' %
+        settings.PROFILE_URL_KWARG,
+        PaylaterAPIView.as_view(), name='saas_api_paylater'),
     path('billing/<slug:%s>/checkout' %
         settings.PROFILE_URL_KWARG,
         CheckoutAPIView.as_view(), name='saas_api_checkout'),

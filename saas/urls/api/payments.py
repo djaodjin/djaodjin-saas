@@ -22,19 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from ...compat import path
-from ...views.billing import RedeemCouponView
-from ...views.legal import AgreementDetailView, AgreementListView
-from ...views.plans import CartPlanListView
+"""
+URLs for the payments API of djaodjin saas.
+"""
 
+from ...api.charges import PaymentDetailAPIView
+from ...compat import path
 
 urlpatterns = [
-    path('legal/<slug:agreement>/',
-        AgreementDetailView.as_view(), name='legal_agreement'),
-    path('legal/',
-        AgreementListView.as_view(), name='legal_agreement_list'),
-    path('pricing/',
-        CartPlanListView.as_view(), name='saas_cart_plan_list'),
-    path('redeem/',
-        RedeemCouponView.as_view(), name='saas_redeem_coupon'),
+    path('billing/payments/<slug:claim_code>', PaymentDetailAPIView.as_view(),
+        name='saas_api_payment'),
 ]

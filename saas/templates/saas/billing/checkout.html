@@ -1,51 +1,69 @@
 {% extends "saas/base.html" %}
 
 {% block saas_content %}
-<checkout inline-template id="checkout-container"
-    data-processor-pub-key="{{STRIPE_PUB_KEY}}">
+<checkout inline-template id="checkout-container">
   <div>
-    <form @submit.prevent="redeem">
+    <form @submit.prevent="redeem" v-if="!items.claim_code">
       <input name="code" type="text" placeholder="Coupon code" v-model="coupon">
       <button type="submit" class="submit-code">Redeem</button>
     </form>
-    <form @submit.prevent="saveChanges">
+    <form @submit.prevent="nextStep">
       <table>
         <tbody>
-          <tr v-for="(item, itemIndex) in items.results">
+          <tr v-for="(entry, entryIndex) in items.results">
             <td>
-              <em>[[item.subscription.plan.title]] from
-                [[item.subscription.plan.profile.printable_name]]</em>
-              <button type="button" @click="remove(item.subscription.plan.slug)">delete</button>
+              <em>[[entry.subscription.plan.title]] from
+                [[entry.subscription.plan.profile.printable_name]]</em>
+              <button type="button"
+                      @click="remove(entry.subscription.plan.slug)"
+                      v-if="!items.claim_code">delete</button>
               <table>
                 <tbody>
-                  <tr v-for="line in item.lines" class="invoice-item">
+                  {# show lines #}
+                  <tr class="invoice-item" v-for="line in entry.lines">
                     <td></td>
-                    <td>[[line.amount]]</td>
-                    <td v-html="line.description"></td>
+                    <td class="line-amount text-right">[[line.amount]]</td>
+                    <td class="line-descr" v-html="line.description"></td>
                   </tr>
-                  <tr v-show="optionsConfirmed">
+
+                  {# show options #}
+                  <tr class="py-0" v-if="entry.options && entry.options.length > 0">
+                    <th colspan="2" class="font-weight-normal">Payment Options</th>
+                    <th class="font-weight-normal text-right">Totals</th>
+                  </tr>
+                  <tr v-for="(line, index) in entry.options">
+                    <td>
+                      <input type="radio" @change="optionSelected(entry.subscription.plan.slug, index + 1)" :checked="isOptionSelected(entry.subscription.plan.slug, index + 1)"></input>
+                    </td>
+                    <td class="line-amount text-right">[[line.amount]]</td>
+                    <td class="line-descr" v-html="line.description"></td>
+                  </tr>
+
+                  {# is_bulk_buyer #}
+                  <tr class="seat" v-show="optionsConfirmed && !seatsConfirmed && isLastUserPlan(entryIndex)">
                     <td></td>
-                    <td>[[activeOption(item).amount]]</td>
-                    <td v-html="activeOption(item).description"></td>
-                  </tr>
-                  <tr v-for="(option, index) in item.options" v-show="!optionsConfirmed">
-                    <td><input type="radio" @change="optionSelected(item.subscription.plan.slug, index + 1)" :checked="isOptionSelected(item.subscription.plan.slug, index + 1)"></input></td>
-                    <td>[[option.amount]]</td>
-                    <td v-html="option.description"></td>
-                  </tr>
-                  <tr class="seat" v-show="optionsConfirmed && !seatsConfirmed && isLastUserPlan(itemIndex)">
-                    <td colspan="3">
-                      <input type="text" v-model="planUser(item.subscription.plan.slug).firstName" placeholder="First Name" />
-                      <input type="text" v-model="planUser(item.subscription.plan.slug).lastName" placeholder="Last Name" />
-                      <input type="text" v-model="planUser(item.subscription.plan.slug).email" placeholder="Email" />
-                      <button @click.prevent="addPlanUser(item.subscription.plan.slug)" type="button">Add</button>
-                      <div>
-                        <label>Upload CSV:</label>
-                        <input @change="fileChanged(item.subscription.plan.slug, $event)" type="file" />
-                        <button type="button" @click="bulkImport(item.subscription.plan.slug)">Upload</button>
+                    <td class="row">
+                      <div class="col-md-6">
+                        <input class="form-control seat-fullname" type="text" placeholder="Full name (i.e. first and last names)" v-model="planUser(entry.subscription.plan.slug).fullName" />
+                      </div>
+                      <div class="col-md-6">
+                        <input class="form-control seat-email" type="text" placeholder="E-mail address" v-model="planUser(entry.subscription.plan.slug).email" />
                       </div>
                     </td>
+                    <td class="text-right">
+                      <button class="btn btn-primary add-seat" type="button" @click.prevent="addPlanUser(entry.subscription.plan.slug)">Add</button>
+                    </td>
                   </tr>
+                  <tr v-show="optionsConfirmed && !seatsConfirmed && isLastUserPlan(entryIndex)">
+                    <td colspan="2">
+                      <label>Upload CSV:</label>
+                      <input class="btn btn-lnk" @change="fileChanged(entry.subscription.plan.slug, $event)" type="file" />
+                    </td>
+                    <td class="text-right">
+                      <button class="btn btn-primary" type="button" @click="bulkImport(entry.subscription.plan.slug)">Upload</button>
+                    </td>
+                  </tr>
+
                 </tbody>
               </table>
             </td>
@@ -55,84 +73,85 @@
               <th class="total-amount">
                 [[linesPrice[0] ]] [[linesPrice[1] ]]
               </th>
-              <th>Charged Today</th>
+              <th>Total</th>
             </tr>
           </tfoot>
         </tbody>
       </table>
-      <button v-show="!seatsConfirmed" type="submit">next &raquo;</button>
-    </form>
-    <div v-show="seatsConfirmed">
-      <fieldset>
-        <legend>Credit Card Information</legend>
-        <div v-show="haveCardData" v-cloak>
-          <a href="{{urls.organization.update_card}}">Update</a>
-          <div>
-            <dl>
-              <dt>card</dt>
-              <dd>[[savedCard.last4]]</dd>
-            </dl>
-            <dl>
-              <dt>expires</dt>
-              <dd>[[savedCard.exp_date]]</dd>
-            </dl>
-          </div>
+      <section id="info" v-if="items.state && items.state != 'created'">
+        <dl>
+          <dt>Status</dt>
+          <dd class="charge-status">[[ items.state == 'done' ? "The charge succeeded." : items.state ]]</dd>
+        </dl>
+        <dl>
+          <dt>Date</dt>
+          <dd>[[ items.created_at ]]</dd>
+        </dl>
+        <dl>
+          <dt>REFERENCE</dt>
+          <dd>#[[ items.processor_key ]]</dd>
+        </dl>
+        <dl>
+          <dt>amount</dt>
+          <dd id="amount-info">[[items.amount]] [[items.unit]]</dd>
+        </dl>
+        <dl>
+          <dt>card</dt>
+          <dd>**** - [[items.last4]]</dd>
+        </dl>
+        <dl>
+          <dt>expires</dt>
+          <dd>[[items.exp_date]]</dd>
+        </dl>
+      </section>
+      <div v-show="allConfirmed"  v-if="items.state && items.state == 'created'">
+        {% block order_card %}
+        {% if RAZORPAY_PUB_KEY %}
+        {% include "saas/_razorpay_checkout.html" %}
+        <div>
+          <button type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}Submit{% endif %}</button>
         </div>
-        <div v-show="!haveCardData" v-cloak>
-          <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
-               values will hit the server and break PCI compliance. -->
-          <div :class="inputClass('cardNumber')">
-            <label for="card-number">Card Number</label>
-            <input id="card-number" v-model="cardNumber"
-                   type="text" size="16" placeholder="Card number"
-                   autocomplete="off" />
-          </div>
-          <div :class="inputClass('cardExp')">
-            <label>Expiration</label>
-            <input v-model="cardExpMonth"
-                   type="text" maxlength="2" size="2" placeholder="MM" />
-            <input v-model="cardExpYear"
-                   type="text" maxlength="4" size="4" placeholder="YYYY" />
-          </div>
-          <div :class="inputClass('cardCvc')">
-            <label>Security Code</label>
-            <input v-model="cardCvc"
-                   type="text" maxlength="3" size="3" placeholder="CVC"
-                   autocomplete="off" />
-          </div>
-
-          <legend>Billing Address</legend>
-          <div :class="inputClass('name')">
-            <input v-model="name" type="text" placeholder="Name">
-          </div>
-          <div :class="inputClass('addressLine1')">
-            <input v-model="addressLine1" type="text" placeholder="Address line">
-          </div>
-          <div :class="inputClass('addressCity')">
-            <input v-model="addressCity" type="text" placeholder="City">
-          </div>
-          <div :class="inputClass('addressZip')">
-            <input v-model="addressZip" type="text" placeholder="ZIP">
-          </div>
-          <div :class="inputClass('addressCountry')">
-            <select v-model="addressCountry" @change="addressRegion = ''">
-              <option value="">select country</option>
-              <option :value="code" v-for="(country, code) in countries">[[country]]</option>
-            </select>
-          </div>
-          <div :class="inputClass('addressRegion')">
-            <select v-model="addressRegion" v-show="addressCountry == 'US' || addressCountry == 'CA'">
-              <option value="">select state</option>
-              <option :value="code" v-for="(region, code) in regions[addressCountry]">[[region]]</option>
-            </select>
-            <input v-model="addressRegion" type="text" placeholder="Region" v-show="addressCountry != 'US' && addressCountry != 'CA'">
-          </div>
+        {% elif FLUTTERWAVE_PUB_KEY %}
+        {% include "saas/_flutterwave_checkout.html" %}
+        {% else %}
+        <div>
+          {% include "saas/_card_use.html" %}
         </div>
-      </fieldset>
-      <div>
-        <button @click="checkout" type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}{% if force_update %}Update{% else %}Submit{% endif %}{% endif %}</button>
+        {% endif %}
+        {% endblock %}
       </div>
-    </div>
+    </form>
   </div>
 </checkout>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+{% if USE_STRIPE_V2 %}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% else %}
+<script type="text/javascript" src="https://js.stripe.com/v3/"></script>
+{% endif %}
+<script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
+<script type="text/javascript">
+Vue.prototype.$itemsPerPage =
+    {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %};
+//Vue.prototype.$sortDirection = ;
+//Vue.prototype.$sortByField = ;
+Vue.prototype.$dateRange = {
+    start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
+    ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
+};
+Vue.prototype.$urls = {% if urls %}{{urls|to_json}}{% else %}{}{% endif %};
+Vue.prototype.$tables = {% if tables %}{{tables|safe}}{% else %}{}{% endif %};
+</script>
+<script type="text/javascript" charset="utf-8" src="/static/vendor/vue-croppa.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources-vue.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-vue.js"></script>
+<script type="text/javascript">
+Vue.use(Croppa);
+var app = new Vue({
+  el: '#app',
+  delimiters: ["[[","]]"],
+});
+</script>
 {% endblock %}

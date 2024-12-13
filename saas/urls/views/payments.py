@@ -23,18 +23,10 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from ...compat import path
-from ...views.billing import RedeemCouponView
-from ...views.legal import AgreementDetailView, AgreementListView
-from ...views.plans import CartPlanListView
+from ...views.billing import PaymentDetailView
 
 
 urlpatterns = [
-    path('legal/<slug:agreement>/',
-        AgreementDetailView.as_view(), name='legal_agreement'),
-    path('legal/',
-        AgreementListView.as_view(), name='legal_agreement_list'),
-    path('pricing/',
-        CartPlanListView.as_view(), name='saas_cart_plan_list'),
-    path('redeem/',
-        RedeemCouponView.as_view(), name='saas_redeem_coupon'),
+    path('billing/payments/<slug:claim_code>/',
+        PaymentDetailView.as_view(), name='saas_payment'),
 ]

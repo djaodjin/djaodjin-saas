@@ -172,4 +172,84 @@
       "user": 172
     },
     "model": "saas.Role", "pk": 172
+},
+
+{
+    "fields": {
+      "username": "xia173",
+      "date_joined": "2024-01-01T00:00:00+00:00",
+      "last_login": "2024-01-01T00:00:00+00:00",
+      "email": "xia+173@localhost.localdomain",
+      "first_name": "Xia173",
+      "last_name": "Subscriber",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "is_active": true
+    },
+    "model": "auth.User", "pk": 173
+},
+{
+    "fields": {
+      "slug": "xia173",
+      "full_name": "Xia173 Subscriber",
+      "created_at": "2024-01-01T00:00:00+00:00",
+      "email": "xia+173@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 173
+},
+{
+    "fields":{
+      "created_at": "2024-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 173,
+      "user": 173
+    },
+    "model": "saas.Role", "pk": 173
+},
+
+{
+    "fields": {
+      "username": "xia174",
+      "date_joined": "2024-01-01T00:00:00+00:00",
+      "last_login": "2024-01-01T00:00:00+00:00",
+      "email": "xia+174@localhost.localdomain",
+      "first_name": "Xia174",
+      "last_name": "Subscriber",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "is_active": true
+    },
+    "model": "auth.User", "pk": 174
+},
+{
+    "fields": {
+      "slug": "xia174",
+      "full_name": "Xia174 Subscriber",
+      "created_at": "2024-01-01T00:00:00+00:00",
+      "email": "xia+174@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 174
+},
+{
+    "fields":{
+      "created_at": "2024-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 174,
+      "user": 174
+    },
+    "model": "saas.Role", "pk": 174
 }]

@@ -34,15 +34,15 @@ If you have a coupon code, it is time to redeem it now!
         {% block order_footer %}
         {% endblock order_footer %}
         {% block order_card %}
-        {% if RAZORPAY_PUB_KEY %}
+        {% if FLUTTERWAVE_PUB_KEY %}
+        {% include "saas/_flutterwave_checkout.html" %}
+        {% elif RAZORPAY_PUB_KEY %}
         {% include "saas/_razorpay_checkout.html" %}
         <div>
           <button type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}Submit{% endif %}</button>
         </div>
         {% elif STRIPE_PUB_KEY %}
         {% include "saas/_card_use.html" %}
-        {% elif FLUTTERWAVE_PUB_KEY %}
-        {% include "saas/_flutterwave_checkout.html" %}
         {% else %}
         <p>
 Either variables FLUTTERWAVE_PUB_KEY, RAZORPAY_PUB_KEY, or STRIPE_PUB_KEY
@@ -56,25 +56,35 @@ must be defined.
 {% endblock %}
 
 {% block saas_bodyscripts %}
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-stripe.js"></script>
+{% if urls and urls.api_cart %}
 <script type="text/javascript">
 jQuery(document).ready(function($) {
     var cardForm = $("#payment-form");
-{% if urls and urls.api_cart %}
     if( cardForm.length > 0 ) {
         cardForm.find("#invoicables").invoice(
             {currency_unit: "{% if lines_price %}{{ lines_price.unit }}{% endif %}",
              saas_api_cart: "{{ urls.api_cart }}" });
     }
+});
+</script>
 {% endif %}
 {% if STRIPE_PUB_KEY %}
+{% if USE_STRIPE_V2 %}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% else %}
+<script type="text/javascript" src="https://js.stripe.com/v3/"></script>
+{% endif %}
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-stripe.js"></script>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    var cardForm = $("#payment-form");
     cardForm.card({
         stripePubKey: "{{ STRIPE_PUB_KEY }}",
         stripeIntentSecret: {% if STRIPE_INTENT_SECRET %}"{{ STRIPE_INTENT_SECRET }}"{% else %}null{% endif %},
         stripeAccount: {% if STRIPE_ACCOUNT %}"{{ STRIPE_ACCOUNT }}"{% else %}null{% endif %},
         saas_api_card: "{{ urls.organization.api_card }}"
     });
-{% endif %}
 });
 </script>
+{% endif %}
 {% endblock %}

@@ -26,24 +26,26 @@ from __future__ import unicode_literals
 from django.http import Http404
 from django.db import transaction
 from django.db.models import Sum
-from rest_framework import status
-from rest_framework.generics import (CreateAPIView, ListAPIView,
-    GenericAPIView, RetrieveAPIView)
+from rest_framework import generics, mixins, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
-    RefundChargeSerializer, ValidationDetailSerializer)
+from .serializers import (ChargeSerializer, CheckoutSerializer,
+    EmailChargeReceiptSerializer, PaymentSerializer, RefundChargeSerializer,
+    ValidationDetailSerializer)
 from .. import signals
-from ..compat import gettext_lazy as _
+from ..backends import ProcessorError
+from ..compat import is_authenticated, gettext_lazy as _, reverse
 from ..docs import OpenApiResponse, extend_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..humanize import as_money
-from ..models import Charge, InsufficientFunds
+from ..models import Charge, InsufficientFunds, get_broker
 from ..mixins import ChargeMixin, DateRangeContextMixin, OrganizationMixin
 from ..pagination import TotalPagination
+from ..utils import build_absolute_uri
 
 
-class ChargeResourceView(ChargeMixin, RetrieveAPIView):
+class ChargeResourceView(ChargeMixin, generics.RetrieveAPIView):
     """
     Retrieves a processor charge
 
@@ -103,7 +105,7 @@ class ChargeQuerysetMixin(object):
 
 
 class ChargeListAPIView(SmartChargeListMixin,
-                        ChargeQuerysetMixin, ListAPIView):
+                        ChargeQuerysetMixin, generics.ListAPIView):
     """
     Lists processor charges
 
@@ -167,7 +169,7 @@ class OrganizationChargeQuerysetMixin(OrganizationMixin):
 
 class OrganizationChargeListAPIView(SmartChargeListMixin,
                                     OrganizationChargeQuerysetMixin,
-                                    ListAPIView):
+                                    generics.ListAPIView):
 
     """
     Lists all charges for a subscriber
@@ -206,7 +208,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
     pagination_class = TotalPagination
 
 
-class ChargeRefundAPIView(ChargeMixin, CreateAPIView):
+class ChargeRefundAPIView(ChargeMixin, generics.CreateAPIView):
     """
     Refunds a processor charge
 
@@ -300,7 +302,7 @@ class ChargeRefundAPIView(ChargeMixin, CreateAPIView):
         return Response(ChargeSerializer().to_representation(self.object))
 
 
-class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
+class EmailChargeReceiptAPIView(ChargeMixin, generics.GenericAPIView):
     """
     Re-sends a charge receipt
 
@@ -340,3 +342,118 @@ class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
             'email': self.object.customer.email,
             'detail': _("A copy of the receipt was sent to %(email)s.") % {
                 'email': self.object.customer.email}}))
+
+
+class PaymentDetailAPIView(mixins.CreateModelMixin, generics.RetrieveAPIView):
+    """
+    Retrieves a processor charge
+
+    Pass through to the processor and returns details about a ``Charge``.
+
+    **Tags**: billing, subscriber, chargemodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/payments/ch_XAb124EF HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "created_at": "2016-01-01T00:00:01Z",
+            "readable_amount": "$1121.20",
+            "amount": 112120,
+            "unit": "usd",
+            "description": "Charge for subscription to cowork open-space",
+            "last4": "1234",
+            "exp_date": "2016-06-01",
+            "processor_key": "ch_XAb124EF",
+            "state": "DONE"
+        }
+    """
+    model = Charge
+    lookup_field = 'claim_code'
+    queryset = Charge.objects.all()
+    serializer_class = PaymentSerializer
+
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('post',):
+            return CheckoutSerializer
+        return super(PaymentDetailAPIView, self).get_serializer_class()
+
+    def get_object(self):
+        instance = super(PaymentDetailAPIView, self).get_object()
+        instance.results = instance.line_items_grouped_by_subscription
+        instance.retrieve() # This will settle the charge on the processor
+                            # if necessary.
+        if instance.state == instance.CREATED:
+            provider = instance.broker
+            # XXX OK to override Charge.processor?
+            instance.processor_info = \
+                provider.processor_backend.get_payment_context(
+                    instance.customer,
+                    amount=instance.amount,
+                    unit=instance.unit,
+                    broker_fee_amount=instance.broker_fee_amount,
+                    provider=provider, broker=get_broker())
+        return instance
+
+    @extend_schema(request=None)
+    def post(self, request, *args, **kwargs):
+        """
+        Pay an invoice
+
+        Pay an invoice.
+
+        **Tags**: billing, provider, chargemodel
+
+        **Examples**
+
+        .. code-block:: http
+
+            POST /api/payments/ch_XAb124EF HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "processor_token": "tok_23prgoqpstf56todq"
+            }
+
+        responds
+
+        .. code-block:: json
+
+           {
+                "created_at": "2016-06-21T23:42:44.270977Z",
+                "processor_key": "pay_5lK5TacFH3gbKe",
+                "amount": 2000,
+                "unit": "usd",
+                "description": "Charge pay_5lK5TacFH3gblP on credit card \
+of Xia",
+                "last4": "1234",
+                "exp_date": "2016-06-01",
+                "state": "created"
+            }
+        """
+        return self.create(request, *args, **kwargs)
+
+    def get_success_headers(self, data):
+        return {'Location': build_absolute_uri(
+            self.request, reverse('saas_payment', kwargs=self.kwargs))}
+
+    def perform_create(self, serializer):
+        processor_token = serializer.validated_data.get('processor_token')
+        remember_card = False
+        if is_authenticated(self.request):
+            # We won't remember the card if the user is not authenticated.
+            remember_card = serializer.validated_data.get('remember_card')
+        charge = self.get_object()
+        try:
+            with transaction.atomic():
+                charge.execute(processor_token, self.request.user,
+                    remember_card=remember_card)
+        except ProcessorError as err:
+            raise ValidationError(err)

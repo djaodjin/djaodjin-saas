@@ -795,7 +795,7 @@ class StripeBackend(object):
             'STRIPE_PUB_KEY': self.pub_key,
         }
 
-        if not settings.PROCESSOR.get('USE_STRIPE_V3', False):
+        if settings.PROCESSOR.get('USE_STRIPE_V2', False):
             return context
 
         if amount is not None and amount == 0:

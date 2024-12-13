@@ -19,6 +19,7 @@ FEATURES_DEBUG = True
 TEMPLATE_REVERT_TO_DJANGO = True
 JS_FRAMEWORK = 'vuejs'
 SAAS_ORGANIZATION_MODEL = 'saas.Organization'
+USE_STRIPE_V2 = True
 
 ALLOWED_HOSTS = ('*',)
 
@@ -203,6 +204,7 @@ SAAS = {
     'PROCESSOR': {
         'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
         'MODE': 0, # `LOCAL`
+        'USE_STRIPE_V2': USE_STRIPE_V2,
         'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
         'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
         'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
