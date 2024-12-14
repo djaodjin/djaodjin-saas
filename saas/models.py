@@ -1970,7 +1970,7 @@ class Charge(models.Model):
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
 
-    def execute(self, token, user,
+    def execute(self, token=None, user=None,
                 descr=None, remember_card=True, created_at=None):
         #pylint:disable=too-many-arguments
         created_at = datetime_or_now(created_at)
@@ -1993,9 +1993,8 @@ class Charge(models.Model):
                      descr=descr, created_at=created_at, provider=provider,
                      broker_fee_amount=self.broker_fee_amount, broker=broker)
             else:
-                raise ProcessorError(_("%(organization)s is not associated"\
-                    " to an account on the processor and no token was passed."
-                ) % {'organization': self.customer})
+                raise ProcessorError(_("The profile doesn't have a payment"\
+                    " method on file, and no payment token was passed."))
 
             # Update the record of the charge in our database
             self.processor_key = processor_charge_key
