@@ -1,14 +1,14 @@
 [
 {
     "fields": {
-      "date_joined": "2024-01-01T00:00:00+00:00",
+      "date_joined": "2025-01-01T00:00:00+00:00",
       "email": "donny+130@localhost.localdomain",
       "first_name": "Donny",
       "last_name": "ListSubscriptions",
       "is_active": true,
       "is_staff": false,
       "is_superuser": false,
-      "last_login": "2024-01-01T00:00:00+00:00",
+      "last_login": "2025-01-01T00:00:00+00:00",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
       "username": "donny130"
     },
@@ -16,7 +16,7 @@
 },
 {
     "fields": {
-      "last_signed": "2024-01-01T00:00:00+00:00",
+      "last_signed": "2025-01-01T00:00:00+00:00",
       "agreement": 1,
       "user": 130
     },
@@ -27,7 +27,7 @@
       "slug": "club130",
       "email": "club+130@localhost.localdomain",
       "full_name": "Club130",
-      "created_at": "2024-01-01T00:00:00+00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 1,
       "is_active": 1
@@ -36,7 +36,7 @@
 },
 {
     "fields": {
-      "created_at": "2024-01-01T00:00:00+00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
       "role_description": 1,
       "organization": 130,
       "user": 130
@@ -47,7 +47,7 @@
     "fields":{
         "slug":"plan130",
         "title":"Club130 Plan",
-        "created_at":"2024-01-01T00:00:00+00:00",
+        "created_at":"2025-01-01T00:00:00+00:00",
         "setup_amount": 0,
         "period_amount": 1000,
         "broker_fee_percent": 0,
@@ -62,7 +62,7 @@
     "fields":{
         "slug":"plan131",
         "title":"Club131 Plan",
-        "created_at":"2024-01-01T00:00:00+00:00",
+        "created_at":"2025-01-01T00:00:00+00:00",
         "setup_amount": 0,
         "period_amount": 2000,
         "broker_fee_percent": 0,
@@ -78,7 +78,7 @@
       "slug": "subscriber131",
       "email": "subscriber+131@localhost.localdomain",
       "full_name": "Subscriber131",
-      "created_at": "2024-01-01T00:00:00+00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 0,
       "is_active": 1
@@ -87,8 +87,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-01-01T00:00:00+00:00",
-      "ends_at": "2024-03-31T23:59:59-00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "ends_at": "2025-03-31T23:59:59-00:00",
       "organization": 131,
       "plan": 130
     },
@@ -96,8 +96,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-01-01T00:00:00+00:00",
-      "ends_at": "2024-03-31T23:59:59-00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "ends_at": "2025-03-31T23:59:59-00:00",
       "organization": 131,
       "plan": 131
     },
@@ -108,7 +108,7 @@
       "slug": "subscriber133",
       "email": "subscriber+132@localhost.localdomain",
       "full_name": "Subscriber133",
-      "created_at": "2024-01-01T00:00:00+00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 0,
       "is_active": 1
@@ -117,8 +117,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-01-01T00:00:00+00:00",
-      "ends_at": "2024-06-30T23:59:59-00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "ends_at": "2025-06-30T23:59:59-00:00",
       "organization": 133,
       "plan": 130
     },
@@ -126,8 +126,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-01-01T00:00:00+00:00",
-      "ends_at": "2024-06-30T23:59:59-00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "ends_at": "2025-06-30T23:59:59-00:00",
       "organization": 133,
       "plan": 131
     },
@@ -138,7 +138,7 @@
       "slug": "subscriber135",
       "email": "subscriber+135@localhost.localdomain",
       "full_name": "Agnès Jourdan",
-      "created_at": "2024-01-01T00:00:00+00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 0,
       "is_active": 1
@@ -147,8 +147,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-07-01T00:00:00+00:00",
-      "ends_at": "2024-12-31T23:59:59-00:00",
+      "created_at": "2025-07-01T00:00:00+00:00",
+      "ends_at": "2025-12-31T23:59:59-00:00",
       "organization": 135,
       "plan": 130
     },
@@ -156,8 +156,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-07-01T00:00:00+00:00",
-      "ends_at": "2024-12-31T23:59:59-00:00",
+      "created_at": "2025-07-01T00:00:00+00:00",
+      "ends_at": "2025-12-31T23:59:59-00:00",
       "organization": 135,
       "plan": 131
     },
@@ -168,7 +168,7 @@
       "slug": "subscriber137",
       "email": "subscriber+137@localhost.localdomain",
       "full_name": "Subscriber137",
-      "created_at": "2024-01-01T00:00:00+00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 0,
       "is_active": 1
@@ -177,8 +177,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-11-01T00:00:00+00:00",
-      "ends_at": "2024-12-31T23:59:59-00:00",
+      "created_at": "2025-11-01T00:00:00+00:00",
+      "ends_at": "2025-12-31T23:59:59-00:00",
       "organization": 137,
       "plan": 130
     },
@@ -186,8 +186,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-11-01T00:00:00+00:00",
-      "ends_at": "2024-12-31T23:59:59-00:00",
+      "created_at": "2025-11-01T00:00:00+00:00",
+      "ends_at": "2025-12-31T23:59:59-00:00",
       "organization": 137,
       "plan": 131
     },
@@ -199,7 +199,7 @@
       "slug": "subscriber139",
       "email": "subscriber+139@localhost.localdomain",
       "full_name": "Subscriber139",
-      "created_at": "2024-01-01T00:00:00+00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 0,
       "is_active": 1
@@ -208,8 +208,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-01-01T00:00:00+00:00",
-      "ends_at": "2024-12-31T23:59:59-00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "ends_at": "2025-12-31T23:59:59-00:00",
       "organization": 139,
       "plan": 130
     },
@@ -217,8 +217,8 @@
 },
 {
     "fields": {
-      "created_at": "2024-01-01T00:00:00+00:00",
-      "ends_at": "2024-12-31T23:59:59-00:00",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "ends_at": "2025-12-31T23:59:59-00:00",
       "organization": 139,
       "plan": 131
     },

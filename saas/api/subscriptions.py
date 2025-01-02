@@ -114,7 +114,7 @@ class SubscribedSubscriptionListAPIView(ActiveSubscribedSubscriptionsMixin,
                         "title": "Open Space"
                     },
                     "auto_renew": true,
-                    "app_url": "http://localhost:8020/app/xia/open-space/"
+                   "app_url": "https://livedemo.djaoapp.com/app/xia/open-space/"
                 }
             ]
         }
@@ -186,7 +186,7 @@ class ExpiredSubscriptionsAPIView(ExpiredSubscriptionsMixin, ListAPIView):
                         "title": "Open Space"
                     },
                     "auto_renew": true,
-                    "app_url": "http://localhost:8020/app/xia/open-space/"
+                   "app_url": "https://livedemo.djaoapp.com/app/xia/open-space/"
                 }
             ]
         }
@@ -262,7 +262,7 @@ class SubscriptionDetailAPIView(SubscriptionDetailMixin,
             "title": "Open Space"
           },
           "auto_renew": true,
-          "app_url": "http://localhost:8020/app/xia/open-space/",
+          "app_url": "https://livedemo.djaoapp.com/app/xia/open-space/",
           "editable": true,
           "extra": null,
           "grant_key": null,
