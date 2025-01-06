@@ -755,8 +755,10 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=attribute-defined-outside-init
+        at_time = self.ends_at
         self.balance_amount, self.balance_unit \
-            = Transaction.objects.get_statement_balance(self.organization)
+            = Transaction.objects.get_statement_balance(
+                self.organization, until=at_time)
         return super(StatementBalanceAPIView, self).get(
             request, *args, **kwargs)
 

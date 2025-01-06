@@ -4994,12 +4994,18 @@ def record_use_charge(subscription, use_charge, quantity=1, created_at=None):
             subscription=subscription, use=use_charge, defaults={
                 'expiring_quota': use_charge.quota
         })
+        LOGGER.debug("[record_use_charge] %d units at %s "\
+            "- (expiring_quota=%d, rollover_quota=%d)",
+            quantity, created_at, usage.expiring_quota, usage.rollover_quota)
         if usage.expiring_quota >= quantity:
             # We are still below period quota
             usage.expiring_quota -= quantity
         else:
             invoiced_quantity = quantity - usage.expiring_quota
             usage.expiring_quota = 0
+            LOGGER.debug("[record_use_charge] %d units at %s "\
+                "- rollover_quota(%d) >= invoiced_quantity(%d)",
+                quantity, created_at, usage.rollover_quota, invoiced_quantity)
             if usage.rollover_quota >= invoiced_quantity:
                 # We are still below reserved usage paid in advance
                 usage.rollover_quota -= invoiced_quantity

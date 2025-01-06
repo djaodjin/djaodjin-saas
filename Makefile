@@ -55,8 +55,14 @@ clean:: clean-dbs
 	find $(srcDir) -name '__pycache__' -exec rm -rf {} +
 	find $(srcDir) -name '*~' -exec rm -rf {} +
 
+
 clean-dbs:
 	[ ! -f $(DB_NAME) ] || rm $(DB_NAME)
+
+
+doc:
+	$(installDirs) build/docs
+	cd $(srcDir) && sphinx-build -b html ./docs $(PWD)/build/docs
 
 
 initdb-with-dummydata: initdb
@@ -79,11 +85,6 @@ initdb: clean-dbs
         testsite/fixtures/150-subscribers.json \
         testsite/fixtures/160-renewals.json \
         testsite/fixtures/170-billing.json
-
-
-doc:
-	$(installDirs) build/docs
-	cd $(srcDir) && sphinx-build -b html ./docs $(PWD)/build/docs
 
 
 vendor-assets-prerequisites: $(libDir)/.npm/djaodjin-saas-packages
