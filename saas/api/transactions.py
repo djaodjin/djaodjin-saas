@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,14 +32,14 @@ from rest_framework.pagination import PageNumberPagination
 
 from .serializers import (CartItemCreateSerializer,
     CreateOfflineTransactionSerializer, OfflineTransactionSerializer,
-    TransactionSerializer)
-from ..compat import gettext_lazy as _
+    QueryParamCancelBalanceSerializer, TransactionSerializer)
+from ..compat import gettext_lazy as _, six
 from ..decorators import _valid_manager
 from ..docs import extend_schema, OpenApiResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
 from ..models import (get_broker, record_use_charge, sum_orig_amount,
-    Subscription, Transaction, Plan)
+    Charge, Plan, Subscription, Transaction)
 from ..backends import ProcessorError
 from ..pagination import (BalancePagination, StatementBalancePagination,
     TotalPagination)
@@ -849,6 +849,7 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
           resp, status=status.HTTP_201_CREATED if resp else status.HTTP_200_OK)
 
 
+    @extend_schema(parameters=[QueryParamCancelBalanceSerializer])
     def delete(self, request, *args, **kwargs):
         """
         Cancels a balance due
@@ -869,10 +870,114 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
         """
         return self.destroy(request, *args, **kwargs)
 
-    def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
+    def destroy(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument,too-many-nested-blocks,too-many-locals
         if not _valid_manager(request, [get_broker()]):
             # XXX temporary workaround to provide GET balance API
             # to subscribers and providers.
             raise PermissionDenied()
-        self.organization.create_cancel_transactions(user=request.user)
+
+        at_time = datetime_or_now()
+        query_serializer = QueryParamCancelBalanceSerializer(
+            data=self.request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        claim_code = query_serializer.validated_data.get('claim_code')
+        amount = query_serializer.validated_data.get('amount')
+        paid = query_serializer.validated_data.get('paid', False)
+
+        if claim_code:
+            # If we have a payment claim_code, it is relatively easy.
+            # We mark invoiced items as paid or written-off until we reach
+            # the amount passed as a query parameter, or the total amount
+            # of the charge if no amount was passed.
+            charge = generics.get_object_or_404(
+                Charge.objects.filter(customer=self.organization),
+                claim_code=claim_code)
+            charge.retrieve()
+            if paid:
+                if amount:
+                    for item in charge.charge_items.order_by('id'):
+                        cancel_amount = min(item.available_amount, amount)
+                        if cancel_amount > 0:
+                            Transaction.objects.offline_payment(
+                                item.subscription, cancel_amount,
+                                payment_event_id=claim_code,
+                                created_at=at_time, user=request.user)
+                        amount -= cancel_amount
+                else:
+                    for item in charge.charge_items.order_by('id'):
+                        cancel_amount = item.available_amount
+                        if cancel_amount > 0:
+                            Transaction.objects.offline_payment(
+                                item.subscription, cancel_amount,
+                                payment_event_id=claim_code,
+                                created_at=at_time, user=request.user)
+            else:
+                if amount:
+                    for item in charge.charge_items.order_by('id'):
+                        cancel_amount = min(item.available_amount, amount)
+                        if cancel_amount > 0:
+                            self.organization.create_cancel_transactions(
+                                item.subscription, cancel_amount,
+                                dest_unit=item.subscription.plan.unit,
+                                created_at=at_time, user=request.user)
+                        amount -= cancel_amount
+                else:
+                    for item in charge.charge_items.order_by('id'):
+                        cancel_amount = item.available_amount
+                        if cancel_amount > 0:
+                            self.organization.create_cancel_transactions(
+                                item.subscription, cancel_amount,
+                                dest_unit=item.subscription.plan.unit,
+                                created_at=at_time, user=request.user)
+        else:
+            # If we do not have a payment claim_code, we iterate through
+            # the current balances.
+            balances = Transaction.objects.get_statement_balances(
+                self, until=at_time)
+            if paid:
+                if amount:
+                    for sub_event_id, balance in six.iteritems(balances):
+                        subscription = Subscription.objects.get_by_event_id(
+                            sub_event_id)
+                        for dest_unit, avail_amount in six.iteritems(balance):
+                            cancel_amount = min(avail_amount, amount)
+                            if cancel_amount > 0:
+                                Transaction.objects.offline_payment(
+                                    subscription, cancel_amount,
+                                    created_at=at_time, user=request.user)
+                            amount -= cancel_amount
+                else:
+                    for sub_event_id, balance in six.iteritems(balances):
+                        subscription = Subscription.objects.get_by_event_id(
+                            sub_event_id)
+                        for dest_unit, cancel_amount in six.iteritems(balance):
+                            if cancel_amount > 0:
+                                Transaction.objects.offline_payment(
+                                    subscription, cancel_amount,
+                                    created_at=at_time, user=request.user)
+            else:
+                if amount:
+                    for sub_event_id, balance in six.iteritems(balances):
+                        subscription = Subscription.objects.get_by_event_id(
+                            sub_event_id)
+                        for dest_unit, avail_amount in six.iteritems(balance):
+                            cancel_amount = min(avail_amount, amount)
+                            if cancel_amount > 0:
+                                self.organization.create_cancel_transactions(
+                                    subscription, cancel_amount,
+                                    dest_unit=dest_unit,
+                                    created_at=at_time, user=request.user)
+                            amount -= cancel_amount
+                else:
+                    for sub_event_id, balance in six.iteritems(balances):
+                        subscription = Subscription.objects.get_by_event_id(
+                            sub_event_id)
+                        for dest_unit, cancel_amount in six.iteritems(balance):
+                            if cancel_amount > 0:
+                                self.organization.create_cancel_transactions(
+                                    subscription, cancel_amount,
+                                    dest_unit=dest_unit,
+                                    created_at=at_time, user=request.user)
+
         return http.Response(status=status.HTTP_204_NO_CONTENT)

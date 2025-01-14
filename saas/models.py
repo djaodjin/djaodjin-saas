@@ -1287,7 +1287,8 @@ class AbstractOrganization(models.Model):
             self.funds_balance -= fee_amount
             self.save()
 
-    def create_cancel_transactions(self, at_time=None, user=None):
+    def create_cancel_transactions(self, subscription, amount, dest_unit,
+                                   descr=None, created_at=None, user=None):
         """
         Sometimes, a provider will give up and assume receivables cannot
         be recovered from a subscriber. At that point the receivables are
@@ -1319,75 +1320,75 @@ class AbstractOrganization(models.Model):
                 xia:Canceled                              $179.99
                 cowork:Receivable
         """
-        at_time = datetime_or_now(at_time)
-        balances = Transaction.objects.get_statement_balances(
-            self, until=at_time)
-        for sub_event_id, balance in six.iteritems(balances):
-            for dest_unit, balance_due in six.iteritems(balance):
-                if balance_due > 0:
-                    subscription = Subscription.objects.get_by_event_id(
-                        sub_event_id)
-                    event_balance = Transaction.objects.get_event_balance(
-                        sub_event_id, account=Transaction.PAYABLE)
-                    balance_payable = event_balance['amount']
-                    with transaction.atomic():
-                        if balance_payable > 0:
-                            # Example:
-                            # 2016/08/16 keep a balanced ledger
-                            #     xia:Liability                            15800
-                            #     xia:Payable
-                            Transaction.objects.create(
-                                event_id=sub_event_id,
-                                created_at=at_time,
-                                descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
-                                dest_unit=dest_unit,
-                                dest_amount=balance_payable,
-                                dest_account=Transaction.LIABILITY,
-                                dest_organization=subscription.organization,
-                                orig_unit=dest_unit,
-                                orig_amount=balance_payable,
-                                orig_account=Transaction.PAYABLE,
-                                orig_organization=subscription.organization)
-                        # Example:
-                        # 2016/08/16 write off liability
-                        #     cowork:Writeoff                              15800
-                        #     xia:Liability
-                        Transaction.objects.create(
-                            event_id=sub_event_id,
-                            created_at=at_time,
-                            descr=humanize.DESCRIBE_WRITEOFF_LIABILITY % {
-                                'event': subscription},
-                            dest_unit=dest_unit,
-                            dest_amount=balance_due,
-                            dest_account=Transaction.WRITEOFF,
-                            dest_organization=subscription.plan.organization,
-                            orig_unit=dest_unit,
-                            orig_amount=balance_due,
-                            orig_account=Transaction.LIABILITY,
-                            orig_organization=subscription.organization)
-                        # Example:
-                        # 2016/08/16 write off receivable
-                        #     xia:Cancelled                             15800
-                        #     cowork:Receivable
-                        Transaction.objects.create(
-                            event_id=sub_event_id,
-                            created_at=at_time,
-                            descr=humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
-                                'event': subscription},
-                            dest_unit=dest_unit,
-                            dest_amount=balance_due,
-                            dest_account=Transaction.CANCELED,
-                            dest_organization=subscription.organization,
-                            orig_unit=dest_unit,
-                            orig_amount=balance_due,
-                            orig_account=Transaction.RECEIVABLE,
-                            orig_organization=subscription.plan.organization)
-                        LOGGER.info("%s cancel balance due of %d for %s.",
-                            user, balance_due, self,
-                            extra={'event': 'cancel-balance',
-                                'username': user.username,
-                                'organization': self.slug,
-                                'amount': balance_due})
+        assert amount > 0
+        at_time = datetime_or_now(created_at)
+        sub_event_id = get_sub_event_id(subscription)
+        descr_liability = humanize.DESCRIBE_WRITEOFF_LIABILITY % {
+            'event': subscription}
+        descr_receivable = humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
+            'event': subscription}
+        if descr:
+            descr_liability = descr
+            descr_receivable = descr
+        event_balance = Transaction.objects.get_event_balance(
+            sub_event_id, account=Transaction.PAYABLE)
+        balance_payable = event_balance['amount']
+        with transaction.atomic():
+            if balance_payable > 0:
+                # Example:
+                # 2016/08/16 keep a balanced ledger
+                #     xia:Liability                            15800
+                #     xia:Payable
+                Transaction.objects.create(
+                    event_id=sub_event_id,
+                    created_at=at_time,
+                    descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
+                    dest_unit=dest_unit,
+                    dest_amount=balance_payable,
+                    dest_account=Transaction.LIABILITY,
+                    dest_organization=subscription.organization,
+                    orig_unit=dest_unit,
+                    orig_amount=balance_payable,
+                    orig_account=Transaction.PAYABLE,
+                    orig_organization=subscription.organization)
+            # Example:
+            # 2016/08/16 write off liability
+            #     cowork:Writeoff                              15800
+            #     xia:Liability
+            Transaction.objects.create(
+                event_id=sub_event_id,
+                created_at=at_time,
+                descr=descr_liability,
+                dest_unit=dest_unit,
+                dest_amount=amount,
+                dest_account=Transaction.WRITEOFF,
+                dest_organization=subscription.plan.organization,
+                orig_unit=dest_unit,
+                orig_amount=amount,
+                orig_account=Transaction.LIABILITY,
+                orig_organization=subscription.organization)
+            # Example:
+            # 2016/08/16 write off receivable
+            #     xia:Cancelled                             15800
+            #     cowork:Receivable
+            Transaction.objects.create(
+                event_id=sub_event_id,
+                created_at=at_time,
+                descr=descr_receivable,
+                dest_unit=dest_unit,
+                dest_amount=amount,
+                dest_account=Transaction.CANCELED,
+                dest_organization=subscription.organization,
+                orig_unit=dest_unit,
+                orig_amount=amount,
+                orig_account=Transaction.RECEIVABLE,
+                orig_organization=subscription.plan.organization)
+            LOGGER.info("%s cancel balance due of %d for %s.",
+                user, amount, self,
+                extra={'event': 'cancel-balance',
+                    'username': user.username,
+                    'organization': self.slug,
+                    'amount': amount})
 
 
 @python_2_unicode_compatible
@@ -2580,6 +2581,29 @@ class ChargeItem(models.Model):
 
     def __str__(self):
         return '%s-%s' % (str(self.charge), str(self.invoiced))
+
+    @property
+    def available_amount(self):
+        """
+        Returns the total amount and unit charged after refunds
+        have been deducted.
+        """
+        invoiced_amount = self.invoiced.dest_amount
+        refund_balances = sum_orig_amount(self.refunded)
+        if len(refund_balances) > 1:
+            raise ValueError(
+                _("balances with multiple currency units (%s)") %
+                str(refund_balances))
+        # `sum_dest_amount` guarentees at least one result.
+        refund_amount = refund_balances[0]['amount']
+        refund_unit = refund_balances[0]['unit']
+        if refund_amount and self.invoiced.dest_unit != refund_unit:
+            raise ValueError(
+                _("charge item and refunds have different units"\
+" (%(unit)s vs. %(refund_unit)s)") % (
+                {'unit': self.invoiced.dest_unit, 'refund_unit': refund_unit}))
+        return invoiced_amount - refund_amount
+
 
     @property
     def refunded(self):
@@ -4076,21 +4100,14 @@ class TransactionManager(models.Manager):
         return queryset.order_by('created_at')
 
     def offline_payment(self, subscription, amount, payment_event_id=None,
-                        descr=None, user=None, created_at=None):
+                        descr=None, created_at=None, user=None):
         #pylint: disable=too-many-arguments
         """
         For an offline payment, we will record a sequence of ``Transaction``
-        as if we went through a ``new_subscription_order`` followed by
-        ``payment_successful`` and ``withdraw_funds`` while bypassing
-        the processor.
+        as if we went through ``payment_successful`` and ``withdraw_funds``
+        while bypassing the processor.
 
         Thus an offline payment is recorded as follow::
-
-            ; Record an order
-
-            yyyy/mm/dd sub_***** description
-                subscriber:Payable                       amount
-                provider:Receivable
 
             ; Record the off-line payment
 
@@ -4115,10 +4132,6 @@ class TransactionManager(models.Manager):
                 provider:Funds
 
         Example::
-
-            2014/09/10 subscribe to open-space plan
-                xia:Payable                             $179.99
-                cowork:Receivable
 
             2014/09/10 Check received off-line
                 cowork:Funds                            $179.99
@@ -4146,19 +4159,6 @@ class TransactionManager(models.Manager):
             payment_event_id = generate_random_slug(prefix='check_')
         with transaction.atomic():
             subscription_event_id = get_sub_event_id(subscription)
-            results.append(self.create(
-                created_at=created_at,
-                descr=descr,
-                event_id=subscription_event_id,
-                dest_amount=amount,
-                dest_unit=subscription.plan.unit,
-                dest_account=Transaction.PAYABLE,
-                dest_organization=subscription.organization,
-                orig_amount=amount,
-                orig_unit=subscription.plan.unit,
-                orig_account=Transaction.RECEIVABLE,
-                orig_organization=subscription.plan.organization))
-
             results.append(self.create(
                 created_at=created_at,
                 descr=descr,

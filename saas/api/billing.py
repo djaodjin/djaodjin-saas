@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@ from rest_framework.mixins import CreateModelMixin
 from rest_framework import response as http
 
 from ..backends import ProcessorError
+from ..cart import session_cart_to_database
 from ..compat import gettext_lazy as _, is_authenticated, reverse, StringIO
 from ..docs import extend_schema, OpenApiResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
@@ -526,9 +527,20 @@ of Xia",
                 "state": "created"
             }
         """
+        # We are not getting here without an authenticated user. It is time
+        # to store the cart into the database.
+        # Implementation note: we are not running `session_cart_to_database`
+        # in `dispatch` because we don't want it to run on OPTIONS API calls.
+        session_cart_to_database(self.request)
         return self.create(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
+        # We are not getting here without an authenticated user. It is time
+        # to store the cart into the database.
+        # Implementation note: we are not running `session_cart_to_database`
+        # in `dispatch` because we don't want it to run on OPTIONS API calls.
+        session_cart_to_database(self.request)
+
         provider = self.invoicables_provider
         resp_data = {
             'processor_info':

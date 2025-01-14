@@ -1535,6 +1535,17 @@ class QueryParamActiveSerializer(NoModelSerializer):
         default=None, allow_null=True)
 
 
+class QueryParamCancelBalanceSerializer(NoModelSerializer):
+
+    claim_code = serializers.CharField(required=False,
+        help_text=_("Claim code for payment to mark as paid or write-off"))
+    amount = serializers.IntegerField(required=False, min_value=1,
+        help_text=_("Amount to mark as paid or write-off. Min value is 1."))
+    paid = serializers.BooleanField(required=False,
+        help_text=_("When true, the cancelation was recovered offline,"\
+        " else it is a write-off"))
+
+
 class QueryParamCartItemSerializer(NoModelSerializer):
 
     plan = PlanRelatedField(required=False, allow_null=True,
