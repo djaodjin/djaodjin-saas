@@ -1320,6 +1320,7 @@ class AbstractOrganization(models.Model):
                 xia:Canceled                              $179.99
                 cowork:Receivable
         """
+        #pylint:disable=too-many-arguments
         assert amount > 0
         at_time = datetime_or_now(created_at)
         sub_event_id = get_sub_event_id(subscription)

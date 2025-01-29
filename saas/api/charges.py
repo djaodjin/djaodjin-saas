@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from .serializers import (ChargeSerializer, CheckoutSerializer,
-    EmailChargeReceiptSerializer, PaymentSerializer, RefundChargeSerializer,
+    EmailChargeReceiptSerializer, PaymentSerializer,
+    QueryParamCancelBalanceSerializer, RefundChargeSerializer,
     ValidationDetailSerializer)
 from .. import signals
 from ..backends import ProcessorError
@@ -39,10 +40,10 @@ from ..compat import is_authenticated, gettext_lazy as _, reverse
 from ..docs import OpenApiResponse, extend_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..humanize import as_money
-from ..models import Charge, InsufficientFunds, get_broker
+from ..models import Charge, InsufficientFunds, Transaction, get_broker
 from ..mixins import ChargeMixin, DateRangeContextMixin, OrganizationMixin
 from ..pagination import TotalPagination
-from ..utils import build_absolute_uri
+from ..utils import build_absolute_uri, datetime_or_now
 
 
 class ChargeResourceView(ChargeMixin, generics.RetrieveAPIView):
@@ -457,3 +458,116 @@ of Xia",
                     remember_card=remember_card)
         except ProcessorError as err:
             raise ValidationError(err)
+
+
+class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
+
+    claim_code_url_kwarg = 'claim_code'
+    serializer_class = QueryParamCancelBalanceSerializer
+
+    @extend_schema(responses={
+        200: OpenApiResponse(PaymentSerializer),
+        400: OpenApiResponse(ValidationDetailSerializer)})
+    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        """
+        Marks an invoice paid
+
+        Partially or totally marks an invoice as paid or canceled.
+
+        **Tags**: billing, provider, chargemodel
+
+        **Examples**
+
+        .. code-block:: http
+
+            POST /api/billing/club170/payments/ch_XAb124EF/collected HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "paid": true
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2016-01-01T00:00:05Z",
+                "readable_amount": "$1121.20",
+                "amount": 112120,
+                "unit": "usd",
+                "description": "Charge for subscription to cowork open-space",
+                "last4": "1234",
+                "exp_date": "2016-06-01",
+                "processor_key": "ch_XAb124EF",
+                "state": "DONE"
+            }
+        """
+        at_time = datetime_or_now()
+        query_serializer = self.get_serializer(data=request.data)
+        query_serializer.is_valid(raise_exception=True)
+        amount = query_serializer.validated_data.get('amount')
+        paid = query_serializer.validated_data.get('paid', False)
+
+        # If we have a payment claim_code, it is relatively easy.
+        # We mark invoiced items as paid or written-off until we reach
+        # the amount passed as a query parameter, or the total amount
+        # of the charge if no amount was passed.
+        claim_code = kwargs.get(self.claim_code_url_kwarg)
+        charge = generics.get_object_or_404(
+            Charge.objects.all(), #filter(customer=self.organization),
+            claim_code=claim_code)
+        charge.retrieve() # This will settle the charge on the processor
+                          # if necessary.
+        charge_items = charge.charge_items.filter(
+            invoiced__dest_organization=self.organization).order_by('id')
+        updated = False
+        with transaction.atomic():
+            if paid:
+                if amount:
+                    for item in charge_items:
+                        cancel_amount = min(item.available_amount, amount)
+                        if cancel_amount > 0:
+                            Transaction.objects.offline_payment(
+                                item.subscription, cancel_amount,
+                                payment_event_id=claim_code,
+                                created_at=at_time, user=request.user)
+                            updated = True
+                        amount -= cancel_amount
+                else:
+                    for item in charge_items:
+                        cancel_amount = item.available_amount
+                        if cancel_amount > 0:
+                            Transaction.objects.offline_payment(
+                                item.subscription, cancel_amount,
+                                payment_event_id=claim_code,
+                                created_at=at_time, user=request.user)
+                            updated = True
+            else:
+                if amount:
+                    for item in charge_items:
+                        cancel_amount = min(item.available_amount, amount)
+                        if cancel_amount > 0:
+                            self.organization.create_cancel_transactions(
+                                item.subscription, cancel_amount,
+                                dest_unit=item.subscription.plan.unit,
+                                created_at=at_time, user=request.user)
+                            updated = True
+                        amount -= cancel_amount
+                else:
+                    for item in charge_items:
+                        cancel_amount = item.available_amount
+                        if cancel_amount > 0:
+                            self.organization.create_cancel_transactions(
+                                item.subscription, cancel_amount,
+                                dest_unit=item.subscription.plan.unit,
+                                created_at=at_time, user=request.user)
+                            updated = True
+            if updated:
+                charge.state = charge.DONE
+                charge.save()
+        charge.results = charge.line_items_grouped_by_subscription
+        resp = PaymentSerializer(
+            instance=charge, context=self.get_serializer_context())
+        return Response(resp.data)
