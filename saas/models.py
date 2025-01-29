@@ -3330,7 +3330,8 @@ class UseCharge(SlugTitleMixin, models.Model):
         related_name='use_charges',
         help_text=_("Plan the use chage is related to"))
     use_amount = models.PositiveIntegerField(default=0,
-        help_text=_("Amount of the use charge in plan currency unit"))
+        help_text=_("Amount per unit defined by the provider"\
+            " of the use charge in plan currency unit (ex: $0.01/request)"))
     quota = models.PositiveIntegerField(default=0,
         help_text=_("Usage included in the plan"\
             " (in units defined by the provider)"))

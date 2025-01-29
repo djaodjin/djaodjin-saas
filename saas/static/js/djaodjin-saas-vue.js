@@ -603,20 +603,25 @@ var cardMixin = {
                     vm.stripe = Stripe(vm.processor_pub_key);
                 }
                 if( vm.stripe_intent_secret ) {
-                    var elements = vm.stripe.elements();
-                    vm.cardElement = elements.create("card", {
-                        hidePostalCode: true
-                    });
-                    vm.cardElement.mount("#card-element");
+                    if( document.getElementById('#card-element') ) {
+                        // We might be showing a receipt.
+                        var elements = vm.stripe.elements();
+                        vm.cardElement = elements.create("card", {
+                            hidePostalCode: true
+                        });
+                        vm.cardElement.mount("#card-element");
+                    }
                 }
             }
         },
         getUserCard: function() {
             var vm = this;
-            vm.reqGet(vm.api_card_url,
-            function(resp) {
-                vm.populateCardData(resp);
-            });
+            if( vm.api_card_url ) {
+                // In case of anonymous visitors, we don't load any card data.
+                vm.reqGet(vm.api_card_url, function(resp) {
+                    vm.populateCardData(resp);
+                });
+            }
         },
         getCardToken: function(cb){
             var vm = this;
@@ -2756,9 +2761,7 @@ Vue.component('checkout', {
     mounted: function(){
         var vm = this;
         vm.get();
-        if( vm.api_card_url ) {
-            vm.getUserCard();
-        }
+        vm.getUserCard();
         const cardData = vm.getCardFormData();
         if( !$.isEmptyObject(cardData) ) { // XXX jQuery
             vm.card_name = cardData['card_name'];
@@ -2841,6 +2844,8 @@ Vue.component('plan-update', {
             redirect_url: this.$urls.provider.metrics_plans,
             formFields: {
                 unit: 'usd',
+                advance_discounts: [],
+                use_charges: [],
             },
             isActive: false,
         }
@@ -2850,21 +2855,39 @@ Vue.component('plan-update', {
             var vm = this;
             vm.validateForm();
             var data = {};
-            var advance_discount = {};
             for( var field in vm.formFields ) {
-                if( vm.formFields.hasOwnProperty(field) ) {
-                    if( field == 'advance_discount_type' ) {
-                        advance_discount['discount_type'] =
-                            vm.formFields[field];
-                    } else if( field == 'advance_discount_value' ) {
-                        advance_discount['discount_value'] =
-                            parseFloat(vm.formFields[field]);
-                    } else if( field == 'advance_discount_length' ) {
-                        advance_discount['length'] =
-                            parseInt(vm.formFields[field]);
-                    } else {
-                        data[field] = vm.formFields[field];
+                if( field === 'advance_discounts' ) {
+                    data.advance_discounts = [];
+                    for( var idx = 0;
+                         idx < vm.formFields.advance_discounts.length; ++idx ) {
+                        data.advance_discounts.push({
+                            discount_type: vm.formFields.advance_discounts[idx].discount_type,
+                            discount_value: parseFloat(
+                            vm.formFields.advance_discounts[idx].discount_value) * 100,
+                            length: parseInt(
+                                vm.formFields.advance_discounts[idx].length)
+                        });
                     }
+
+                } else if( field === 'use_charges' ) {
+                    data.use_charges = [];
+                    for( var idx = 0;
+                         idx < vm.formFields.use_charges.length; ++idx ) {
+                        data.use_charges.push({
+                            slug: vm.formFields.use_charges[idx].slug,
+                            title: vm.formFields.use_charges[idx].title,
+                       description: vm.formFields.use_charges[idx].description,
+                            maximum_limit: parseFloat(
+                            vm.formFields.use_charges[idx].maximum_limit) * 100,
+                            use_amount: parseFloat(
+                              vm.formFields.use_charges[idx].use_amount) * 100,
+                            quota: parseInt(
+                                vm.formFields.use_charges[idx].quota)
+                        });
+                    }
+
+                } else if( vm.formFields.hasOwnProperty(field) ) {
+                    data[field] = vm.formFields[field];
                 }
             }
             if( data.period_amount ) {
@@ -2872,15 +2895,6 @@ Vue.component('plan-update', {
             }
             if( data.setup_amount ) {
                 data.setup_amount = Math.round(data.setup_amount * 100);
-            }
-            if( advance_discount && advance_discount.discount_value ) {
-                data['advance_discounts'] = [advance_discount];
-                for( var idx = 0; idx < data.advance_discounts.length; ++idx ) {
-                    if( data.advance_discounts[idx].discount_type !== 'period' ) {
-                        data.advance_discounts[idx].discount_value = Math.round(
-                            data.advance_discounts[idx].discount_value * 100);
-                    }
-                }
             }
             return data;
         },
@@ -2899,7 +2913,6 @@ Vue.component('plan-update', {
             });
         },
         get: function(){
-            if(!vm.url) return;
             var vm = this;
             vm.reqGet(vm.url,
             function(resp) {
@@ -2908,13 +2921,20 @@ Vue.component('plan-update', {
                     resp.period_amount);
                 vm.formFields.setup_amount = vm.formatNumber(
                     resp.setup_amount);
-                for( var idx = 0; idx < resp.advance_discounts.length; ++idx ) {
-                    vm.formFields.advance_discount_type =
-                        resp.advance_discounts[idx].discount_type;
-                    vm.formFields.advance_discount_value = vm.formatNumber(
-                        resp.advance_discounts[idx].discount_value);
-                    vm.formFields.advance_discount_length =
-                        resp.advance_discounts[idx].length;
+                for( var idx = 0;
+                     idx < vm.formFields.advance_discounts.length; ++idx ) {
+                    vm.formFields.advance_discounts[idx].discount_value =
+                      vm.formatNumber(
+                        vm.formFields.advance_discounts[idx].discount_value);
+                }
+                for( var idx = 0;
+                     idx < vm.formFields.use_charges.length; ++idx ) {
+                    vm.formFields.use_charges[idx].maximum_limit =
+                      vm.formatNumber(
+                        vm.formFields.use_charges[idx].maximum_limit);
+                    vm.formFields.use_charges[idx].use_amount =
+                      vm.formatNumber(
+                        vm.formFields.use_charges[idx].use_amount);
                 }
                 vm.isActive = resp.is_active;
             });
@@ -2941,19 +2961,28 @@ Vue.component('plan-update', {
                 vm.createPlan();
             }
         },
+        addAdvanceDiscount: function(){
+            var vm = this;
+            vm.formFields.advance_discounts.push({});
+        },
+        removeAdvanceDiscount: function(idx){
+            var vm = this;
+            vm.formFields.advance_discounts.splice(idx, 1);
+        },
+        addUseCharge: function(){
+            var vm = this;
+            vm.formFields.use_charges.push({});
+        },
+        removeUseCharge: function(idx){
+            var vm = this;
+            vm.formFields.use_charges.splice(idx, 1);
+        },
     },
     mounted: function(){
         var vm = this;
-        if( !vm.validateForm() ) {
-            // It seems the form is completely blank. Let's attempt
-            // to load the form fields from the API then.
-            vm.get();
-        } else {
-            var activateBtn = vm.$el.querySelector("#activate-plan");
-            if( activateBtn) {
-                vm.isActive = parseInt(activateBtn.value);
-            }
-        }
+        // Always load from the API because we need to populate
+        // `advance_discounts` and `use_charges` arrays.
+        vm.get();
     },
 });
 

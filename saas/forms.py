@@ -264,18 +264,42 @@ class PlanForm(forms.ModelForm):
         (slugify(choice[1]), choice[1]) for choice in Plan.RENEWAL_CHOICES])
     unit = forms.ChoiceField(choices=CurrencyDataLoader.get_currency_choices())
     period_amount = forms.DecimalField(max_digits=7, decimal_places=2)
-    advance_discount_type = forms.ChoiceField(choices=[
+
+    # advance discounts
+    discount_type = forms.ChoiceField(choices=[
         (slugify(choice[1]), choice[1])
         for choice in AdvanceDiscount.DISCOUNT_CHOICES])
-    advance_discount_value = forms.DecimalField(max_digits=5, decimal_places=2)
-    advance_discount_length = forms.IntegerField()
+    discount_value = forms.DecimalField(max_digits=5, decimal_places=2)
+    discount_length = forms.IntegerField()
+
+    # use charges
+    use_charge_slug = forms.SlugField(
+        help_text=_("Unique identifier to reference the use charge in URLs"))
+    use_charge_title = forms.CharField(max_length=50,
+        help_text=_("Short description of the use charge"))
+    use_charge_description = forms.CharField(
+        widget=forms.Textarea(attrs={"rows":"5"}),
+        help_text=_("Long description of the use charge"))
+    use_charge_use_amount = forms.DecimalField(max_digits=7, decimal_places=2,
+        help_text=_("Amount per unit defined by the provider"\
+            " of the use charge in plan currency unit (ex: $0.01/request)"))
+    use_charge_quota = forms.IntegerField(
+        help_text=_("Usage included in the plan"\
+            " (in units defined by the provider)"))
+    use_charge_maximum_limit = forms.DecimalField(
+        max_digits=7, decimal_places=2,
+        help_text=_("Maximum spend limit per period above which"\
+            " the subscriber is notified (in currency unit)"))
 
     class Meta:
         model = Plan
         fields = ('title', 'description', 'period_amount', 'unit',
                   'period_type', 'period_length', 'renewal_type',
-                  'advance_discount_type', 'advance_discount_value',
-                  'advance_discount_length')
+                  'skip_optin_on_grant', 'optin_on_request',
+                  'discount_type', 'discount_value', 'discount_length',
+                  'use_charge_slug', 'use_charge_title',
+                  'use_charge_description', 'use_charge_use_amount',
+                  'use_charge_quota', 'use_charge_maximum_limit')
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', None)
@@ -283,11 +307,11 @@ class PlanForm(forms.ModelForm):
             period_amount = initial.get('period_amount', 0)
             period_type = initial.get('period_type', Plan.MONTHLY)
             renewal_type = initial.get('renewal_type', Plan.AUTO_RENEW)
-            advance_discount_type = initial.get(
+            discount_type = initial.get(
                 'advance_discount_type', AdvanceDiscount.PERCENTAGE)
-            advance_discount_value = initial.get(
+            discount_value = initial.get(
                 'advance_discount_value', 0)
-            advance_discount_length = initial.get(
+            discount_length = initial.get(
                 'advance_discount_value', 0)
         instance = kwargs.get('instance', None)
         if instance:
@@ -296,41 +320,41 @@ class PlanForm(forms.ModelForm):
             renewal_type = instance.renewal_type
             advance_discount = instance.advance_discounts.first()
             if advance_discount:
-                advance_discount_type = advance_discount.discount_type
-                advance_discount_value = advance_discount.discount_value
-                advance_discount_length = advance_discount.length
+                discount_type = advance_discount.discount_type
+                discount_value = advance_discount.discount_value
+                discount_length = advance_discount.length
         else:
             self.submit_title = _("Create")
         period_amount = Decimal(period_amount).scaleb(-2)
         period_type = slugify(Plan.INTERVAL_CHOICES[period_type - 1][1])
         renewal_type = slugify(Plan.RENEWAL_CHOICES[renewal_type][1])
-        advance_discount_type = slugify(
-            AdvanceDiscount.DISCOUNT_CHOICES[advance_discount_type - 1][1])
-        if advance_discount_type in (AdvanceDiscount.PERCENTAGE,
+        discount_type = slugify(
+            AdvanceDiscount.DISCOUNT_CHOICES[discount_type - 1][1])
+        if discount_type in (AdvanceDiscount.PERCENTAGE,
                                      AdvanceDiscount.CURRENCY):
-            advance_discount_value = Decimal(advance_discount_value).scaleb(-2)
+            discount_value = Decimal(discount_value).scaleb(-2)
         initial.update({
             'period_amount':period_amount,
             'period_type': period_type,
             'renewal_type': renewal_type,
-            'advance_discount_type': advance_discount_type,
-            'advance_discount_value': advance_discount_value,
-            'advance_discount_length': advance_discount_length
+            'advance_discount_type': discount_type,
+            'advance_discount_value': discount_value,
+            'advance_discount_length': discount_length
         })
         super(PlanForm, self).__init__(*args, **kwargs)
 
     def clean_advance_discount_value(self):
         try:
-            if self.cleaned_data['advance_discount_type'] in (
+            if self.cleaned_data['discount_type'] in (
                     AdvanceDiscount.PERCENTAGE, AdvanceDiscount.CURRENCY):
-                self.cleaned_data['advance_discount_value'] = \
-                    int(self.cleaned_data['advance_discount_value'].scaleb(2))
+                self.cleaned_data['discount_value'] = \
+                    int(self.cleaned_data['discount_value'].scaleb(2))
             else:
-                self.cleaned_data['advance_discount_value'] = \
-                    int(self.cleaned_data['advance_discount_value'])
+                self.cleaned_data['discount_value'] = \
+                    int(self.cleaned_data['discount_value'])
         except (TypeError, ValueError):
-            self.cleaned_data['advance_discount_value'] = 0
-        return self.cleaned_data['advance_discount_value']
+            self.cleaned_data['discount_value'] = 0
+        return self.cleaned_data['discount_value']
 
     def clean_period_type(self):
         period_type = self.cleaned_data['period_type']

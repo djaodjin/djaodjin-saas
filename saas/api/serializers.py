@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,7 @@ import json, logging
 from django.core import validators
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import is_password_usable
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.template.defaultfilters import slugify
 from django_countries.serializer_fields import CountryField
 from rest_framework import serializers
@@ -57,7 +57,7 @@ from ..models import (get_broker, AdvanceDiscount, Agreement, BalanceLine,
     CartItem, Charge, Coupon, Plan, RoleDescription, Subscription, Transaction,
     UseCharge)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
-    get_user_serializer, get_user_detail_serializer)
+    get_user_serializer, get_user_detail_serializer, handle_uniq_error)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -615,20 +615,18 @@ class AdvanceDiscountSerializer(serializers.ModelSerializer):
 
 class UseChargeSerializer(serializers.ModelSerializer):
 
+    # If we don't override `validators` here, using PlanDetailSerializer
+    # for updates will return a `ValidationError(code='unique')` when processing
+    # `use_charges` in `serializer.is_valid(raise_exception=True)`.
+    slug = serializers.SlugField(validators=[
+        validators.RegexValidator(settings.ACCT_REGEX,
+            _("Enter a valid slug."), 'invalid')],
+        help_text=_("Unique identifier shown in the URL bar"))
+
     class Meta:
         model = UseCharge
         fields = ('slug', 'title', 'description', 'created_at',
             'use_amount', 'quota', 'maximum_limit', 'extra')
-
-    def validate(self, attrs):
-        maximum_limit = attrs.get('maximum_limit')
-        quota = attrs.get('quota')
-
-        if maximum_limit is not None and maximum_limit != 0:
-            if quota >= maximum_limit:
-                raise serializers.ValidationError(
-                    {"error": "Maximum limit must be greater than the quota."})
-        return attrs
 
 
 class PlanDetailSerializer(PlanSerializer):
@@ -733,17 +731,19 @@ class PlanDetailSerializer(PlanSerializer):
                 use_charge.get('slug') for use_charge in use_charges]).delete()
             for use_charge in use_charges:
                 use_charge_slug = use_charge.get('slug')
-                UseCharge.objects.update_or_create(
-                    defaults={
-                        'title': use_charge.get('title'),
-                        'description': use_charge.get('description'),
-                        'use_amount': use_charge.get('use_amount'),
-                        'quota': use_charge.get('quota'),
-                        'maximum_limit': use_charge.get('maximum_limit'),
-                        'extra': use_charge.get('extra')
-                    },
-                    plan=instance, slug=use_charge_slug)
-
+                try:
+                    UseCharge.objects.update_or_create(
+                        defaults={
+                            'title': use_charge.get('title'),
+                            'description': use_charge.get('description'),
+                            'use_amount': use_charge.get('use_amount'),
+                            'quota': use_charge.get('quota'),
+                            'maximum_limit': use_charge.get('maximum_limit'),
+                            'extra': use_charge.get('extra')
+                        },
+                        plan=instance, slug=use_charge_slug)
+                except IntegrityError as err:
+                    handle_uniq_error(err)
         return instance
 
 

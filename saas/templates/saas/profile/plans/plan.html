@@ -25,9 +25,65 @@
         {{form.period_type}}
         {{form.period_length}}
         {{form.renewal_type}}
-        {{form.advance_discount_type}}
-        {{form.advance_discount_value}}
-        {{form.advance_discount_length}}
+
+        {% if urls.plan_subscribers %}
+        <hr />
+        <fieldset>
+          <legend>Advance discounts</legend>
+          <div v-for="(discount, discountIdx) in formFields.advance_discounts">
+            <div>
+              <button @click.prevent="removeAdvanceDiscount(discountIdx)">
+                remove
+              </button>
+            </div>
+            <select v-model="discount.discount_type">
+              <option value="percentage">Percentage</option>
+              <option value="currency">Currency</option>
+              <option value="period">Period</option>
+            </select>
+            <input type="number" v-model="discount.discount_value"></input>
+            <input type="number" v-model="discount.length"></input>
+          </div>
+          <button @click.prevent="addAdvanceDiscount()">
+            Add discount option...
+          </button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Use charges</legend>
+          <div v-for="(use, useIdx) in formFields.use_charges">
+            <div>
+              <button type="button" @click.prevent="removeUseCharge(useIdx)">
+                remove
+              </button>
+            </div>
+            <div>
+              <label>Use charge slug</label>
+              <input type="text" v-model="use.slug"></input>
+            </div>
+            <div>
+              <label>Use charge title</label>
+              <input type="text" v-model="use.title"></input>
+            </div>
+            <div>
+              <label>Use charge description</label>
+              <textarea rows="5" v-model="use.description"></textarea>
+            </div>
+            <div>
+              <label>Use charge use amount</label>
+              <input type="number" step="0.01" v-model="use.use_amount"></input>
+            </div>
+            <div>
+              <label>Use charge quota</label>
+              <input type="number" v-model="use.quota"></input>
+            </div>
+          </div>
+          <button @click.prevent="addUseCharge()">
+            Add use option...
+          </button>
+        </fieldset>
+        {% endif %}
+
         <button type="submit">{% if form.submit_title %}{{form.submit_title}}{% else %}Submit{% endif %}</button>
     </form>
     {% if show_delete %}
