@@ -347,9 +347,9 @@ class EmailChargeReceiptAPIView(ChargeMixin, generics.GenericAPIView):
 
 class PaymentDetailAPIView(mixins.CreateModelMixin, generics.RetrieveAPIView):
     """
-    Retrieves a processor charge
+    Retrieves an invoice
 
-    Pass through to the processor and returns details about a ``Charge``.
+    Retrieves an invoice that was created by a 'paylater' API call.
 
     **Tags**: billing, subscriber, chargemodel
 
@@ -357,22 +357,68 @@ class PaymentDetailAPIView(mixins.CreateModelMixin, generics.RetrieveAPIView):
 
     .. code-block:: http
 
-        GET /api/payments/ch_XAb124EF HTTP/1.1
+        GET /api/billing/payments/0123456789abcdef HTTP/1.1
 
     responds
 
     .. code-block:: json
 
         {
-            "created_at": "2016-01-01T00:00:01Z",
-            "readable_amount": "$1121.20",
-            "amount": 112120,
-            "unit": "usd",
-            "description": "Charge for subscription to cowork open-space",
-            "last4": "1234",
-            "exp_date": "2016-06-01",
-            "processor_key": "ch_XAb124EF",
-            "state": "DONE"
+          "created_at": "2016-01-01T00:00:01Z",
+          "amount": 112120,
+          "unit": "usd",
+          "last4": "1234",
+          "exp_date": "2016-06-01",
+          "processor_key": "ch_XAb124EF",
+          "state": "DONE",
+          "claim_code": "0123456789abcdef",
+          "results": [
+          {
+            "subscription": {
+              "created_at":"2016-06-21T23:24:09.242925Z",
+              "ends_at":"2016-10-21T23:24:09.229768Z",
+              "description":null,
+              "profile": {
+                  "slug": "xia",
+                  "printable_name": "Xia Lee",
+                  "picture": null,
+                  "type": "personal",
+                  "credentials": true
+              },
+              "plan": {
+                  "slug": "basic",
+                  "title": "Basic"
+              },
+              "auto_renew":true
+            },
+            "lines": [
+            {
+              "created_at":"2016-06-21T23:42:13.863739Z",
+              "description":"Subscription to basic until 2016/11/21 (1 month)",
+              "amount":"$20.00",
+              "is_debit":false,
+              "orig_account":"Receivable",
+              "orig_profile": {
+                  "slug": "cowork",
+                  "printable_name": "Coworking Space",
+                  "picture": null,
+                  "type": "organization",
+                  "credentials": false
+              },
+              "orig_amount":2000,
+              "orig_unit":"usd",
+              "dest_account":"Payable",
+              "dest_profile": {
+                  "slug": "xia",
+                  "printable_name": "Xia Lee",
+                  "picture": null,
+                  "type": "personal",
+                  "credentials": true
+              },
+              "dest_amount":2000,
+              "dest_unit":"usd"
+            }]
+          }]
         }
     """
     model = Charge
@@ -402,12 +448,13 @@ class PaymentDetailAPIView(mixins.CreateModelMixin, generics.RetrieveAPIView):
                     provider=provider, broker=get_broker())
         return instance
 
-    @extend_schema(request=None)
+    @extend_schema(responses={
+        201: OpenApiResponse(ChargeSerializer)})
     def post(self, request, *args, **kwargs):
         """
-        Pay an invoice
+        Pays an invoice
 
-        Pay an invoice.
+        Pays an invoice online with a payment method such as a credit card.
 
         **Tags**: billing, provider, chargemodel
 
@@ -415,7 +462,7 @@ class PaymentDetailAPIView(mixins.CreateModelMixin, generics.RetrieveAPIView):
 
         .. code-block:: http
 
-            POST /api/payments/ch_XAb124EF HTTP/1.1
+            POST /api/billing/payments/0123456789abcdef HTTP/1.1
 
         .. code-block:: json
 
@@ -445,7 +492,10 @@ of Xia",
         return {'Location': build_absolute_uri(
             self.request, reverse('saas_payment', kwargs=self.kwargs))}
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         processor_token = serializer.validated_data.get('processor_token')
         remember_card = False
         if is_authenticated(self.request):
@@ -459,6 +509,11 @@ of Xia",
         except ProcessorError as err:
             raise ValidationError(err)
 
+        result = ChargeSerializer(charge)
+        headers = self.get_success_headers(result.data)
+        return Response(result.data,
+            status=status.HTTP_201_CREATED, headers=headers)
+
 
 class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
 
@@ -466,7 +521,7 @@ class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
     serializer_class = QueryParamCancelBalanceSerializer
 
     @extend_schema(responses={
-        200: OpenApiResponse(PaymentSerializer),
+        200: OpenApiResponse(ChargeSerializer),
         400: OpenApiResponse(ValidationDetailSerializer)})
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         """
@@ -498,9 +553,9 @@ class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
                 "amount": 112120,
                 "unit": "usd",
                 "description": "Charge for subscription to cowork open-space",
-                "last4": "1234",
-                "exp_date": "2016-06-01",
-                "processor_key": "ch_XAb124EF",
+                "last4": "",
+                "exp_date": "",
+                "processor_key": null,
                 "state": "DONE"
             }
         """
@@ -508,7 +563,7 @@ class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
         query_serializer = self.get_serializer(data=request.data)
         query_serializer.is_valid(raise_exception=True)
         amount = query_serializer.validated_data.get('amount')
-        paid = query_serializer.validated_data.get('paid', False)
+        paid = query_serializer.validated_data.get('paid', True)
 
         # If we have a payment claim_code, it is relatively easy.
         # We mark invoiced items as paid or written-off until we reach
@@ -521,7 +576,8 @@ class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
         charge.retrieve() # This will settle the charge on the processor
                           # if necessary.
         charge_items = charge.charge_items.filter(
-            invoiced__dest_organization=self.organization).order_by('id')
+            invoiced__orig_account=Transaction.RECEIVABLE,
+            invoiced__orig_organization=self.organization).order_by('id')
         updated = False
         with transaction.atomic():
             if paid:
@@ -567,7 +623,7 @@ class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
             if updated:
                 charge.state = charge.DONE
                 charge.save()
-        charge.results = charge.line_items_grouped_by_subscription
-        resp = PaymentSerializer(
+
+        resp = ChargeSerializer(
             instance=charge, context=self.get_serializer_context())
         return Response(resp.data)

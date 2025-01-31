@@ -45,7 +45,7 @@ from ..models import CartItem, get_broker
 from ..utils import build_absolute_uri, datetime_or_now, get_user_serializer
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
-    OrganizationCartSerializer, RedeemCouponSerializer,
+    OrganizationCartSerializer, PaylaterSerializer, RedeemCouponSerializer,
     ValidationDetailSerializer, CartItemUpdateSerializer,
     UserCartItemCreateSerializer, QueryParamCartItemSerializer)
 
@@ -506,7 +506,7 @@ a coupon code for a potential discount, and
         .. code-block:: json
 
             {
-                items: [{option: 1}],
+                "items": [{"option": 1}],
                 "remember_card": true,
                 "processor_token": "tok_23prgoqpstf56todq"
             }
@@ -602,7 +602,10 @@ of Xia",
         return http.Response({}, status=status.HTTP_200_OK)
 
 
-class PaylaterAPIView(CheckoutAPIView):
+class PaylaterAPIView(InvoicablesMixin, BalanceAndCartMixin,
+                      generics.CreateAPIView):
+
+    serializer_class = PaylaterSerializer
 
     @extend_schema(responses={
         201: OpenApiResponse(ChargeSerializer)})
@@ -635,7 +638,7 @@ a coupon code for a potential discount, and
         .. code-block:: json
 
             {
-                items: [{option: 1}]
+                "items": [{"option": 1}]
             }
 
         responds
@@ -656,7 +659,7 @@ a coupon code for a potential discount, and
     def create(self, request, *args, **kwargs):
         # same as Checkout.create ...
         #pylint:disable=unused-argument,too-many-locals
-        serializer = CheckoutSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         queryset = self.get_queryset()

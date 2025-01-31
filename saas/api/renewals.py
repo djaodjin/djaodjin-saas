@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,7 @@ from __future__ import unicode_literals
 from rest_framework import generics, status, response as http
 
 from .serializers import AtTimeSerializer
+from ..docs import extend_schema
 from ..mixins import OrganizationMixin
 from ..utils import datetime_or_now
 from ..renewals import (create_charge_for_balance_organization,
@@ -35,7 +36,10 @@ from ..renewals import (create_charge_for_balance_organization,
 class RenewalsAPIView(OrganizationMixin, generics.CreateAPIView):
 
     serializer_class = AtTimeSerializer
+    schema = None
 
+    @extend_schema(responses={
+      200: None})
     def post(self, request, *args, **kwargs):
         """
         Trigger renewals for an organization
@@ -48,7 +52,7 @@ class RenewalsAPIView(OrganizationMixin, generics.CreateAPIView):
 
         .. code-block:: http
 
-            POST /api/billing/xia/renewals HTTP/1.1
+            POST /api/billing/xia/renew HTTP/1.1
 
         .. code-block:: json
 

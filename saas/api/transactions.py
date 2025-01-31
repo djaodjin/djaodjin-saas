@@ -31,7 +31,6 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 
 from .serializers import (CartItemCreateSerializer,
-    CreateOfflineTransactionSerializer, OfflineTransactionSerializer,
     QueryParamCancelBalanceSerializer, TransactionSerializer)
 from ..compat import gettext_lazy as _, six
 from ..decorators import _valid_manager
@@ -39,11 +38,11 @@ from ..docs import extend_schema, OpenApiResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
 from ..models import (get_broker, record_use_charge, sum_orig_amount,
-    Plan, Subscription, Transaction)
+    Subscription, Transaction)
 from ..backends import ProcessorError
 from ..pagination import (BalancePagination, StatementBalancePagination,
     TotalPagination)
-from ..utils import datetime_or_now, get_organization_model
+from ..utils import datetime_or_now
 
 
 class IncludesSyncErrorPagination(PageNumberPagination):
@@ -467,220 +466,6 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
     pagination_class = IncludesSyncErrorPagination
 
 
-class ImportTransactionsAPIView(ProviderMixin, generics.CreateAPIView):
-
-    serializer_class = CreateOfflineTransactionSerializer
-
-    @extend_schema(responses={
-        201: OpenApiResponse(OfflineTransactionSerializer)})
-    def post(self, request, *args, **kwargs):
-        """
-        Creates an offline transaction
-
-        The primary purpose of this API call is for a provider to keep
-        accurate metrics for the performance of the product sold, regardless
-        of payment options (online or offline).
-
-        **Tags**: billing, provider, transactionmodel
-
-        **Examples**
-
-        .. code-block:: http
-
-             POST /api/billing/cowork/transfers/import HTTP/1.1
-
-        .. code-block:: json
-
-            {
-               "created_at": "2020-05-30T00:00:00Z",
-               "amount": "10.00",
-               "descr": "Paid by check",
-               "subscription": "xia:premium"
-            }
-
-        responds
-
-        .. code-block:: json
-
-            {
-               "detail":"Transaction imported successfully.",
-               "results":[
-                 {
-                   "created_at": "2020-05-30T00:00:00Z",
-                   "description": "Paid by check (alice)",
-                   "amount": "$10.00",
-                   "is_debit": false,
-                   "orig_account": "Receivable",
-                   "orig_profile": {
-                        "slug": "djaoapp",
-                        "printable_name": "DjaoApp",
-                        "picture": null,
-                        "type": "organization",
-                        "credentials": false
-                   },
-                   "orig_amount": 1000,
-                   "orig_unit": "usd",
-                   "dest_account": "Payable",
-                   "dest_profile": {
-                        "slug": "xia",
-                        "printable_name": "Xia",
-                        "picture": null,
-                        "type": "personal",
-                        "credentials": true
-                   },
-                   "dest_amount": 1000,
-                   "dest_unit": "usd"
-                 },
-                 {
-                   "created_at": "2020-05-30T00:00:00Z",
-                   "description": "Paid by check (alice)",
-                   "amount": "$10.00",
-                   "is_debit": false,
-                   "orig_account": "Liability",
-                   "orig_profile": {
-                        "slug": "xia",
-                        "printable_name": "Xia",
-                        "picture": null,
-                        "type": "personal",
-                        "credentials": true
-                   },
-                   "orig_amount": 1000,
-                   "orig_unit": "usd",
-                   "dest_account": "Funds",
-                   "dest_profile": {
-                        "slug": "djaoapp",
-                        "printable_name": "DjaoApp",
-                        "picture": null,
-                        "type": "organization",
-                        "credentials": false
-                   },
-                   "dest_amount": 1000,
-                   "dest_unit": "usd"
-                 },
-                 {
-                   "created_at": "2020-05-30T00:00:00Z",
-                   "description": "Keep a balanced ledger",
-                   "amount": "$10.00",
-                   "is_debit": false,
-                   "orig_account": "Payable",
-                   "orig_profile": {
-                        "slug": "xia",
-                        "printable_name": "Xia",
-                        "picture": null,
-                        "type": "personal",
-                        "credentials": true
-                   },
-                   "orig_amount": 1000,
-                   "orig_unit": "usd",
-                   "dest_account": "Liability",
-                   "dest_profile": {
-                        "slug": "xia",
-                        "printable_name": "Xia",
-                        "picture": null,
-                        "type": "personal",
-                        "credentials": true
-                   },
-                   "dest_amount": 1000,
-                   "dest_unit": "usd"
-                 },
-                 {
-                   "created_at": "2020-05-30T00:00:00Z",
-                   "description": "Paid by check (alice)",
-                   "amount": "$10.00",
-                   "is_debit": false,
-                   "orig_account": "Backlog",
-                   "orig_profile": {
-                        "slug": "djaoapp",
-                        "printable_name": "DjaoApp",
-                        "picture": null,
-                        "type": "organization",
-                        "credentials": false
-                   },
-                   "orig_amount": 1000,
-                   "orig_unit": "usd",
-                   "dest_account": "Receivable",
-                   "dest_profile": {
-                        "slug": "djaoapp",
-                        "printable_name": "DjaoApp",
-                        "picture": null,
-                        "type": "organization",
-                        "credentials": false
-                   },
-                   "dest_amount": 1000,
-                   "dest_unit": "usd"
-                 },
-                 {
-                   "created_at": "2020-05-30T00:00:00Z",
-                 "description":"Paid by check (alice) - Keep a balanced ledger",
-                   "amount":"$0.20",
-                   "is_debit":false,
-                   "orig_account":"Funds",
-                   "orig_profile": {
-                        "slug": "djaoapp",
-                        "printable_name": "DjaoApp",
-                        "picture": null,
-                        "type": "organization",
-                        "credentials": false
-                   },
-                   "orig_amount":20,
-                   "orig_unit":"usd",
-                   "dest_account":"Offline",
-                   "dest_profile": {
-                        "slug": "djaoapp",
-                        "printable_name": "DjaoApp",
-                        "picture": null,
-                        "type": "organization",
-                        "credentials": false
-                   },
-                   "dest_amount":20,
-                   "dest_unit":"usd"
-                 }
-               ]
-            }
-
-        """
-        return super(ImportTransactionsAPIView, self).post(
-            request, *args, **kwargs)
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        parts = serializer.validated_data['subscription'].split(
-            Subscription.SEP)
-        if len(parts) != 2:
-            raise ValidationError({
-                'detail': _("Invalid subscription/plan field format")})
-        subscriber = parts[0]
-        plan = parts[1]
-        subscriber = get_organization_model().objects.filter(slug=subscriber).first()
-        if subscriber is None:
-            raise ValidationError({'detail': _("Invalid subscriber")})
-        plan = Plan.objects.filter(
-            slug=plan, organization=self.organization).first()
-        if plan is None:
-            raise ValidationError({'detail': _("Invalid plan")})
-        subscription = Subscription.objects.active_for(
-            organization=subscriber).filter(plan=plan).first()
-        if subscription is None:
-            raise ValidationError({
-                'detail': _("Invalid combination of subscriber and plan,"\
-" or the subscription is no longer active.")})
-        transactions = Transaction.objects.offline_payment(
-            subscription, serializer.validated_data['amount'],
-            descr=serializer.validated_data['descr'], user=self.request.user,
-            created_at=serializer.validated_data.get('created_at'))
-
-        result_data = {
-            'detail': _("Transaction imported successfully."),
-            'results': TransactionSerializer(
-                many=True).to_representation(transactions)
-        }
-        headers = self.get_success_headers(result_data)
-        return http.Response(result_data,
-            status=status.HTTP_201_CREATED, headers=headers)
-
-
 class StatementBalanceQuerysetMixin(OrganizationMixin):
 
     def get_queryset(self):
@@ -887,7 +672,7 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
         # If we do not have a payment claim_code, we iterate through
         # the current balances.
         balances = Transaction.objects.get_statement_balances(
-            self, until=at_time)
+            self.organization, until=at_time)
         if paid:
             if amount:
                 for sub_event_id, balance in six.iteritems(balances):

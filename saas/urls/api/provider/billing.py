@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,7 @@ URLs API for provider resources related to billing
 from .... import settings
 from ....api.backend import RetrieveBankAPIView
 from ....api.coupons import CouponListCreateAPIView, CouponDetailAPIView
-from ....api.transactions import (ReceivablesListAPIView,
-    TransferListAPIView, ImportTransactionsAPIView)
+from ....api.transactions import ReceivablesListAPIView, TransferListAPIView
 from ....compat import path
 
 urlpatterns = [
@@ -46,10 +45,6 @@ urlpatterns = [
     path('billing/<slug:%s>/receivables' %
         settings.PROFILE_URL_KWARG,
         ReceivablesListAPIView.as_view(), name='saas_api_receivables'),
-    path('billing/<slug:%s>/transfers/import' %
-        settings.PROFILE_URL_KWARG,
-        ImportTransactionsAPIView.as_view(),
-        name='saas_api_import_transactions'),
     path('billing/<slug:%s>/transfers' %
         settings.PROFILE_URL_KWARG,
         TransferListAPIView.as_view(), name='saas_api_transfer_list'),
