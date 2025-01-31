@@ -3,7 +3,7 @@
 
 Django==3.2.25 ; python_version < "3.9"
 Django==4.2.18 ; python_version >= "3.9" and python_version < "3.12"
-Django==5.1.5 ; python_version >= "3.12"
+Django==5.1.5  ; python_version >= "3.12"
 djangorestframework==3.14.0 ; python_version < "3.9"
                                       # 3.12.4 not compatible with Django4.2
 djangorestframework==3.15.2 ; python_version >= "3.9" # Breaking
@@ -13,10 +13,11 @@ django-countries==7.2.1
 django-localflavor==3.1
 django-phonenumber-field==5.2.0
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
-Markdown==3.2.2
+Markdown==3.4.1
 phonenumbers==8.13.7
 python-dateutil==2.8.2
-PyJWT==2.10.1
+PyJWT==2.8.0                ; python_version < "3.9"
+PyJWT==2.10.1               ; python_version >= "3.9"
 rave_python==1.4.0
 razorpay==0.2.0
 stripe==5.0.0
