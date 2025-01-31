@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,50 @@ import six
 #pylint:disable=import-error
 from six.moves.urllib.parse import urlparse, urlunparse, quote as urlquote
 from six import StringIO
+
+#pylint:disable=ungrouped-imports
+try:
+    from datetime import timezone
+    import zoneinfo
+
+    def timezone_or_utc(tzone=None):
+        if tzone:
+            if issubclass(type(tzone), zoneinfo.ZoneInfo):
+                return tzone
+            try:
+                return zoneinfo.ZoneInfo(tzone)
+            except zoneinfo.ZoneInfoNotFoundError:
+                pass
+        return timezone.utc
+
+except ImportError:
+    try:
+        from datetime import timezone
+        from backports import zoneinfo
+
+        def timezone_or_utc(tzone=None):
+            if tzone:
+                if issubclass(type(tzone), zoneinfo.ZoneInfo):
+                    return tzone
+                try:
+                    return zoneinfo.ZoneInfo(tzone)
+                except zoneinfo.ZoneInfoNotFoundError:
+                    pass
+            return timezone.utc
+
+    except ImportError:
+        import pytz
+        from pytz.tzinfo import DstTzInfo
+
+        def timezone_or_utc(tzone=None):
+            if tzone:
+                if issubclass(type(tzone), DstTzInfo):
+                    return tzone
+                try:
+                    return pytz.timezone(tzone)
+                except pytz.UnknownTimeZoneError:
+                    pass
+            return pytz.utc
 
 try:
     from django.utils.decorators import available_attrs

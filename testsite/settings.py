@@ -1,6 +1,7 @@
 # Django settings for testsite project.
 
 import logging, os.path, re, sys
+from random import choice
 
 from django.contrib.messages import constants as messages
 from saas.compat import reverse_lazy
@@ -47,7 +48,7 @@ def load_config(confpath):
                             # the globals and locals context eval has access to.
                             # pylint: disable=eval-used
                             setattr(sys.modules[__name__],
-                                    look.group(1).upper(), eval(value, {}, {}))
+                                look.group(1).upper(), eval(value, {}, {}))
                         except Exception:
                             raise
                 line = conffile.readline()
@@ -58,7 +59,6 @@ load_config(os.path.join(
     os.getenv('TESTSITE_SETTINGS_LOCATION', RUN_DIR), 'credentials'))
 
 if not hasattr(sys.modules[__name__], "SECRET_KEY"):
-    from random import choice
     SECRET_KEY = "".join([choice(
         "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)])
 
@@ -195,35 +195,6 @@ LOGIN_REDIRECT_URL = reverse_lazy('product_default_start')
 # Allow user to enter month in durationfield
 DURATIONFIELD_ALLOW_MONTHS = True
 
-# Configuration of djaodjin-saas
-SAAS = {
-    'BROKER': {
-        'GET_INSTANCE': 'cowork',
-    },
-    'PLATFORM_NAME': 'cowork',
-    'PROCESSOR': {
-        'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
-        'MODE': 0, # `LOCAL`
-        'USE_STRIPE_V2': USE_STRIPE_V2,
-        'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
-        'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
-        'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
-        'WEBHOOK_SECRET': getattr(
-            sys.modules[__name__], "STRIPE_ENDPOINT_SECRET", None),
-
-        # Comment above and uncomment below to use RazorPay instead.
-#        'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
-#        'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
-#        'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
-
-        # Comment above and uncomment below to use RazorPay instead.
-#        'BACKEND': 'saas.backends.flutterwave_processor.FlutterwaveBackend',
-#        'PRIV_KEY': getattr(sys.modules[__name__],
-#            "FLUTTERWAVE_PRIV_KEY", None),
-#        'PUB_KEY': getattr(sys.modules[__name__], "FLUTTERWAVE_PUB_KEY", None),
-    },
-    'EXPIRE_NOTICE_DAYS': [90, 60, 30, 15, 1],
-}
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
@@ -336,3 +307,34 @@ else:
             'environment': 'testsite.jinja2.environment'
         }
     }]
+
+
+# Configuration of djaodjin-saas
+SAAS = {
+    'BROKER': {
+        'GET_INSTANCE': 'cowork',
+    },
+    'PLATFORM_NAME': 'cowork',
+    'PROCESSOR': {
+        'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+        'MODE': 0, # `LOCAL`
+        'USE_STRIPE_V2': USE_STRIPE_V2,
+        'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
+        'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
+        'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
+        'WEBHOOK_SECRET': getattr(
+            sys.modules[__name__], "STRIPE_ENDPOINT_SECRET", None),
+
+        # Comment above and uncomment below to use RazorPay instead.
+#        'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
+#        'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
+#        'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
+
+        # Comment above and uncomment below to use RazorPay instead.
+#        'BACKEND': 'saas.backends.flutterwave_processor.FlutterwaveBackend',
+#        'PRIV_KEY': getattr(sys.modules[__name__],
+#            "FLUTTERWAVE_PRIV_KEY", None),
+#        'PUB_KEY': getattr(sys.modules[__name__], "FLUTTERWAVE_PUB_KEY", None),
+    },
+    'EXPIRE_NOTICE_DAYS': [90, 60, 30, 15, 1],
+}

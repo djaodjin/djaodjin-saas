@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,13 +31,14 @@ from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
 from django.template.defaultfilters import slugify
 from django.utils.dateparse import parse_date, parse_datetime
-from django.utils.timezone import utc, get_current_timezone
+from django.utils.timezone import get_current_timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
 from pytz import timezone, UnknownTimeZoneError
 from pytz.tzinfo import BaseTzInfo
 
-from .compat import get_model_class, gettext_lazy as _, import_string, six
+from .compat import (get_model_class, gettext_lazy as _, import_string, six,
+    timezone_or_utc)
 
 
 class SlugTitleMixin(object):
@@ -86,19 +87,20 @@ def parse_tz(tzone):
 
 
 def convert_dates_to_utc(dates):
-    return [date.astimezone(utc) for date in dates]
+    return [date.astimezone(timezone_or_utc()) for date in dates]
 
 
 def as_timestamp(dtime_at=None):
     if not dtime_at:
         dtime_at = datetime_or_now()
     return int((
-        dtime_at - datetime.datetime(1970, 1, 1, tzinfo=utc)).total_seconds())
+        dtime_at - datetime.datetime(1970, 1, 1,
+            tzinfo=timezone_or_utc())).total_seconds())
 
 
 def datetime_or_now(dtime_at=None, tzinfo=None):
     if not tzinfo:
-        tzinfo = utc
+        tzinfo = timezone_or_utc()
     as_datetime = dtime_at
     if isinstance(dtime_at, six.string_types):
         as_datetime = parse_datetime(dtime_at)
@@ -121,7 +123,7 @@ def datetime_or_now(dtime_at=None, tzinfo=None):
 
 def datetime_to_utctimestamp(dtime_at, epoch=None):
     if epoch is None:
-        epoch = datetime.datetime(1970, 1, 1).replace(tzinfo=utc)
+        epoch = datetime.datetime(1970, 1, 1).replace(tzinfo=timezone_or_utc())
     if dtime_at is None:
         dtime_at = epoch
     diff = dtime_at - epoch

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -404,11 +404,17 @@ class AbstractOrganization(models.Model):
                 self.pk = settings.PROCESSOR_ID #pylint:disable=invalid-name
         return self.processor
 
-    def save(self, force_insert=False, force_update=False, using=None,
+
+    def save(self, *args, force_insert=False, force_update=False, using=None,
              update_fields=None):
         self.validate_processor()
         if self.slug:
             with transaction.atomic():
+                # Starting with Django 5, we need a `pk` for the organization
+                # before we can call `attached_user`.
+                super(AbstractOrganization, self).save(*args,
+                    force_insert=force_insert, force_update=force_update,
+                    using=using, update_fields=update_fields)
                 user = self.attached_user()
                 if user:
                     # When dealing with a personal profile, keep the login
@@ -430,9 +436,7 @@ class AbstractOrganization(models.Model):
                         save_user = True
                     if save_user:
                         user.save()
-                return super(AbstractOrganization, self).save(
-                    force_insert=force_insert, force_update=force_update,
-                    using=using, update_fields=update_fields)
+                return
         max_length = self._meta.get_field('slug').max_length
         if self.full_name:
             slug_base = slugify(self.full_name)
@@ -451,6 +455,11 @@ class AbstractOrganization(models.Model):
             try:
                 try:
                     with transaction.atomic():
+                        super(AbstractOrganization, self).save(
+                            *args,
+                            force_insert=force_insert,
+                            force_update=force_update,
+                            using=using, update_fields=update_fields)
                         user = self.attached_user()
                         if user:
                             user.first_name, _, user.last_name \
@@ -458,10 +467,7 @@ class AbstractOrganization(models.Model):
                             if self.email:
                                 user.email = self.email
                             user.save()
-                        return super(AbstractOrganization, self).save(
-                            force_insert=force_insert,
-                            force_update=force_update,
-                            using=using, update_fields=update_fields)
+                        return
                 except IntegrityError as err:
                     handle_uniq_error(err)
             except ValidationError as err:
@@ -3291,7 +3297,7 @@ class Coupon(models.Model):
         return (valid_plan and valid_time and valid_attempts
             and valid_organization)
 
-    def save(self, force_insert=False, force_update=False, using=None,
+    def save(self, *args, force_insert=False, force_update=False, using=None,
              update_fields=None):
         if not self.created_at:
             self.created_at = datetime_or_now()
@@ -3841,7 +3847,7 @@ class Subscription(models.Model):
         self.save()
 
 
-    def save(self, force_insert=False, force_update=False, using=None,
+    def save(self, *args, force_insert=False, force_update=False, using=None,
              update_fields=None):
         super(Subscription, self).save(force_insert=force_insert,
             force_update=force_update, using=using, update_fields=update_fields)

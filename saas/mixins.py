@@ -284,19 +284,26 @@ class CartMixin(object):
             # We cannot figure out a subscriber from the cart_item
             # and no profile was passed as a customer to be billed.
             raise organization_model.DoesNotExist()
-        try:
-            # If we can extend a current ``Subscription`` we will.
-            # XXX For each (organization, plan) there should not
-            #     be overlapping timeframe [created_at, ends_at[,
-            #     None-the-less, it might be a good idea to catch
-            #     and throw a nice error message in case.
-            subscription = Subscription.objects.get(
-                organization=subscriber, plan=cart_item.plan,
-                ends_at__gt=created_at)
-        except Subscription.DoesNotExist:
-            ends_at = prorate_to if prorate_to else created_at
+
+        subscription = None
+        if subscriber.pk:
+            # Starting with Django 5, we cannot use a `subscriber` that is
+            # not in the database as part of a query.
+            try:
+                # If we can extend a current ``Subscription`` we will.
+                # XXX For each (organization, plan) there should not
+                #     be overlapping timeframe [created_at, ends_at[,
+                #     None-the-less, it might be a good idea to catch
+                #     and throw a nice error message in case.
+                subscription = Subscription.objects.get(
+                    organization=subscriber, plan=cart_item.plan,
+                    ends_at__gt=created_at)
+            except Subscription.DoesNotExist:
+                pass
+        if not subscription:
             subscription = Subscription.objects.new_instance(
-                subscriber, cart_item.plan, ends_at=ends_at)
+                subscriber, cart_item.plan,
+                ends_at=prorate_to if prorate_to else created_at)
         lines = []
         options = []
         if not (subscription.pk and cart_item.use):

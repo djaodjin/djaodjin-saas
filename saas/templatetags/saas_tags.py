@@ -1,5 +1,4 @@
-# coding: utf-8
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,11 +31,10 @@ from django import template
 from django.shortcuts import get_object_or_404
 from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
-from django.utils.timezone import utc
 from django.utils import formats
 from django.utils.dateparse import parse_date, parse_datetime
 
-from ..compat import gettext_lazy as _, six
+from ..compat import gettext_lazy as _, six, timezone_or_utc
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money, as_percentage
 from ..mixins import as_html_description
@@ -61,9 +59,10 @@ def date_in_future(value, arg=None):
         if arg:
             base = arg
         else:
-            base = datetime.utcnow().replace(tzinfo=utc)
+            base = datetime.utcnow().replace(tzinfo=timezone_or_utc())
         if isinstance(value, six.integer_types):
-            value = datetime.fromtimestamp(value).replace(tzinfo=utc)
+            value = datetime.fromtimestamp(value).replace(
+                tzinfo=timezone_or_utc())
         if value > base:
             return True
     return False

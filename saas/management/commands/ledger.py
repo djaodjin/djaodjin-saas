@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,9 +26,9 @@ import csv, datetime, logging, re, sys
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.utils.timezone import utc
 
 from ... import settings as saas_settings
+from ...compat import timezone_or_utc
 from ...ledger import export
 from ...models import Transaction
 from ...utils import datetime_or_now, get_organization_model
@@ -120,11 +120,11 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                 try:
                     created_at = datetime.datetime.strptime(
                         look.group('created_at'),
-                        '%Y/%m/%d %H:%M:%S').replace(tzinfo=utc)
+                        '%Y/%m/%d %H:%M:%S').replace(tzinfo=timezone_or_utc())
                 except ValueError:
                     created_at = datetime.datetime.strptime(
                         look.group('created_at'),
-                        '%Y/%m/%d').replace(tzinfo=utc)
+                        '%Y/%m/%d').replace(tzinfo=timezone_or_utc())
                 if look.group('reference'):
                     reference = look.group('reference').strip()
                 else:

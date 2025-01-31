@@ -30,7 +30,6 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter, BaseFilterBackend)
-from rest_framework.compat import distinct
 
 from . import settings
 from .compat import force_str, six
@@ -116,7 +115,6 @@ class SearchFilter(BaseSearchFilter):
             for search_field in search_fields
         ]
 
-        base = queryset
         conditions = []
         for search_term in search_terms:
             queries = [
@@ -137,7 +135,7 @@ class SearchFilter(BaseSearchFilter):
             # call queryset.distinct() in order to avoid duplicate items
             # in the resulting queryset.
             # We try to avoid this if possible, for performance reasons.
-            queryset = distinct(queryset, base)
+            queryset = queryset.distinct()
         return queryset
 
 
