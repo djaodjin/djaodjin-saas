@@ -110,10 +110,18 @@ class SearchFilter(BaseSearchFilter):
         if not search_fields or not search_terms:
             return queryset
 
-        orm_lookups = [
-            self.construct_search(six.text_type(search_field))
-            for search_field in search_fields
-        ]
+        try:
+            # djangorestframework>=3.15
+            orm_lookups = [
+                self.construct_search(six.text_type(search_field), queryset)
+                for search_field in search_fields
+            ]
+        except TypeError:
+            # djangorestframework<=3.14
+            orm_lookups = [
+                self.construct_search(six.text_type(search_field))
+                for search_field in search_fields
+            ]
 
         conditions = []
         for search_term in search_terms:
