@@ -14,10 +14,10 @@
       {{form.as_p}}
       <button type="submit">Update Profile</button>
     </form>
-    <div id="remove-profile-container" ng-app="saasApp">
-      <div id="delete-action" ng-controller="organizationProfileCtrl">
+    <div id="remove-profile-container">
+      <div id="delete-action">
         <div id="delete-action-open">
-          <button type="button" id="delete-organization-btn" ng-click="deleteProfile($event)" @click="deleteProfile">Delete</button>
+          <button type="button" id="delete-organization-btn" @click="deleteProfile">Delete</button>
         </div>
       </div>
     </div>

@@ -1,12 +1,11 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<balance-list inline-template id="balance-list-container" ng-app="saasApp" ng-cloak>
-  <div ng-controller="BalanceListCtrl">
+<balance-list inline-template id="balance-list-container">
+  <div>
     {% include "saas/_filter.html" %}
     <div>
       <a id="download" role="button"
-        ng-prop-href="'{{urls.download_balances}}?start_at=' + params.start_at + '&ends_at=' + params.ends_at"
         v-bind:href="'{{urls.download_balances}}' + getQueryString(['page'])">Download</a>
     </div>
     <table>
@@ -16,13 +15,12 @@
                 <th>Delete</th>
                 <th>Title</th>
                 <td style="text-align:right;"
-                    ng-repeat="col in balances.results[0].values" ng-cloak
                     v-for="col in values" v-cloak>
                     [[ col[0] ]]
                 </td>
             </tr>
         </thead>
-      <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
+      <tbody v-show="!itemsLoaded">
         <tr>
           <td colspan="16">
             <h3 class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
@@ -30,7 +28,6 @@
         </tr>
       </tbody>
       <tbody
-        ng-show="items.$resolved && items.results.length > 0" ng-cloak
         v-show="itemsLoaded && items.results.length == 0" v-cloak>
         <tr>
           <td colspan="16">
@@ -39,21 +36,17 @@
         </tr>
       </tbody>
         <tbody saas-dnd-list="balances"
-            ng-show="items.$resolved && items.results.length > 0" ng-cloak
             v-show="itemsLoaded && items.results.length > 0" v-cloak>
-            <tr ng-repeat="row in balances.results"
-                v-for="(row, index) in items.results">
+            <tr v-for="(row, index) in items.results">
                 <td>Move</td>
                 <td>
-                    <button ng-click="remove($index)" @click="remove(row.key)">
+                    <button @click="remove(row.key)">
                         Delete</button>
                 </td>
                 <td>[[row.key]]</td>
                 <td style="text-align:right;"
-                    ng-repeat="col in row.values" ng-show="row.selector !== ''"
                     v-for="col in row.values">
                     <a target="_blank"
-                      ng-prop-href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] "
                       v-bind:href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] ">
                     [[col[1] ]]
                     </a>
@@ -63,12 +56,10 @@
     </table>
     <div>
         <input type="text" placeholder="Title"
-            ng-model="newBalanceLine.title"
             v-model="balanceLine.title">
         <input type="text" placeholder="Selector"
-            ng-model="newBalanceLine.selector"
             v-model="balanceLine.selector">
-        <button ng-click="create()" @click="create">Add Line</button>
+        <button @click="create">Add Line</button>
     </div>
 </balance-list>
 {% endblock %}

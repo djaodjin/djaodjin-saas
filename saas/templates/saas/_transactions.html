@@ -3,7 +3,6 @@
   {% include "saas/_filter.html" %}
   <div>
     <a id="download" role="button"
-       ng-prop-href="'{{urls.download}}' + getQueryString(['page'])"
        v-bind:href="'{{urls.download}}' + getQueryString(['page'])">CSV Download</a>
   </div>
   <table>
@@ -15,29 +14,21 @@
         <th></th>
       </tr>
     </thead>
-    <tbody
-       ng-show="items.$resolved && items.results.length == 0"
-       v-show="itemsLoaded && items.results.length == 0">
+    <tbody v-show="itemsLoaded && items.results.length == 0">
       <tr>
         <td colspan="3">
-          <h4><em>No transactions<span ng-show="params.q" v-show="params.q"> [[params.q]]</span></em></h4>
+          <h4><em>No transactions<span v-show="params.q"> [[params.q]]</span></em></h4>
         </td>
       </tr>
     </tbody>
     <tbody id="has-transactions"
-      ng-show="items.$resolved && items.count > 0"
       v-show="itemsLoaded && items.results.length > 0">
-      <tr
-         ng-repeat="entry in items.results"
-         v-for="entry in items.results">
+      <tr v-for="entry in items.results">
         <td>[[entry.created_at]]</td>
-        <td
-           ng-class="entry.is_debit ? 'text-danger' : ''"
-           v-bind:class="entry.is_debit ? 'text-danger' : ''">
+        <td v-bind:class="entry.is_debit ? 'text-danger' : ''">
           [[entry.amount]]
         </td>
         <td colspan="2"
-          ng-bind-html="entry.description | unsafe"
           v-html="entry.description"></td>
       </tr>
     </tbody>

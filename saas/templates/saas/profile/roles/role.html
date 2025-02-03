@@ -3,10 +3,8 @@
 {% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<role-user-list inline-template id="user-relation-list-container"
-    {# data-role-status="active" #}
-    ng-app="saasApp">
-  <div ng-controller="userRelationListCtrl">
+<role-user-list inline-template id="user-relation-list-container">
+  <div>
     <h2>Users with role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
     <table>
       <thead>
@@ -17,22 +15,19 @@
           <th></th>
         </tr>
       </thead>
-      <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
+      <tbody v-show="!itemsLoaded">
         <tr colspan="5">
           <td>Please wait...</td>
         </tr>
       </tbody>
       <tbody class="has-no-results"
-        ng-show="items.$resolved && items.results.length == 0" ng-cloak
         v-show="itemsLoaded && items.results.length == 0" v-cloak>
         <tr colspan="4">
           <td>No users with role {{role_descr.title}} yet.</td>
         </tr>
       </tbody>
-      <tbody ng-show="items.$resolved && items.results.length > 0" ng-cloak
-        v-show="itemsLoaded && items.results.length > 0" v-cloak>
-        <tr ng-prop-id="item.user.slug" ng-repeat="item in items.results"
-            v-bind:id="item.user.slug" v-for="(item, index) in items.results">
+      <tbody v-show="itemsLoaded && items.results.length > 0" v-cloak>
+        <tr v-bind:id="item.user.slug" v-for="(item, index) in items.results">
           <td>[[item.user.slug]]</td>
           <td>[[item.user.email]]</td>
           <td>
@@ -40,8 +35,9 @@
                 v-if="item.grant_key">Re-send</button>
             <button @click="save(item.user)" v-if="item.accept_request_api_url">Grant</button>
           </td>
-          <td><button class="remove" ng-click="remove($event, $index)"
-                      @click="remove(index)">Remove</button></td>
+          <td>
+            <button class="remove" @click="remove(index)">Remove</button>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -49,11 +45,10 @@
     <hr />
     <div>
       <h2>Invite user to have a role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
-      <form id="add-user" ng-submit="save($event)"
-           @submit.prevent="submit">
+      <form id="add-user" @submit.prevent="submit">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input type="text" name="user" placeholder="Username or e-mail"
-               ng-model="unregistered.slug" v-model="candidateId" />
+               v-model="candidateId" />
         <div class="add-role-modal" v-show="profileRequestDone">
           <p>
 If the user couldn't be found in the system, it is a great occasion to invite
@@ -64,7 +59,6 @@ them.
             <input id="new-request-email"
                  type="text" max-length="150"
                  name="email" placeholder="invitee@example.com"
-                 ng-model="unregistered.email"
                  v-model="unregistered.email "/>
           </div>
           <p>The following invite message will be sent along</p>

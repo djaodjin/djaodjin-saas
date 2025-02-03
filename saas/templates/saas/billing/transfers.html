@@ -1,10 +1,9 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<transfers-statement inline-template id="transfers-container" ng-app="saasApp">
+<transfers-statement inline-template id="transfers-container">
   <div>
-    <div ng-controller="billingSummaryCtrl"
-       data-api-url="{{urls.provider.api_bank}}">
+    <div data-api-url="{{urls.provider.api_bank}}">
       <section id="info">
         <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
         <dl>
@@ -24,7 +23,7 @@
         </dl>
       </section>
     </div>
-    <div ng-controller="transactionListCtrl">
+    <div>
       {% include "saas/_transactions.html" %}
     </div>
     <div>

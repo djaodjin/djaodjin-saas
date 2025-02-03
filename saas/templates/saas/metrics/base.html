@@ -5,28 +5,22 @@
 {% endblock %}
 
 {% block saas_content %}
-<metrics-charts inline-template id="metrics-container" ng-app="saasApp">
-  <div id="metrics-table" ng-controller="metricsCtrl">
+<metrics-charts inline-template id="metrics-container">
+  <div id="metrics-table">
     <div><!-- choose report date -->
       <div class="date-chooser">
         <span>To</span>
         <input name="ends_at"
            type="date"
-           ng-model="ends_at"
-           ng-change="prepareCurrentTabData(ends_at, timezone, period)"
            v-model="_ends_at"
            v-on:input="prepareCurrentTabData"></input>
         <select name="timezone"
-           ng-model="timezone"
-           ng-change="prepareCurrentTabData(ends_at, timezone, period)"
            v-model="timezone"
            @change="prepareCurrentTabData">
           <option value="local">Local</option>
           <option value="utc">UTC</option>
         </select>
         <select name="period_type"
-           ng-model="period"
-           ng-change="prepareCurrentTabData(ends_at, timezone, period)"
            v-model="periodType"
            @change="prepareCurrentTabData">
           <option value="hourly">Hourly</option>
@@ -37,14 +31,10 @@
         </select>
       </div>
     </div><!-- /choose report date -->
-    <div ng-prop-id="table.key"
-         ng-repeat="table in tables"
-         :id="table.key"
+    <div :id="table.key"
          v-for="(table, index) in tables"
          v-bind:key="table.key">
-      <a ng-prop-href="'#' + table.key"
-         ng-click="tabClicked(table)"
-         v-bind:href="'#' + table.key"
+      <a v-bind:href="'#' + table.key"
          @click="tabClicked(index)"><h2>[[table.title]]</h2></a>
       <div>
         <a :href="[[table.download + getQueryString(['page'])]]" target="_blank">Download</a>
@@ -52,31 +42,25 @@
       <div class="chart-content">
       </div>
       <!-- Display as a table -->
-      <div ng-if="!table.data" v-if="!table.data">
+      <div v-if="!table.data">
         Loading ... (click the title/tab to load)
       </div>
-      <div ng-if="table.data" v-if="table.data">
+      <div v-if="table.data">
         <table id="data-in-rows">
           <tr>
             <td></td>
-            <th ng-repeat="col in table.data[0].values"
-                v-for="col in table.data[0].values">
+            <th v-for="col in table.data[0].values">
               [[ asPeriodHeading(col[0], params.period_type, '{{organization.default_timezone}}') ]]
             </th>
           </tr>
-          <tr ng-prop-id="row.slug"
-              ng-repeat="row in table.data"
-              v-bind:id="row.slug"
+          <tr v-bind:id="row.slug"
               v-for="row in table.data">
-            <td ng-if="row.location" v-if="row.location">
+            <td v-if="row.location">
               <span>[[row.is_active ? 'Active': 'Inactive' ]]</span>
-              <a ng-prop-href="row.location"
-                 v-bind:href="row.location">[[row.title]]</a>
+              <a v-bind:href="row.location">[[row.title]]</a>
             </td>
-            <td ng-if="!row.location"
-                v-if="!row.location">[[row.title]]</td>
-            <td ng-repeat="col in row.values"
-                v-for="col in row.values">
+            <td v-if="!row.location">[[row.title]]</td>
+            <td v-for="col in row.values">
               [[col[1] ]] [[table.unit]] ([[table.scale]])
             </td>
           </tr>

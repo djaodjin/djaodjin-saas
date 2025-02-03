@@ -3,13 +3,10 @@
 {% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<roledescr-list inline-template id="role-list-container" ng-app="saasApp">
-  <div ng-controller="userRoleDescriptionCtrl"
-       saas-organization="{{organization.slug}}">
-    <h2 ng-show="!items.$resolved"
-        v-show="!itemsLoaded">Please wait...</h2>
-    <div ng-show="items.$resolved" ng-cloak
-         v-show="itemsLoaded" v-cloak>
+<roledescr-list inline-template id="role-list-container">
+  <div saas-organization="{{organization.slug}}">
+    <h2 v-show="!itemsLoaded">Please wait...</h2>
+    <div v-show="itemsLoaded" v-cloak>
       <table>
         <thead>
           <tr>
@@ -18,13 +15,9 @@
           </tr>
         </thead>
         <tbody>
-          <tr ng-repeat="entry in items.results"
-           v-for="entry in items.results">
-            <td><a ng-href="entry.slug"
-                   v-bind:href="entry.slug">[[entry.title]]</a></td>
+          <tr v-for="entry in items.results">
+            <td><a v-bind:href="entry.slug">[[entry.title]]</a></td>
             <td><button type="button"
-                ng-show="!entry.is_global"
-                ng-click="deleteRoleDescription(entry)"
                 v-show="!entry.is_global">Delete</button>
               <span v-show="entry.is_global">Globally defined</span>
             </td>

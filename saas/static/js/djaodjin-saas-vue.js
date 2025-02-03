@@ -975,9 +975,7 @@ var roleListMixin = {
                 vm.reqPost(vm.create_url, data,
                     function(resp) {
                         vm.clearNewProfile();
-                        const queryString = window.location.search;
-                        const params = new URLSearchParams(queryString);
-                        const next = params.get('next');
+                        const next = getUrlParameter('next');
                         if( next ) {
                             const redirectTo = next.replace(
                                 '/:profile/', '/' + resp.slug + '/');

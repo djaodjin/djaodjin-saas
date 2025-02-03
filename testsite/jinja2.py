@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -60,7 +60,6 @@ def environment(**options):
     env.filters['describe'] = saas.templatetags.saas_tags.describe
 
     env.globals.update({
-        'VUEJS': (settings.JS_FRAMEWORK == 'vuejs'),
         'DATETIME_FORMAT': "MMM dd, yyyy",
     })
 

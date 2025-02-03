@@ -3,8 +3,8 @@
 {% block saas_title %}Add offline transaction{% endblock %}
 
 {% block saas_content %}
-<import-transaction inline-template id="import-transaction-container" ng-app="saasApp" ng-cloak>
-  <div ng-controller="importTransactionsCtrl">
+<import-transaction inline-template id="import-transaction-container">
+  <div>
     <form @submit.prevent="addPayment">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
       <fieldset>
@@ -20,7 +20,6 @@
                placeholder="Subscriber name or email"
                name="subscription"
                autocomplete="off"
-               ng-model="subscription"
                v-model="itemSelected" />
           </div>
         </div>

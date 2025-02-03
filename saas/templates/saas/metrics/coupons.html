@@ -1,39 +1,42 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<coupon-user-list inline-template id="coupon-performance" ng-app="saasApp">
-    <div id="coupon-users-container" ng-controller="cartItemListCtrl">
+<coupon-user-list inline-template id="coupon-performance">
+    <div id="coupon-users-container">
         <a id="download" role="button" :href="'{{urls.coupon_uses_download}}' + getQueryString(['page'])">Download .CSV</a>
-        <p ng-show="items.$resolved" v-show="itemsLoaded">
+        <p v-show="itemsLoaded">
 {{coupon.code}} was used [[totalItems]] time[[totalItems > 0 ? "s" : ""]].
         </p>
         <table>
             <thead>
                 <tr>
-                    <th>User <button ng-click="sortBy('slug')"
-                                @click="sortBy('slug')">[[sortDir('slug') ? sortDir('slug') : 'sort']]</button></th>
-                    <th>Plan <button ng-click="sortBy('plan')"
-                                @click="sortBy('plan')">[[sortDir('plan') ? sortDir('plan') : 'sort']]</button></th>
-                    <th>Used at <button ng-click="sortBy('created_at')"
-                                @click="sortBy('created_at')">[[sortDir('created_at') ? sortDir('created_at') : 'sort']]</button></th>
+                    <th>
+                        User <button @click="sortBy('slug')">
+                            [[sortDir('slug') ? sortDir('slug') : 'sort']]
+                        </button>
+                    </th>
+                    <th>
+                        Plan <button @click="sortBy('plan')">
+                            [[sortDir('plan') ? sortDir('plan') : 'sort']]
+                        </button>
+                    </th>
+                    <th>Used at <button @click="sortBy('created_at')">
+                            [[sortDir('created_at') ? sortDir('created_at') : 'sort']]
+                        </button>
+                    </th>
                 </tr>
             </thead>
             <tbody>
-              <tr ng-show="items.$resolved && items.results.length == 0"
-                  v-show="itemsLoaded && items.results.length == 0">
+              <tr v-show="itemsLoaded && items.results.length == 0">
                 <td colspan="3">
                   <h4>No use of {{coupon.code}} coupon</h4>
                 </td>
               </tr>
-              <tr ng-prop-id="item.user.slug"
-                  ng-repeat="item in items.results"
-                  ng-show="items.$resolved && items.results.length"
-                  v-bind:id="item.user.slug"
+              <tr v-bind:id="item.user.slug"
                   v-for="item in items.results"
                   v-show="itemsLoaded && items.results.length" >
                 <td>
-                  <a ng-prop-href="'{{urls.profile_redirect}}' + item.user.slug + '/'"
-                      v-bind:href="'{{urls.profile_redirect}}' + item.user.slug + '/'">[[item.user.full_name]]</a>
+                  <a v-bind:href="'{{urls.profile_redirect}}' + item.user.slug + '/'">[[item.user.full_name]]</a>
                 </td>
                 <td>[[item.plan]]</td>
                 <td>[[item.created_at]]</td>

@@ -1,7 +1,6 @@
 {% extends "saas/base.html" %}
 
 {% block saas_bodyscripts %}
-{% if VUEJS %}
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
 <script type="text/javascript">
 Vue.prototype.$itemsPerPage =
@@ -25,50 +24,5 @@ var app = new Vue({
   delimiters: ["[[","]]"],
 });
 </script>
-{% else %}
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-stripe.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/angular.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/angular-touch.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/angular-animate.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/angular-resource.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/angular-route.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/angular-dragdrop.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/ui-bootstrap-tpls.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-angular.js"></script>
-{# XXX /users/:user/roles/ page does not define ``organization``. #}
-<script type="text/javascript">
-/* Implementation Note: Not including a list of dependent modules
-   (2nd parameter to `module`) "re-opens" the module for additional
-   configuration.
-   - We add the CSRF token for as an HTTP header on API calls.
-   - We make it easier to separate between django and angularjs templates
-     by changing Angular defaults to [[ and ]] characters. */
-var reopenSaasApp = angular.module('saasApp');
-reopenSaasApp.config(['$interpolateProvider', '$httpProvider',
-           function($interpolateProvider, $httpProvider) {
-    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token}}';
-    $interpolateProvider.startSymbol('[[');
-    $interpolateProvider.endSymbol(']]');
-}]);
-reopenSaasApp.constant('settings', {
-  urls: {% if urls %}{{urls|to_json}}{% else %}{}{% endif %},
-  itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
-  tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
-  {% if start_at or ends_at %}
-  date_range: {
-    start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
-    ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
-  },
-  {% endif %}
-  user: {
-    username: "{{request.user.username}}",
-    slug: "{{request.user.username}}",
-    first_name: "{{request.user.first_name}}",
-    last_name: "{{request.user.last_name}}"
-  }
-});
-</script>
-{% endif %}
-
 {% block dashboard_bodyscripts %}{% endblock %}
 {% endblock %}

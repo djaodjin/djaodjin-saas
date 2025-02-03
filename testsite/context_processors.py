@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,5 @@ from django.conf import settings
 def js_framework(request):#pylint:disable=unused-argument
     return {
         'USE_STRIPE_V2': settings.USE_STRIPE_V2,
-        'VUEJS': settings.JS_FRAMEWORK == 'vuejs',
         'DATETIME_FORMAT': "MMM dd, yyyy",
     }

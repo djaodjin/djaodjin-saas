@@ -1,8 +1,8 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<plan-subscriber-list inline-template id="subscribers" ng-app="saasApp">
-  <div id="plan-subscribers-container" ng-controller="planSubscribersListCtrl" ng-init="prefetch()">
+<plan-subscriber-list inline-template id="subscribers">
+  <div id="plan-subscribers-container">
 
     <form id="add-subscriber" @submit.prevent="submit">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
@@ -33,20 +33,19 @@ Thank you,
       <div>
         <label>Filter</label>
         <input type="text"
-               ng-model="params.q" ng-change="filterList(params.q)"
                v-model="params.q" @input="debouncedAutoReload" />
       </div>
       <table>
         <thead>
           <tr>
-            <th>Subscriber<button ng-click="sortBy('profile')" @click="sortBy('profile')"></button></th>
-            <th>Plan<button ng-click="sortBy('plan')" @click="sortBy('plan')"></button></th>
-            <th>Since<button ng-click="sortBy('created_at')" @click="sortBy('created_at')"></button></th>
-            <th>Ends At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')"></button></th>
+            <th>Subscriber <button @click="sortBy('profile')"></button></th>
+            <th>Plan <button @click="sortBy('plan')"></button></th>
+            <th>Since <button @click="sortBy('created_at')"></button></th>
+            <th>Ends At <button @click="sortBy('ends_at')"></button></th>
             <th>Description</th>
           </tr>
         </thead>
-        <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
+        <tbody v-show="!itemsLoaded">
           <tr>
             <td colspan="5">
               <h4>Loading ...</h4>
@@ -54,35 +53,28 @@ Thank you,
           </tr>
         </tbody>
         <tbody class="has-no-results"
-               ng-show="subscribers.$resolved && subscribers.results.length == 0"
                v-show="itemsLoaded && items.results.length == 0">
           <tr>
             <td colspan="5">
-              <h4>No subscribers<span ng-show="params.q" v-show="params.q"> with filter: '[[params.q]]'</span></h4>
+              <h4>No subscribers<span v-show="params.q"> with filter: '[[params.q]]'</span></h4>
             </td>
           </tr>
         </tbody>
         <tbody class="has-results"
-               ng-repeat="entry in subscribers.results" ng-show="subscribers.$resolved && subscribers.results.length > 0"
                v-for="(entry, index) in items.results" v-show="itemsLoaded && items.results.length > 0">
-          <tr ng-class="endsSoon(entry)" v-bind:class="endsSoon(entry)">
+          <tr v-bind:class="endsSoon(entry)">
             <td>
-              <a ng-prop-href="'{{urls.profile_base}}' + entry.profile.slug + '/subscriptions/'"
-                 v-bind:href="'{{urls.profile_base}}' + entry.profile.slug + '/subscriptions/'">[[entry.profile.printable_name]]</a>
+              <a v-bind:href="'{{urls.profile_base}}' + entry.profile.slug + '/subscriptions/'">[[entry.profile.printable_name]]</a>
             </td>
             <td>[[entry.plan.title]]</td>
             <td>[[entry.created_at]]</td>
             <td>[[entry.ends_at]]</td>
             <td>
                 <span
-                   ng-show="!entry.editDescription" ng-click="editDescription($event, entry)"
                    v-show="!entry.edit_description" @click="editDescription(entry, index)">
                     [[entry.description]]
                 </span>
                 <input type="text"
-                       ng-show="entry.editDescription"
-                       ng-blur="saveDescription($event, entry)"
-                       ng-model="entry.description"
                        v-show="entry.edit_description"
                        @blur="saveDescription(entry)"
                        @keyup.13="saveDescription(entry)"
