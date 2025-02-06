@@ -105,11 +105,18 @@ Tested with
 - **Python:** 3.12, **Django:** 5.1 (next)
 - **Python:** 3.7, **Django:** 3.2 (legacy)
 
-0.20.5
 
-  * fixes role request while a role grant is pending
-  * saves meta information in role
-  * repares profile/user relationship whenever possible
-  * shows discount type correctly in template
+1.0.0
+
+  * introduces paylater workflow
+  * adds SubcriptionUse model to track paid-in-advance and included-in-plan use
+  * refactors `create_organization_from_user` into model manager
+  * uses `billing_start` for automated monthly invoicing
+  * redirects dashboard URL to profile info page when profile is not a provider
+  * unsubscribes deleted profile, and de-activates all plans
+  * enables specification of amount when canceling balance (see commit 3ce57977)
+  * enables specification of `ends_at` query parameter to balance API
+  * adds compatibility with Djang4.2 and Django5.1
+  * removes deprecated AngularJS implementation
 
 [previous release notes](changelog)

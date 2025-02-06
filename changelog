@@ -4,18 +4,29 @@ Roadmap
 1.5
 
   * Uses Web Component for browser-based client components
-  * removes deprecated AngularJS browser app
-
-1.0
-
-  * completes documentation of new features in 0.20
-
-  (initially we anticipated to support Vue3 but there are so many features
-   in Vue2 that lead us to pick Vue from a front-end UI framework, and that
-   were removed in Vue3, that it does not make sense to migrate to Vue3)
 
 Released versions
 =================
+
+1.0.0
+
+  * introduces paylater workflow
+  * adds SubcriptionUse model to track paid-in-advance and included-in-plan use
+  * refactors `create_organization_from_user` into model manager
+  * uses `billing_start` for automated monthly invoicing
+  * redirects dashboard URL to profile info page when profile is not a provider
+  * unsubscribes deleted profile, and de-activates all plans
+  * enables specification of amount when canceling balance (see commit 3ce57977)
+  * enables specification of `ends_at` query parameter to balance API
+  * adds compatibility with Djang4.2 and Django5.1
+  * removes deprecated AngularJS implementation
+  * skips migration to Vue3:
+        Initially we anticipated to support Vue3 but there are so many features
+        in Vue2 that lead us to pick Vue from a front-end UI framework,
+        and that were removed in Vue3, that it does not make sense to migrate
+        to Vue3.
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 6 Feb 2025 13:45:00 -0700
 
 0.20.5
 
