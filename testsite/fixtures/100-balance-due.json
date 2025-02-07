@@ -247,5 +247,134 @@
       "event_id": "cha_1/"
     },
     "model": "saas.transaction", "pk": 107
+  },
+
+  {
+    "fields": {
+      "slug": "xia-payments",
+      "created_at": "2025-01-01T00:00:00Z",
+      "is_active": true,
+      "full_name": "Xia",
+      "email": "xia+payments@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality": "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "is_bulk_buyer": false,
+      "is_provider": false,
+      "default_timezone": "America/Chicago",
+      "picture": null,
+      "billing_start": null,
+      "funds_balance": 0,
+      "processor": 1,
+      "processor_card_key": null,
+      "processor_deposit_key": null,
+      "processor_priv_key": null,
+      "processor_pub_key": null,
+      "processor_refresh_token": null,
+      "extra": null
+    },
+    "model": "saas.organization", "pk": 101
+  },
+  {
+    "fields": {
+      "auto_renew": true,
+      "created_at": "2025-01-01T00:00:00Z",
+      "ends_at": "2025-02-01T00:00:00Z",
+      "description": null,
+      "organization": 101,
+      "plan": 3,
+      "request_key": null,
+      "grant_key": null,
+      "extra": null
+    },
+    "model": "saas.subscription", "pk": 101
+  },
+  {
+    "fields": {
+      "created_at": "2025-01-01T00:00:00Z",
+      "orig_account": "Receivable",
+      "orig_organization": 3,
+      "orig_amount": 24900,
+      "orig_unit": "usd",
+      "dest_account": "Payable",
+      "dest_organization": 101,
+      "dest_amount": 24900,
+      "dest_unit": "usd",
+      "descr": "Subscription to basic until 2025/01/21 (1 month)",
+      "event_id": "sub_101/"
+    },
+    "model": "saas.transaction", "pk": 108
+  },
+  {
+    "fields": {
+      "created_at": "2025-01-01T00:00:00-00:00",
+      "created_by": 1,
+      "amount": 24900,
+      "unit": "usd",
+      "customer": 101,
+      "description": "Test payment",
+      "claim_code": "e5ebdd2a3818000ed20e5ad709e797a0fd9f59f1",
+      "state": 0,
+      "extra": null
+    },
+    "model": "saas.charge", "pk": 101
+  },
+  {
+    "fields": {
+      "charge": 101,
+      "invoiced": 108,
+      "invoiced_processor_fee": null,
+      "invoiced_broker_fee": null,
+      "invoiced_distribute": null,
+      "invoice_key": null,
+      "sync_on": ""
+    },
+    "model": "saas.chargeitem", "pk": 101
+  },
+
+  {
+    "fields": {
+      "created_at": "2025-01-01T00:00:00Z",
+      "orig_account": "Receivable",
+      "orig_organization": 3,
+      "orig_amount": 24900,
+      "orig_unit": "usd",
+      "dest_account": "Payable",
+      "dest_organization": 101,
+      "dest_amount": 24900,
+      "dest_unit": "usd",
+      "descr": "Subscription to basic until 2025/01/21 (1 month)",
+      "event_id": "sub_101/"
+    },
+    "model": "saas.transaction", "pk": 109
+  },
+  {
+    "fields": {
+      "created_at": "2025-01-01T00:00:00Z",
+      "created_by": 1,
+      "amount": 24900,
+      "unit": "usd",
+      "customer": 101,
+      "description": "Test payment",
+      "claim_code": "e5ebdd2a3818000ed20e5ad709e797a0fd9f59f2",
+      "state": 1,
+      "extra": null
+    },
+    "model": "saas.charge", "pk": 102
+  },
+  {
+    "fields": {
+      "charge": 102,
+      "invoiced": 109,
+      "invoiced_processor_fee": null,
+      "invoiced_broker_fee": null,
+      "invoiced_distribute": null,
+      "invoice_key": null,
+      "sync_on": ""
+    },
+    "model": "saas.chargeitem", "pk": 102
   }
 ]
