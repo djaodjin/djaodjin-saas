@@ -45,7 +45,6 @@
 },
 {
     "fields":{
-        "slug":"plan130",
         "title":"Club130 Plan",
         "created_at":"2025-01-01T00:00:00+00:00",
         "setup_amount": 0,
@@ -53,14 +52,11 @@
         "broker_fee_percent": 0,
         "period_type": 5,
         "description": "",
-        "organization": 130,
-        "is_active": 1
-    },
-    "model" : "saas.Plan", "pk": 130
+        "is_active": 1,
+        "organization": 130, "slug":"plan130" }, "model" : "saas.Plan", "pk": 130
 },
 {
     "fields":{
-        "slug":"plan131",
         "title":"Club131 Plan",
         "created_at":"2025-01-01T00:00:00+00:00",
         "setup_amount": 0,
@@ -68,10 +64,8 @@
         "broker_fee_percent": 0,
         "period_type": 5,
         "description": "",
-        "organization": 130,
-        "is_active": 1
-    },
-    "model" : "saas.Plan", "pk": 131
+        "is_active": 1,
+        "organization": 130, "slug":"plan131" }, "model" : "saas.Plan", "pk": 131
 },
 {
     "fields": {

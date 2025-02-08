@@ -296,7 +296,7 @@
     "fields": {
       "created_at": "2025-01-01T00:00:00Z",
       "orig_account": "Receivable",
-      "orig_organization": 3,
+      "orig_organization": 2,
       "orig_amount": 24900,
       "orig_unit": "usd",
       "dest_account": "Payable",
@@ -339,7 +339,7 @@
     "fields": {
       "created_at": "2025-01-01T00:00:00Z",
       "orig_account": "Receivable",
-      "orig_organization": 3,
+      "orig_organization": 2,
       "orig_amount": 24900,
       "orig_unit": "usd",
       "dest_account": "Payable",

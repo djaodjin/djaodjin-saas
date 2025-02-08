@@ -96,6 +96,7 @@
      method="post" action=".">
   <h4>Refund</h4>
   {% if charge.state == charge.DONE %}
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
     <input name="amount" maxlength="32" type="text" value="0" />
     <p>
       Please specify the amount you would like refunded.

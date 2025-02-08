@@ -44,8 +44,7 @@
     "model": "saas.Role", "pk": 120
 },
 {
-    "fields":{
-        "slug":"plan-club120",
+    "fields": {
         "title":"Club120 Plan",
         "created_at":"2025-01-01T00:00:00+00:00",
         "setup_amount":0,
@@ -53,9 +52,7 @@
         "broker_fee_percent": 0,
         "period_type": 5,
         "description":"",
-        "organization" : 120,
-        "is_active" : 1
-    },
-    "model" : "saas.Plan", "pk": 120
+        "is_active" : 1,
+        "organization" : 120, "slug":"plan-club120" }, "model" : "saas.Plan", "pk": 120
 }
 ]

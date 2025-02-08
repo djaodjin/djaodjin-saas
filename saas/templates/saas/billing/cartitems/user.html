@@ -46,7 +46,10 @@
             </td>
             <td>
               <button @click="updateItem(cartItem)">Update</button>
-              <button class="remove" @click="removeItem(cartItem)">Remove</button>
+              <form method="post" @submit.prevent="removeItem(cartItem)">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+                <button class="remove">Remove</button>
+              </form>
             </td>
           </tr>
         </tbody>

@@ -9,7 +9,6 @@
 },
 {
   "fields": {
-    "slug": "basic",
     "title": "Basic",
     "description": "Basic Plan",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -17,10 +16,8 @@
     "period_amount": 24900,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "organization": 2,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 1
+    "is_active": 1,
+    "organization": 2, "slug": "basic" }, "model": "saas.Plan", "pk": 1
 },
 {
   "fields": {
@@ -33,31 +30,25 @@
 },
 {
   "fields": {
-    "slug": "medium",
     "title": "Medium",
     "created_at":"2025-01-01T00:00:00+00:00",
     "setup_amount": 0,
     "period_amount": 24900,
     "period_type": 4,
     "description": "Medium Plan",
-    "organization": 2,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 2
+    "is_active": 1,
+    "organization": 2, "slug": "medium" }, "model": "saas.Plan", "pk": 2
 },
 {
   "fields": {
-    "slug": "premium",
     "title": "Premium",
     "created_at": "2025-01-01T00:00:00+00:00",
     "setup_amount": 0,
     "period_amount": 18900,
     "period_type": 4,
     "description": "Premium Plan",
-    "organization": 2,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 3
+    "is_active": 1,
+    "organization": 2, "slug": "premium" }, "model": "saas.Plan", "pk": 3
 },
 {
   "fields": {
@@ -650,7 +641,6 @@
 },
 {
     "fields":{
-        "slug":"standard",
         "title":"Di Baggio Middle School Parents Association",
         "created_at":"2025-01-01T00:00:00+00:00",
         "setup_amount":0,
@@ -658,10 +648,8 @@
         "broker_fee_percent": 1000,
         "period_type": 5,
         "description": "",
-        "organization": 13,
-        "is_active": 1
-    },
-    "model": "saas.Plan", "pk": 12
+        "is_active": 1,
+        "organization": 13, "slug":"standard" }, "model": "saas.Plan", "pk": 12
 },
 {
     "fields": {
@@ -685,8 +673,7 @@
     "model": "saas.Role", "pk": 13
 },
 {
-    "fields":{
-        "slug": "tennis-club",
+    "fields": {
         "title":"Tennis Club of North Beach",
         "created_at":"2025-01-01T00:00:00+00:00",
         "setup_amount":0,
@@ -694,10 +681,8 @@
         "broker_fee_percent": 1000,
         "period_type": 5,
         "description":"",
-        "organization": 14,
-        "is_active": 1
-    },
-    "model": "saas.Plan", "pk": 13
+        "is_active": 1,
+        "organization": 14, "slug": "tennis-club" }, "model": "saas.Plan", "pk": 13
 },
 {
     "fields": {
@@ -1156,7 +1141,6 @@
 },
 {
   "fields": {
-    "slug": "basic-cowork",
     "title": "Basic",
     "description": "Basic Plan",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -1164,38 +1148,30 @@
     "period_amount": 24900,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "organization": 11,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 4
+    "is_active": 1,
+    "organization": 11, "slug": "basic-cowork" }, "model": "saas.Plan", "pk": 4
 },
 {
   "fields": {
-    "slug": "medium-cowork",
     "title": "Medium",
     "created_at":"2025-01-01T00:00:00+00:00",
     "setup_amount": 0,
     "period_amount": 24900,
     "period_type": 4,
     "description": "Medium Plan",
-    "organization": 11,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 5
+    "is_active": 1,
+    "organization": 11, "slug": "medium-cowork" }, "model": "saas.Plan", "pk": 5
 },
 {
   "fields": {
-    "slug": "managed",
     "title": "Managed",
     "created_at": "2025-01-01T00:00:00+00:00",
     "setup_amount": 0,
     "period_amount": 18900,
     "period_type": 4,
     "description": "",
-    "organization": 11,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 6
+    "is_active": 1,
+    "organization": 11, "slug": "managed" }, "model": "saas.Plan", "pk": 6
 },
 {
     "fields": {
@@ -1210,21 +1186,17 @@
     "model": "saas.Organization", "pk": 31
 },
 { "fields": {
-    "slug":"tier1-members",
     "title":"Alliance member",
     "created_at":"2025-01-01T00:00:00+00:00",
     "is_not_priced": 1,
     "period_type": 4,
     "description": "Alliance membership",
-    "organization": 2,
     "skip_optin_on_grant": false,
-    "is_active" : 1
-  },
-  "model" : "saas.Plan", "pk": 7
+    "is_active" : 1,
+    "organization": 2, "slug":"tier1-members" }, "model" : "saas.Plan", "pk": 7
 },
 {
   "fields": {
-    "slug": "dibaggio-additional",
     "title": "Basic",
     "description": "Basic Plan",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -1232,14 +1204,11 @@
     "period_amount": 24900,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "organization": 13,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 8
+    "is_active": 1,
+    "organization": 13, "slug": "dibaggio-additional" }, "model": "saas.Plan", "pk": 8
 },
 {
   "fields": {
-    "slug": "premium-additional",
     "title": "Basic",
     "description": "Basic Plan",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -1247,8 +1216,6 @@
     "period_amount": 24900,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "organization": 31,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 9
+    "is_active": 1,
+    "organization": 31, "slug": "premium-additional" }, "model": "saas.Plan", "pk": 9
 }]

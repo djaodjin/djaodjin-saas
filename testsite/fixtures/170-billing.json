@@ -13,7 +13,6 @@
 },
 {
   "fields": {
-    "slug": "club170-basic",
     "title": "Club170 Basic",
     "description": "Basic Plan",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -21,10 +20,8 @@
     "period_amount": 9000,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "organization": 170,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 170
+    "is_active": 1,
+    "organization": 170, "slug": "club170-basic" }, "model": "saas.Plan", "pk": 170
 },
 {
   "fields": {
@@ -57,7 +54,6 @@
 },
 {
   "fields": {
-    "slug": "club170-premium",
     "title": "Club170 Premium",
     "description": "Premium Plan",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -65,14 +61,11 @@
     "period_amount": 229000,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "organization": 170,
-    "is_active": 1
-  },
-  "model": "saas.Plan", "pk": 171
+    "is_active": 1,
+    "organization": 170, "slug": "club170-premium" }, "model": "saas.Plan", "pk": 171
 },
 {
   "fields": {
-    "slug": "club170-inactive",
     "title": "Club170 Inactive",
     "description": "Inactive Plan",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -80,10 +73,8 @@
     "period_amount": 1900,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "organization": 170,
-    "is_active": 0
-  },
-  "model": "saas.Plan", "pk": 172
+    "is_active": 0,
+    "organization": 170, "slug": "club170-inactive" }, "model": "saas.Plan", "pk": 172
 },
 {
   "fields": {
@@ -107,6 +98,14 @@
       "is_active": true
     },
     "model": "auth.User", "pk": 170
+},
+{
+    "fields": {
+      "last_signed": "2025-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 170
+    },
+    "model": "saas.signature", "pk": 170
 },
 {
     "fields": {
@@ -146,6 +145,14 @@
       "is_active": true
     },
     "model": "auth.User", "pk": 172
+},
+{
+    "fields": {
+      "last_signed": "2025-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 172
+    },
+    "model": "saas.signature", "pk": 172
 },
 {
     "fields": {
@@ -189,6 +196,14 @@
 },
 {
     "fields": {
+      "last_signed": "2025-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 173
+    },
+    "model": "saas.signature", "pk": 173
+},
+{
+    "fields": {
       "slug": "xia173",
       "full_name": "Xia173 Subscriber",
       "created_at": "2025-01-01T00:00:00+00:00",
@@ -226,6 +241,14 @@
       "is_active": true
     },
     "model": "auth.User", "pk": 174
+},
+{
+    "fields": {
+      "last_signed": "2025-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 174
+    },
+    "model": "saas.signature", "pk": 174
 },
 {
     "fields": {

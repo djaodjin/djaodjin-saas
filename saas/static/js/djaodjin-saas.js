@@ -706,6 +706,9 @@
 
       _getCSRFToken: function() {
           var self = this;
+          if( self.options.csrfToken ) {
+              return self.options.csrfToken;
+          }
           var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
           if( crsfNode.length > 0 ) {
               return crsfNode.val();
@@ -819,6 +822,7 @@
    $.fn.plan.defaults = {
        saas_api_plan: "/api/plan",
        saas_metrics_plans: "/plan",
+       csrfToken: null,
        message_created: "Plan was created successfully.",
        message_deleted: "Plan was successfully deleted.",
        template_new: {

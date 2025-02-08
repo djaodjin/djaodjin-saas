@@ -1,4 +1,6 @@
 <fieldset id="invoicables">
+  {# that is where groupBuy ('.add-seat') will look for the CSRF token. #}
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
   <table>
     {% if invoicables %}
       <tbody data-plan="{{invoicables.0.subscription.plan}}">

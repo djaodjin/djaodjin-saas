@@ -82,7 +82,7 @@ initdb: clean-dbs
         testsite/fixtures/120-subscriptions.json \
         testsite/fixtures/130-subscriptions.json \
         testsite/fixtures/140-payment-gap.json \
-        testsite/fixtures/150-subscribers.json \
+        testsite/fixtures/150-subscriptions.json \
         testsite/fixtures/160-renewals.json \
         testsite/fixtures/170-billing.json
 
