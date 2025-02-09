@@ -45,6 +45,7 @@
     <div id="add-or-create-btn">
       <h4>Request access ...</h4>
       <form id="add-profile" @submit.prevent="submit">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input id="userTypeahead" type="text"
                name="profile" placeholder="Name or email"
                autocomplete="off"

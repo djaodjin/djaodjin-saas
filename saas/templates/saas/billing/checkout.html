@@ -109,7 +109,7 @@
         {% if RAZORPAY_PUB_KEY %}
         {% include "saas/_razorpay_checkout.html" %}
         <div>
-          <button type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}Submit{% endif %}</button>
+          <button type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}Pay Now{% endif %}</button>
         </div>
         {% elif FLUTTERWAVE_PUB_KEY %}
         {% include "saas/_flutterwave_checkout.html" %}

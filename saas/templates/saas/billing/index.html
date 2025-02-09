@@ -43,6 +43,7 @@
       <div>
         <form id="cancel-balance" method="post" @submit.prevent="cancelBalance">
           <h4>Cancel balance due</h4>
+          <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
           <p>
 Are you sure you would like to cancel the whole balance of [[items.balance_amount]] [[items.balance_unit]] ?
           </p>

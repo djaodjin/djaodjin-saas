@@ -83,17 +83,18 @@
         </table>
         {% include "saas/_paginator.html" %}
         <!-- modal dialog to confirm unsubscribe -->
-        <div title="Unsubscribe ...">
+        <form title="Unsubscribe ..." method="post"
+              @submit.prevent="unsubscribe">
+          <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
           <p>
             Are you sure you want to continue?
           </p>
           <div slot="footer">
             <button id="cancel-unsubscribe"
                     @click="modalOpen=false">Cancel</button>
-            <button type="submit" id="unsubscribe-btn"
-                    @click="unsubscribe">Unsubscribe</button>
+            <button type="submit" id="unsubscribe-btn">Unsubscribe</button>
           </div>
-        </div>
+        </form>
         <!-- /modal dialog to confirm unsubscribe -->
       </div>
     </subscription-list>
