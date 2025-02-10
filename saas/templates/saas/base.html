@@ -39,6 +39,7 @@ jQuery(document).ready(function($) {
 {% if urls and urls.api_cart %}
     $(".remove-cart-item").cartItem({
         api_cart: "{{ urls.api_cart }}",
+        csrfToken: "{{csrf_token}}", // invoiceables.html
         addLabel: "Add to Cart",
         removeLabel: "Remove from Cart",
         reload: true
@@ -62,8 +63,8 @@ jQuery(document).ready(function($) {
     });
 
     $("#{{charge}}").chargeMonitor({
+       saas_api_charge: "{{ urls.charge.api_base }}",
        initialState: "{{charge.state_string}}",
-       saas_api_charge: "{{ urls.charge.api_base }}"
     });
 {% endif %}
 });

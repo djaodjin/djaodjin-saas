@@ -57,6 +57,9 @@
 
         _getCSRFToken: function() {
             var self = this;
+            if( self.options.csrfToken ) {
+                return self.options.csrfToken;
+            }
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
             if( crsfNode.length > 0 ) {
                 return crsfNode.val();
@@ -115,10 +118,11 @@
     };
 
     $.fn.cartItem.defaults = {
+        api_cart: '/api/cart/',
+        csrfToken: null,
         addLabel: "Add to Cart",
         removeLabel: "Remove from Cart",
         nb_periods: 1,
-        api_cart: '/api/cart/',
         reload: false
     };
 
@@ -177,8 +181,9 @@
     };
 
     $.fn.chargeMonitor.defaults = {
+        saas_api_charge: null,
+        csrfToken: null,
         initialState: "created",
-        saas_api_charge: null
     };
 
     /** Email a receipt for a charge. This behavior is typically associated
@@ -194,7 +199,7 @@
         init: function () {
             var self = this;
             self.state = self.options.initialState;
-            self.element.click(function (event) {
+            self.element.submit(function (event) {
                 event.preventDefault();
                 self.emailReceipt();
             });
@@ -202,6 +207,9 @@
 
         _getCSRFToken: function() {
             var self = this;
+            if( self.options.csrfToken ) {
+                return self.options.csrfToken;
+            }
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
             if( crsfNode.length > 0 ) {
                 return crsfNode.val();
@@ -243,6 +251,7 @@
                     }
                 });
             }
+            return 0;
         }
     };
 
@@ -288,6 +297,9 @@
 
         _getCSRFToken: function() {
             var self = this;
+            if( self.options.csrfToken ) {
+                return self.options.csrfToken;
+            }
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
             if( crsfNode.length > 0 ) {
                 return crsfNode.val();
@@ -365,9 +377,10 @@
     };
 
     $.fn.refund.defaults = {
+        saas_api_charge_refund: null,
+        csrfToken: null,
         availableAmount: 0,
         linenum: 0,
-        saas_api_charge_refund: null,
         refundButton: null,
         refundedLabel: "<em>Refunded</em>"
     };
@@ -481,6 +494,9 @@
 
         _getCSRFToken: function() {
             var self = this;
+            if( self.options.csrfToken ) {
+                return self.options.csrfToken;
+            }
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
             if( crsfNode.length > 0 ) {
                 return crsfNode.val();
@@ -595,8 +611,9 @@
     };
 
     $.fn.invoice.defaults = {
+        saas_api_cart: "/api/cart",
+        csrfToken: null,
         currency_unit: "usd",
-        saas_api_cart: "/api/cart"
     };
 
    /** redeem a ``Coupon``.
@@ -628,6 +645,9 @@
 
       _getCSRFToken: function() {
           var self = this;
+          if( self.options.csrfToken ) {
+              return self.options.csrfToken;
+          }
           var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
           if( crsfNode.length > 0 ) {
               return crsfNode.val();
@@ -663,7 +683,8 @@
    };
 
    $.fn.redeem.defaults = {
-       saas_api_redeem_coupon: "/api/cart/redeem/"
+       saas_api_redeem_coupon: "/api/cart/redeem/",
+       csrfToken: null
    };
 
 

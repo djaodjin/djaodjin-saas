@@ -4,7 +4,10 @@
 <div id="{{charge}}">
   <h1>Charge Receipt</h1>
   <div>
-    <a id="email-charge-receipt" href="">Email Again</a>
+    <form id="email-charge-receipt" method="post">
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+      <button type="submit">Email Again</button>
+    </form>
     {% if urls.charge and urls.charge.printable_receipt %}
     <a id="charge-printable" target="_blank"
        href="{{urls.charge.printable_receipt}}">Printable</a>
