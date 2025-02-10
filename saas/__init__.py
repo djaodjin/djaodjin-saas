@@ -26,4 +26,4 @@
 PEP 386-compliant version number for the saas django app.
 """
 
-__version__ = '1.0.1-dev'
+__version__ = '1.0.1'

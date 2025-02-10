@@ -8,6 +8,12 @@ Roadmap
 Released versions
 =================
 
+1.0.1
+
+  * enables passing CSRF token to components instead of globally defined
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Mon, 10 Feb 2025 11:20:00 -0700
+
 1.0.0
 
   * introduces paylater workflow
