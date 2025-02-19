@@ -950,8 +950,10 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 class ChargeItemSerializer(NoModelSerializer):
 
-    invoiced = TransactionSerializer()
-    refunded = TransactionSerializer(many=True)
+    invoiced = TransactionSerializer(
+        help_text=_("Transaction invoiced"))
+    refunded = TransactionSerializer(many=True,
+        help_text=_("Array of transactions with refunds"))
 
 
 class InvoicableSubscriptionSerializer(SubscriptionSerializer):

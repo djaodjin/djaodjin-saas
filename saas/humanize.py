@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -276,35 +276,54 @@ def translate_descr_suffix(descr):
         sep = ""
         percent = look.group('percent')
         if percent:
-            descr_suffix += sep + _(DESCRIBE_SUFFIX_DISCOUNT_PERCENTAGE) % {
+            # We have to use exact vallue of DESCRIBE_SUFFIX_DISCOUNT_PERCENTAGE
+            # instead of `_(DESCRIBE_SUFFIX_DISCOUNT_PERCENTAGE)` otherwise
+            # `manage.py makemessages` doesn't write the text in django.po
+            descr_suffix += sep + _("a %(percent)s discount") % {
                 'percent': percent}
             sep = _(" and ")
         nb_periods = look.group('nb_periods')
         period_name = look.group('period_name')
         if nb_periods and period_name:
             nb_periods = int(nb_periods)
-            descr_suffix += sep + _(DESCRIBE_SUFFIX_DISCOUNT_PERIOD) % {
+            # We have to use exact vallue of DESCRIBE_SUFFIX_DISCOUNT_PERIOD
+            # instead of `_(DESCRIBE_SUFFIX_DISCOUNT_PERIOD)` otherwise
+            # `manage.py makemessages` doesn't write the text in django.po
+            descr_suffix += sep + _("%(nb_periods)s %(period_name)s free") % {
                 'nb_periods': nb_periods,
                 'period_name': translate_period_name(period_name, nb_periods)}
             sep = _(" and ")
         amount = look.group('amount')
         if amount:
-            descr_suffix += sep + _(DESCRIBE_SUFFIX_DISCOUNT_CURRENCY) % {
+            # We have to use exact vallue of DESCRIBE_SUFFIX_DISCOUNT_CURRENCY
+            # instead of `_(DESCRIBE_SUFFIX_DISCOUNT_CURRENCY)` otherwise
+            # `manage.py makemessages` doesn't write the text in django.po
+            descr_suffix += sep + _("a %(amount)s off") % {
                 'amount': amount}
             sep = _(" and ")
         code = look.group('code')
         if code:
-            descr_suffix += _(DESCRIBE_SUFFIX_COUPON_APPLIED) % {'code': code}
+            # We have to use exact vallue of DESCRIBE_SUFFIX_COUPON_APPLIED
+            # instead of `_(DESCRIBE_SUFFIX_COUPON_APPLIED)` otherwise
+            # `manage.py makemessages` doesn't write the text in django.po
+            descr_suffix += _("(code: %(code)s)") % {'code': code}
         payer = look.group('payer')
         if payer:
+            # We have to use exact vallue of DESCRIBE_SUFFIX_GROUP_BUY
+            # instead of `_(DESCRIBE_SUFFIX_GROUP_BUY)` otherwise
+            # `manage.py makemessages` doesn't write the text in django.po
             descr_suffix += _(", complimentary of %(payer)s") % {'payer': payer}
         subscriber_full_name = look.group('subscriber_full_name')
         sync_on = look.group('sync_on')
         if subscriber_full_name and sync_on:
-            descr_suffix += " " + _(DESCRIBE_SUFFIX_TARGET_SUBSCRIBER) % {
+            # We have to use exact vallue of DESCRIBE_SUFFIX_TARGET_SUBSCRIBER
+            # instead of `_(DESCRIBE_SUFFIX_TARGET_SUBSCRIBER)` otherwise
+            # `manage.py makemessages` doesn't write the text in django.po
+            descr_suffix += (
+                " " + _("for %(subscriber_full_name)s (%(sync_on)s)") % {
                 'subscriber_full_name': subscriber_full_name,
                 'sync_on': sync_on
-            }
+            })
 
     if descr_suffix:
         descr += " - %s" % descr_suffix
