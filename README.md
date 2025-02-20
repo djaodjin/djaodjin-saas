@@ -105,8 +105,9 @@ Tested with
 - **Python:** 3.12, **Django:** 5.1 (next)
 - **Python:** 3.7, **Django:** 3.2 (legacy)
 
-1.0.1
+1.0.2
 
+  * enables translation of Transaction descr suffixes
   * enables passing CSRF token to components instead of globally defined
 
 1.0.0

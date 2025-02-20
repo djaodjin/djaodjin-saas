@@ -8,6 +8,12 @@ Roadmap
 Released versions
 =================
 
+1.0.2
+
+  * enables translation of Transaction descr suffixes
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 19 Feb 2025 16:00:00 -0700
+
 1.0.1
 
   * enables passing CSRF token to components instead of globally defined
