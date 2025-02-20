@@ -5,7 +5,14 @@
   <div>
     <h2>Plans</h2>
     <a id="plan-new" href="{{ urls.provider.plan_new }}" title="Create plan">Add Plan ...</a>
-    <table id="data-in-rows">
+    <table id="no-data" v-show="itemsLoaded && items.results.length === 0">
+      <tr>
+        <td colspan="4">
+         No Plans<span v-show="params.q"> [[params.q]]</span>
+        </td>
+      </tr>
+    </table>
+    <table id="data-in-rows" v-show="itemsLoaded && items.results.length > 0">
       <tr :id="item.slug" v-for="item in items.results">
         <td>
           <!-- TODO just basic template instead of an error page -->
