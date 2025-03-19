@@ -1005,7 +1005,7 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
 
     def get_queryset(self):
         queryset = Subscription.objects.active_with(
-            self.kwargs.get(self.provider_url_kwarg))
+            self.kwargs.get(self.provider_url_kwarg), request_key=self.kwargs.get('request_key'))
         # `ProvidedSubscriptionSerializer` derives from `SubscriptionSerializer`
         # thus will expand `organization` and `plan`.
         queryset = queryset.select_related('organization').select_related(
@@ -1059,6 +1059,7 @@ a00000d0a0000001234567890123456789012345 HTTP/1.1
         #pylint:disable=unused-argument
         request_key = self.kwargs.get('request_key')
         self.subscription.request_key = None
+        self.subscription.save()
         LOGGER.info(
             "%s accepted subscription of %s to plan %s (request_key=%s)",
             self.request.user, self.subscription.organization,
@@ -1072,3 +1073,5 @@ a00000d0a0000001234567890123456789012345 HTTP/1.1
         signals.subscription_request_accepted.send(sender=__name__,
             subscription=self.subscription,
             request_key=request_key, request=self.request)
+
+        return Response({})
