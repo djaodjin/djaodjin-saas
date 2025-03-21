@@ -594,6 +594,25 @@ class OrganizationDecorateMixin(object):
         # A raw query cannot be furthered filtered either.
         organization_model = get_organization_model()
         records = [page] if isinstance(page, organization_model) else page
+        try:
+            personal = dict(organization_model.objects.filter(
+                pk__in=[optin.organization.pk
+                    for optin in records if optin.organization.pk],
+                role__user__username=models.F('slug')).extra(select={
+                'credentials': (
+                    "NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX + "%%')")
+                }).values_list('pk', 'credentials'))
+            for optin in records:
+                if optin.organization.pk in personal:
+                    optin.organization.is_personal = True
+                    optin.organization.credentials = \
+                        personal[optin.organization.pk]
+            return page
+        except AttributeError:
+            # We are not dealing with a list of `Role` or `Subscription`,
+            # but rather a list of `Organization` directly.
+            pass
+
         personal = dict(organization_model.objects.filter(#XXX ok if not active?
             pk__in=[profile.pk for profile in records if profile.pk],
             role__user__username=models.F('slug')).extra(select={
@@ -1444,7 +1463,9 @@ def product_url(subscriber=None, plan=None, request=None):
         location += '%s/' % subscriber
     if plan:
         location += '%s/' % plan
-    return build_absolute_uri(request, location=location)
+    if request:
+        return build_absolute_uri(request, location=location)
+    return location
 
 
 def read_agreement_file(slug, context=None, request=None):

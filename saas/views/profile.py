@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,23 +28,19 @@ import logging
 
 from django import http
 from django.contrib import messages
-from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
-from django.views.generic import (CreateView, DetailView, ListView,
-    TemplateView, UpdateView)
+from django.db import transaction
+from django.views.generic import DetailView, ListView, TemplateView, UpdateView
 
-from . import RedirectFormMixin
 from .. import settings, signals
-from ..compat import reverse, NoReverseMatch, gettext_lazy as _
+from ..compat import reverse, gettext_lazy as _
 from ..decorators import _valid_manager
-from ..forms import (OrganizationForm, OrganizationCreateForm,
-    ManagerAndOrganizationForm)
+from ..forms import OrganizationForm, ManagerAndOrganizationForm
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker
 from ..utils import (get_organization_model, update_context_urls,
-    update_db_row, validate_redirect_url as validate_redirect_url_base)
+    update_db_row)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -222,110 +218,6 @@ reference/djaoapp/latest/api/#listSubscribedSubscription>`__
                 self.request.user, role_descr=settings.MANAGER))})
         context.update({'subscriptions': context['object_list']})
         return context
-
-
-class OrganizationCreateView(RedirectFormMixin, CreateView):
-    """
-    This page helps ``User`` create a new ``Organization``. By default,
-    the request user becomes a manager of the newly created entity.
-
-    ``User`` and ``Organization`` are separate concepts links together
-    by manager and other custom ``RoleDescription`` relationships.
-
-    The complete ``User``, ``Organization`` and relationship might be exposed
-    right away to the person registering to the site. This is very usual
-    in Enterprise software.
-
-    On the hand, a site might decide to keep the complexity hidden by
-    enforcing a one-to-one manager relationship between a ``User`` (login)
-    and an ``Organization`` (payment profile).
-
-    Template:
-
-    To edit the layout of this page, create a local \
-    ``saas/profile/new.html`` (`example <https://github.com/djaodjin\
-/djaodjin-saas/tree/master/saas/templates/saas/profile/new.html>`__).
-
-    Template context:
-      - ``request`` The HTTP request object
-    """
-
-    model = get_organization_model()
-    organization_model = get_organization_model()
-    organization_url_kwarg = settings.PROFILE_URL_KWARG
-    form_class = OrganizationCreateForm
-    pattern_name = 'saas_organization_cart'
-    template_name = "saas/profile/new.html"
-    implicit_create_on_none = False
-
-    def get_context_data(self, **kwargs):
-        context = super(OrganizationCreateView, self).get_context_data(
-            **kwargs)
-        user = self.request.user
-        urls = {
-            'api_candidates': reverse('saas_api_search_profiles'),
-            'user': {
-                'api_accessibles': reverse(
-                    'saas_api_accessibles', args=(user,)),
-                'api_profile_create': reverse(
-                    'saas_api_user_profiles', args=(user,)),
-        }}
-        update_context_urls(context, urls)
-        return context
-
-    def get_implicit_create_on_none(self):
-        return self.implicit_create_on_none
-
-    def form_valid(self, form):
-        with transaction.atomic():
-            #pylint:disable=attribute-defined-outside-init
-            self.object = form.save()
-            if not _valid_manager(self.request, [get_broker()]):
-                # If it is a manager of the broker platform creating
-                # the newly created Organization will be accessible anyway.
-                self.object.add_manager(self.request.user)
-        return http.HttpResponseRedirect(self.get_success_url())
-
-    def get_initial(self):
-        kwargs = super(OrganizationCreateView, self).get_initial()
-        kwargs.update({'slug': self.request.user.username,
-                       'full_name': self.request.user.get_full_name(),
-                       'email': self.request.user.email})
-        return kwargs
-
-    def get_redirect_url(self, *args, **kwargs):
-        #pylint:disable=unused-argument
-        redirect_path = validate_redirect_url_base(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None), sub=True, **kwargs)
-        if not redirect_path:
-            try:
-                redirect_path = reverse(self.pattern_name, args=(self.object,))
-            except NoReverseMatch: # Django==2.0
-                redirect_path = None
-        return redirect_path
-
-    def get_success_url(self):
-        self.kwargs.update({self.organization_url_kwarg: self.object})
-        success_url = self.get_redirect_url(*self.args, **self.kwargs)
-        return str(success_url)
-
-    def get(self, request, *args, **kwargs):
-        accessibles = self.organization_model.objects.accessible_by(
-            request.user)
-        count = accessibles.count()
-        if count == 0:
-            if self.get_implicit_create_on_none():
-                try:
-                    #pylint:disable=attribute-defined-outside-init
-                    self.object = \
-                self.organization_model.objects.create_organization_from_user(
-                        request.user)
-                    return http.HttpResponseRedirect(self.get_success_url())
-                except IntegrityError:
-                    LOGGER.warning("tried to implicitely create"\
-                        " an organization that already exists.",
-                        extra={'request': request})
-        return super(OrganizationCreateView, self).get(request, *args, **kwargs)
 
 
 class DashboardView(OrganizationMixin, DetailView):

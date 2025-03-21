@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,8 +37,8 @@ from functools import wraps
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.views import redirect_to_login
-
 from django.shortcuts import get_object_or_404
+from rest_framework.settings import api_settings
 
 from . import settings
 from .cart import cart_insert_item
@@ -180,18 +180,25 @@ def fail_agreement(request, agreement=settings.TERMS_OF_USE):
     return False
 
 
-def fail_active_roles(request):
+def fail_active_roles(request, profile=None):
     """
-    User with active roles only
+    User with active role only
     """
     role_model = get_role_model()
-    redirect_to = reverse('saas_user_product_list', args=(request.user,))
+    redirect_to = reverse('saas_role_implicit_grant_accept')
     if request.path == redirect_to:
         # Prevents URL redirect loops
         return False
 
-    if role_model.objects.filter(
-            user=request.user, grant_key__isnull=False).exists():
+    kwargs = {}
+    if profile:
+        redirect_to += "?%s=%s" % (api_settings.SEARCH_PARAM, str(profile))
+        if isinstance(profile, get_organization_model()):
+            kwargs = {'organization': profile}
+        else:
+            kwargs = {'organization__slug': str(profile)}
+    if role_model.objects.filter(user=request.user, grant_key__isnull=False,
+            **kwargs).exists():
         # We have some invites pending so let's first stop
         # by the user accessibles page.
         return redirect_to

@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2024, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@ from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
 
 from . import settings
 from .compat import force_str, six
-from .utils import datetime_or_now, parse_tz
+from .utils import datetime_or_now, is_mail_provider_domain, parse_tz
 
 LOGGER = logging.getLogger(__name__)
 
@@ -99,7 +99,6 @@ class ActiveFilter(BaseSearchFilter):
 class SearchFilter(BaseSearchFilter):
 
     search_field_param = settings.SEARCH_FIELDS_PARAM
-    mail_provider_domains = settings.MAIL_PROVIDER_DOMAINS
 
     def filter_queryset(self, request, queryset, view):
         search_fields = self.get_valid_fields(request, queryset, view)
@@ -118,6 +117,7 @@ class SearchFilter(BaseSearchFilter):
             ]
         except TypeError:
             # djangorestframework<=3.14
+            #pylint:disable=no-value-for-parameter
             orm_lookups = [
                 self.construct_search(six.text_type(search_field))
                 for search_field in search_fields
@@ -133,7 +133,7 @@ class SearchFilter(BaseSearchFilter):
             if ('@' in search_term and 'domain' in view.search_fields and
                 'email' in search_fields):
                 domain = '@' + search_term.split('@')[-1]
-                if domain not in self.mail_provider_domains:
+                if not is_mail_provider_domain(domain):
                     queries = [models.Q(**{'email__iendswith': domain})]
                     conditions.append(reduce(operator.or_, queries))
         queryset = queryset.filter(reduce(operator.or_, conditions))

@@ -33,8 +33,9 @@ from rules.urldecorators import include, re_path # because we want to use
                                                 # `fail_` decorators redirects.
 from saas import settings as saas_settings
 from saas.compat import reverse_lazy
-from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
-    fail_provider, fail_provider_only, fail_self_provider)
+from saas.decorators import (fail_active_roles, fail_agreement,
+    fail_authenticated, fail_direct, fail_provider, fail_provider_only,
+    fail_self_provider)
 from saas.views import OrganizationRedirectView, UserRedirectView
 
 from . import signals
@@ -72,6 +73,9 @@ urlpatterns += \
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
+
+    url_prefixed(r'', include('saas.urls.views.request'),
+        redirects=[fail_authenticated]),
     url_prefixed(r'', include('saas.urls.views.users'),
         redirects=[fail_authenticated]),
     url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
@@ -90,7 +94,6 @@ urlpatterns += \
     url_prefixed(r'billing/cart/',
         login_required(
             OrganizationRedirectView.as_view(
-                implicit_create_on_none=True,
                 pattern_name='saas_organization_cart'),
             login_url=reverse_lazy('registration_register')),
         name='saas_cart'),
@@ -130,8 +133,7 @@ urlpatterns += \
     url_prefixed(r'api/', include('saas.urls.api.tailbroker'),
         redirects=[fail_authenticated, fail_provider_only]),
     # views
-    url_prefixed(r'', include('saas.urls.views.request'),
-        redirects=[fail_authenticated]),
+    url_prefixed(r'', include('saas.urls.views.request'), redirects=[fail_authenticated]),
     url_prefixed(r'', include('saas.urls.views.noauth')),
     url_prefixed(r'', include('saas.urls.views.payments')),
     url_prefixed(r'', include('saas.urls.views.headredirects'),
@@ -141,7 +143,8 @@ urlpatterns += \
     url_prefixed(r'', include('saas.urls.views.provider'),
         redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'', include('saas.urls.views.subscriber'),
-        redirects=[fail_authenticated, fail_agreement, fail_provider]),
+        redirects=[fail_authenticated, fail_agreement, fail_active_roles,
+            fail_provider]),
     url_prefixed(r'', include('saas.urls.views.tailredirects'),
         redirects=[fail_authenticated]),
 
@@ -151,6 +154,6 @@ urlpatterns += \
         AppView.as_view(template_name='app.html'), name='app',
         redirects=[fail_authenticated]),
     url_prefixed(r'app/',
-        AppView.as_view(template_name='app.html'), name='product_default_start',
+        OrganizationRedirectView.as_view(), name='product_default_start',
         redirects=[fail_authenticated]),
 ]

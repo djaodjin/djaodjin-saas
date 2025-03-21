@@ -631,9 +631,9 @@ class CartBaseView(InvoicablesMixin, BalanceAndCartMixin, FormView):
         for item_plan, item_use, item_sync_on in params:
             self.insert_item(request, plan=item_plan, use=item_use,
                 sync_on=item_sync_on, invoice_key=invoice_key)
-        if (self.organization.is_bulk_buyer and CartItem.objects.get_cart(
-                user=request.user).filter(
-                Q(sync_on__isnull=True) | Q(sync_on="")).exists()):
+        cart_items_queryset = CartItem.objects.get_cart(
+            user=request.user).filter(Q(sync_on__isnull=True) | Q(sync_on=""))
+        if self.organization.is_bulk_buyer and cart_items_queryset.exists():
             # A bulk buyer customer can buy subscriptions for other people.
             return reverse('saas_cart_seats', args=(self.organization,))
         return None

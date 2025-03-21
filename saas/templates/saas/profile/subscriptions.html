@@ -59,9 +59,19 @@
               </td>
               <td v-if="!entry.request_key">
                 <button class="unsubscribe"
-                        data-toggle="modal" data-target="#unsubscribe-action"
-                        @click="unsubscribeConfirm(entry.profile.slug, entry.plan.slug)">
+                  data-bs-toggle="modal" data-bs-target="#unsubscribe-action"
+                  @click="unsubscribeConfirm(entry.profile.slug, entry.plan.slug)"
+                  v-if="!entry.grant_key">
                   Unsubscribe Now
+                </button>
+                <a :href="acceptGrantURL(entry.profile.slug, entry.grant_key)"
+                   v-if="entry.grant_key">
+                  Subscribe
+                </a>
+                <button class="unsubscribe"
+                        @click="unsubscribe(entry.profile.slug, entry.plan.slug)"
+                        v-if="entry.grant_key">
+                  Remove
                 </button>
               </td>
               <td v-if="entry.request_key && entry.editable">

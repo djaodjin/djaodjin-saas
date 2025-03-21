@@ -76,6 +76,7 @@ initdb: clean-dbs
 	cd $(srcDir) && $(MANAGE) loaddata \
         testsite/fixtures/initial_data.json \
         testsite/fixtures/test_data.json \
+        testsite/fixtures/40-provider-subscriptions.json \
         testsite/fixtures/50-visit-card2.json \
         testsite/fixtures/100-balance-due.json \
         testsite/fixtures/110-balance-checkout.json \
@@ -84,7 +85,8 @@ initdb: clean-dbs
         testsite/fixtures/140-payment-gap.json \
         testsite/fixtures/150-subscriptions.json \
         testsite/fixtures/160-renewals.json \
-        testsite/fixtures/170-billing.json
+        testsite/fixtures/170-billing.json \
+        testsite/fixtures/200-saas-roles.json
 
 
 vendor-assets-prerequisites: $(libDir)/.npm/djaodjin-saas-packages

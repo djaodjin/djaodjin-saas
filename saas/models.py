@@ -68,7 +68,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import (DatabaseError, IntegrityError, connections, models,
     transaction)
-from django.db.models import Max, Q, Sum
+from django.db.models import F, Max, Q, Sum
 from django.db.models.query import QuerySet
 from django.db.models.signals import post_save
 from django.db.utils import DEFAULT_DB_ALIAS
@@ -85,7 +85,8 @@ from .compat import (import_string, gettext_lazy as _,
     python_2_unicode_compatible, six, urlquote)
 from .utils import (SlugTitleMixin, datetime_or_now, full_name_natural_split,
     generate_random_slug, handle_uniq_error)
-from .utils import get_organization_model, get_role_model
+from .utils import (get_organization_model, get_role_model,
+    is_mail_provider_domain)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -137,7 +138,7 @@ class OrganizationManager(models.Manager):
             return self.filter(role__user__username=user, slug=user).first()
         return None
 
-    def accessible_by(self, user, role_descr=None): # OrganizationManager
+    def accessible_by(self, user, role_descr=None, includes_personal=True):
         """
         Returns a QuerySet of Organziation which *user* has an associated
         role with.
@@ -159,8 +160,8 @@ class OrganizationManager(models.Manager):
             else:
                 kwargs.update({'role_description__slug__in': [
                     str(descr) for descr in role_descr]})
-        roles = get_role_model().objects.db_manager(
-            using=self._db).valid_for(**kwargs)
+        roles = get_role_model().objects.db_manager(using=self._db).valid_for(
+            includes_personal=includes_personal, **kwargs)
         return self.filter(
             is_active=True, pk__in=roles.values('organization')).distinct()
 
@@ -561,14 +562,17 @@ class AbstractOrganization(models.Model):
         return get_role_model().objects.db_manager(using=self._state.db).filter(
             organization=self, **kwargs)
 
-    def add_role(self, user, role_descr,
-                 grant_key=None, at_time=None, reason=None, extra=None,
-                 request_user=None):
+    def add_role_grant(self, user, role_descr,
+                       grant_key=None, force_skip_optin=False,
+                       extra=None, at_time=None):
         """
-        Adds ``user`` as a ``role_descr`` (ex: manager) on the organization.
+        Grants a ``role_descr`` (ex: manager) to ``user`` on the profile.
 
-        If ``user`` already had a role on the organization, it is removed
+        If ``user`` already had a role on the organization, it is replaced
         to only keep one role per user per organization.
+
+        When ``grant_key`` is specified, it will be set on the role, regardless
+        of the ``role_descr.skip_optin_on_grant`` value.
         """
         #pylint:disable=too-many-arguments
         # Implementation Note:
@@ -587,24 +591,40 @@ class AbstractOrganization(models.Model):
             m2m = queryset.get()
             force_insert = False
         else:
-            if not (role_descr.skip_optin_on_grant or grant_key):
-                grant_key = generate_random_slug()
-            m2m = get_role_model()(
-                organization=self, user=user, grant_key=grant_key)
+            m2m = get_role_model()(organization=self, user=user)
             force_insert = True
-        m2m.role_description = role_descr
+
         m2m.request_key = None
+        m2m.role_description = role_descr
         if extra:
             m2m.extra = extra
         if at_time:
             m2m.created_at = at_time
+
+        if force_skip_optin:
+            m2m.grant_key = None
+        elif grant_key:
+            m2m.grant_key = grant_key
+        elif role_descr.skip_optin_on_grant or (self.slug == user.username and
+            role_descr == self.get_role_description(settings.MANAGER)):
+            # We are granting manager role to a personal profile, so let's not
+            # get into a weird use case where we have to accept a request
+            # to our own profile.
+            m2m.grant_key = None
+        elif force_insert and not m2m.grant_key:
+            m2m.grant_key = generate_random_slug()
+
         m2m.save(using=self._state.db, force_insert=force_insert)
-        signals.role_grant_created.send(sender=__name__,
-            role=m2m, reason=reason, request_user=request_user)
+        LOGGER.info("Grant role '%s' to user '%s' on organization '%s'",
+            m2m.role_description, m2m.user, m2m.organization,
+            extra={'event': 'grant-role', 'user': m2m.user.username,
+                'organization': m2m.organization.slug,
+                'role': str(m2m.role_description)})
         return m2m, force_insert
 
     def add_role_request(self, user, at_time=None, role_descr=None):
         force_insert = False
+        at_time = datetime_or_now(at_time)
         if role_descr and not isinstance(role_descr, RoleDescription):
             role_descr = self.get_role_description(role_descr)
         # OK to use ``filter`` in both subsequent queries as we are dealing
@@ -612,67 +632,50 @@ class AbstractOrganization(models.Model):
         queryset = get_role_model().objects.db_manager(
             using=self._state.db).filter(organization=self, user=user)
         if queryset.exists():
-            # We have a role for the user on this organization, or a request
-            # was previously sent.
+            # We have a role for the user on this organization, or a grant
+            # or request was previously sent.
             m2m = queryset.get()
-            at_time = datetime_or_now(at_time)
-            if role_descr:
-                if role_descr.implicit_create_on_none:
-                    m2m.role_descr = role_descr
-                    m2m.grant_key = None
-                    m2m.request_key = None
-                    m2m.created_at = at_time
-                    m2m.save()
-                elif m2m.grant_key and m2m.role_descr == role_descr:
-                    m2m.grant_key = None
-                    m2m.created_at = at_time
-                    m2m.save()
-                elif m2m.request_key and m2m.role_descr != role_descr:
-                    m2m.role_descr = role_descr
-                    m2m.created_at = at_time
-                    m2m.save()
-            else:
-                if m2m.grant_key:
-                    m2m.grant_key = None
-                    m2m.created_at = at_time
-                    m2m.save()
+            if m2m.request_key:
+                # We already have a request, so just update the role_descr.
+                m2m.role_description = role_descr
+                m2m.created_at = at_time
+                m2m.save()
+            elif m2m.grant_key and (
+                    not role_descr or role_descr == m2m.role_description):
+                # We have a pending grant to the role requested,
+                # or an unspecified role requested.
+                m2m.grant_key = None
+                m2m.created_at = at_time
+                m2m.save()
+            elif role_descr and role_descr != m2m.role_description:
+                # This is an active role (i.e. not a pending grant nor request)
+                # XXX This will de-active current role until request
+                #     is accepted. should we do better?
+                m2m.request_key = generate_random_slug()
+                m2m.role_description = role_descr
+                m2m.created_at = at_time
+                m2m.save()
         else:
-            at_time = datetime_or_now(at_time)
-            if role_descr and role_descr.implicit_create_on_none:
-                request_key = None
-            else:
-                request_key = generate_random_slug()
             m2m = get_role_model()(created_at=at_time, organization=self,
                 user=user, role_description=role_descr,
-                request_key=request_key)
+                request_key=generate_random_slug())
             m2m.save(using=self._state.db, force_insert=True)
             force_insert = True
+        LOGGER.info("Request %s for user '%s' on organization '%s'",
+            ("unspecified role" if not m2m.role_description
+             else "role '%s'" % m2m.role_description),
+            m2m.user, m2m.organization,
+            extra={'event': 'grant-role', 'user': m2m.user.username,
+                'organization': m2m.organization.slug,
+                'role': str(m2m.role_description)})
         return m2m, force_insert
 
     def add_manager(self, user, extra=None, at_time=None):
         """
-        Special implementation of `add_role` that does not require a grant key,
-        nor generates any notification.
+        Convienence to add a manager role during onboarding scenarios
         """
-        # OK to use ``filter`` in both subsequent queries as we are dealing
-        # with the whole QuerySet related to a user.
-        queryset = get_role_model().objects.db_manager(
-            using=self._state.db).filter(organization=self, user=user)
-        if queryset.exists():
-            # We have a role for the user on this organization. Let's update it.
-            m2m = queryset.get()
-            force_insert = False
-        else:
-            m2m = get_role_model()(organization=self, user=user)
-            force_insert = True
-        m2m.extra = extra
-        m2m.role_description = self.get_role_description(settings.MANAGER)
-        m2m.grant_key = None
-        m2m.request_key = None
-        if at_time:
-            m2m.created_at = at_time
-        m2m.save(using=self._state.db, force_insert=force_insert)
-        return force_insert
+        return self.add_role_grant(user, settings.MANAGER,
+            force_skip_optin=True, extra=extra, at_time=at_time)
 
     def remove_role(self, user, role_name):
         """
@@ -1466,6 +1469,111 @@ class RoleDescription(SlugTitleMixin, models.Model):
 
 class RoleManager(models.Manager):
 
+    def accessible_by(self, user, force_personal=False, at_time=None):
+        """
+        Returns a `Role` queryset with all roles for `user`, either
+        vallid, pending grants or pending requests.
+        """
+        at_time = datetime_or_now(at_time)
+
+        # Add implicit grants, which can either be a personal profile
+        # or natural profiles based on a user work e-mail, when those roles
+        # don't already exists in the database.
+        self.create_implicit_roles(user,
+            force_personal=force_personal, at_time=at_time)
+
+        # We have added all the implicit grants, now let's accept the grant
+        # with a `skip_optin_on_grant`.
+        # Implementation Note: we are expecting the record in the database
+        # to be well formed (i.e. `request_key is None` and
+        # `role_descr is not None`).
+        queryset = self.filter(
+            Q(ends_at__isnull=True) | Q(ends_at__gt=at_time), user=user)
+        pending_grants = queryset.filter(grant_key__isnull=False)
+        for role in pending_grants:
+            assert role.request_key is None
+            assert role.role_description is not None
+            if role.role_description.skip_optin_on_grant:
+                role.grant_key = None
+                role.save()
+
+        queryset = self.filter(
+            Q(ends_at__isnull=True) | Q(ends_at__gt=at_time), user=user)
+        return queryset
+
+    def create_implicit_roles(self, user, force_personal=False, at_time=None):
+        organization_model = get_organization_model()
+        at_time = datetime_or_now(at_time)
+
+        # Check if we should add a personal profile in the implicit grants.
+        if force_personal and not self.filter(
+                user=user, organization__slug=user.username).exists():
+            # We don't have a personal profile, but we selected some
+            # cart items that require it.
+            organization_model.objects.create_organization_from_user(user)
+
+        # Find a RoleDescription we can implicitely grant to the user,
+        # and the natural profiles based on the user work e-mail address.
+        if user.email:
+            nb_candidates = 0
+            email_parts = user.email.lower().split('@')
+            domain = email_parts[-1]
+            nb_candidates = organization_model.objects.filter(
+                email__iexact=user.email).count()
+            if not is_mail_provider_domain(domain):
+                nb_candidates += \
+                    organization_model.objects.find_candidates_by_domain(
+                        domain).count()
+
+            if nb_candidates < settings.MAX_TYPEAHEAD_CANDIDATES:
+                # If we have too many candidates for implicit grants, bail out.
+                candidates = list(organization_model.objects.filter(
+                    email__iexact=user.email).exclude(role__user=user))
+                if not is_mail_provider_domain(domain):
+                    candidates += list(
+                        organization_model.objects.find_candidates_by_domain(
+                            domain).exclude(role__user=user))
+                for profile in candidates:
+                    try:
+                        role_descr = RoleDescription.objects.filter(
+                            organization=profile,
+                            implicit_create_on_none=True).get()
+                        profile.add_role_grant(
+                            user, role_descr, at_time=at_time)
+                        continue
+                    except RoleDescription.DoesNotExist:
+                        LOGGER.debug(
+                            "'%s' does not have a role on any profile but"
+                            " we cannot grant one implicitely because there is"
+                            " no profile role description that permits it.",
+                            user)
+                    except RoleDescription.MultipleObjectsReturned:
+                        LOGGER.debug(
+                            "'%s' does not have a role on any profile but we"
+                            " cannot grant one implicitely because we have"
+                            " multiple profile role description"
+                            " that permits it. Ambiguous.", user)
+                    try:
+                        role_descr = RoleDescription.objects.filter(
+                            organization__isnull=True,
+                            implicit_create_on_none=True).get()
+                        profile.add_role_grant(
+                            user, role_descr, at_time=at_time)
+                        continue
+                    except RoleDescription.DoesNotExist:
+                        LOGGER.debug(
+                            "'%s' does not have a role on any profile but"
+                            " we cannot grant one implicitely because there is"
+                            " no global role description that permits it.",
+                            user)
+                    except RoleDescription.MultipleObjectsReturned:
+                        LOGGER.debug(
+                            "'%s' does not have a role on any profile but we"
+                            " cannot grant one implicitely because we have"
+                            " multiple global role description"
+                            " that permits it. Ambiguous.", user)
+
+
     def role_on_subscriber(self, user, plan, role_descr=None):
         user_model = get_user_model()
         if not isinstance(user, user_model):
@@ -1478,10 +1586,19 @@ class RoleManager(models.Manager):
         return self.filter(
             user=user, organization__subscribes_to=plan, **kwargs)
 
-    def valid_for(self, **kwargs):
-        return self.filter(Q(ends_at__isnull=True) |
+
+    def valid_for(self, includes_personal=True, **kwargs):
+        """
+        Returns a `Role` queryset that are valid and filtered by arguments
+        in `kwargs`. When `includes_personal` is `True`, the returned
+        queryset includes a role for the personal profile if it exists.
+        """
+        queryset = self.filter(Q(ends_at__isnull=True) |
             Q(ends_at__gt=datetime_or_now()),
             grant_key=None, request_key=None, **kwargs)
+        if not includes_personal:
+            queryset = queryset.exclude(organization__slug=F('user__username'))
+        return queryset
 
 
 @python_2_unicode_compatible

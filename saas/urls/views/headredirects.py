@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,9 +28,9 @@ Redirects that need to appear before `urls.views.provider` and
 """
 
 from ...compat import path
-from ...views import (OrganizationRedirectView, ProviderRedirectView,
-    UserRedirectView)
-from ...views.profile import OrganizationCreateView
+from ...views import UserRedirectView
+from ...views.redirects import (OrganizationCreateView,
+    OrganizationRedirectView, ProviderRedirectView)
 
 
 urlpatterns = [
@@ -49,7 +49,7 @@ urlpatterns = [
     path('billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),
-
+    # XXX deprecate when OrganizationCreateView is deprecated
     path('profile/new/', OrganizationCreateView.as_view(),
         name='saas_organization_create'),
     path('profile/roles/<slug:role>/',

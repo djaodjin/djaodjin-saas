@@ -1104,10 +1104,17 @@ var roleListMixin = {
         },
     },
     mounted: function() {
-        if( this.$el.dataset ) {
-            this.params.role_status = this.$el.dataset.roleStatus;
+        var vm = this;
+        if( vm.$el.dataset ) {
+            vm.params.role_status = vm.$el.dataset.roleStatus;
+            if( vm.$el.dataset.items ) {
+                vm.items = JSON.parse(vm.$el.dataset.items);
+                vm.itemsLoaded = true;
+            }
         }
-        this.get();
+        if( !vm.itemsLoaded ) {
+            vm.get();
+        }
     }
 }
 
@@ -1188,6 +1195,11 @@ var subscriptionDetailMixin = {
                 ends_at: item.ends_at
             };
             vm.reqPatch(url, data);
+        },
+        acceptGrantURL: function(profile, grant_key) {
+           var vm = this;
+           return vm._safeUrl(vm.api_profile_url,
+                profile + "/subscriptions/accept/" + grant_key + "/");
         },
         acceptRequestURL: function(profile, request_key) {
            var vm = this;
@@ -1284,8 +1296,13 @@ var subscriptionListMixin = {
             item.ends_at = (new Date(item.ends_at)).toISOString();
             this.update(item);
         },
-        unsubscribe: function() {
+        unsubscribe: function(org, plan) {
             var vm = this;
+            if( org && plan ) {
+                // if we don't pass any arguments, the first parameter will
+                // be set to the event generating the call.
+                vm.toDelete = {org: org, plan: plan}
+            }
             var data = vm.toDelete;
             if(!(data.org && data.plan)) return;
             var url = vm.subscriptionURL(data.org, data.plan);

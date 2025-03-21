@@ -1,13 +1,82 @@
-{% extends "base.html" %}
+{% extends "saas/base.html" %}
 
 {% block content %}
-<section id="redirects">
-  <h1>Please choose a profile ...</h1>
-  {% for redirect in redirects %}
-  <div>
-      <a class="btn-redirect" href="{{redirect.0}}">{{redirect.1}}</a>
-  </div>
-  {% endfor %}
-  <a href="{{urls.organization_create}}">New ...</a>
-</section>
+<div id="app">{# so tests have something to hang on. #}
+  <section id="redirects">
+    <h1>To continue, please select a profile ...</h1>
+    <role-profile-list inline-template id="accessible-list-container"
+        :request-user="'{{request.user.email}}'"
+        data-items='{{redirects|to_json}}'>
+      <div>
+        <div v-show="!itemsLoaded">
+          <h3>loading ...</h3>
+        </div>
+        <div v-show="itemsLoaded && items.results.length > 0" v-cloak>
+          <div v-for="item in items.results">
+            <div :id="'redirect-' + (item.profile.slug ? item.profile.slug : item)">
+              <div>
+                <div>
+                  <div>
+                    <img style="max-height:64px;" :src="item.profile.picture" >
+                  </div>
+                  <div>
+                    <span>[[item.profile.printable_name ? item.profile.printable_name : '@' + item]]</span>
+                    <p>
+                      <span>[[ item.role_description ? item.role_description.title : "" ]]</span>
+                    </p>
+                  </div>
+                  <div>
+                    <div>
+                      <span v-if="item.request_key">Access requested...</span>
+                      {# We use 'a.btn-primary' in tests to find the button. #}
+                      <a :href="item.home_url" class="btn-primary"
+                         v-if="!item.request_key && !item.accept_grant_api_url">Use this profile</a>
+                      <a :href="item.home_url" class="btn-primary"
+                         v-if="item.accept_grant_api_url">Accept role &amp; Use this profile</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>{# /.card #}
+          </div>
+          <hr />
+          <p>
+If you need to create a new profile, please do so through the <a href="{{urls.user.accessibles}}">connected profiles</a> page.
+          </p>
+        </div>
+        <div v-show="itemsLoaded && items.results.length == 0" v-cloak>
+          {% include "saas/_profile_new.html" %}
+        </div>
+      </div>
+    </role-profile-list>
+  </section>
+</div>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script type="text/javascript" src="/static/vendor/moment.js"></script>
+<script type="text/javascript" src="/static/vendor/moment-timezone-with-data.js"></script>
+<script type="text/javascript" src="/static/vendor/vue.js"></script>
+<script type="text/javascript" src="/static/vendor/vue-croppa.min.js"></script>
+<script type="text/javascript">
+Vue.prototype.$itemsPerPage =
+    {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %};
+//Vue.prototype.$sortDirection = ;
+//Vue.prototype.$sortByField = ;
+Vue.prototype.$dateRange = {
+    start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
+    ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
+};
+Vue.prototype.$urls = {% if urls %}{{urls|to_json}}{% else %}{}{% endif %};
+</script>
+{% block dashboard_bodyscripts %}{% endblock %}
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources-vue.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-vue.js"></script>
+<script type="text/javascript">
+Vue.use(Croppa);
+var app = new Vue({
+  el: '#app',
+  delimiters: ["[[","]]"],
+});
+</script>
 {% endblock %}

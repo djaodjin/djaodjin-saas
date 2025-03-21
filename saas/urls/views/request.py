@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,8 @@
 from ... import settings
 from ...compat import path, re_path
 from ...views.legal import AgreementSignView
-from ...views.optins import RoleGrantAcceptView
-from ...views.roles import RoleImplicitGrantAcceptView
+from ...views.roles import RoleGrantAcceptView
+from ...views.redirects import RoleImplicitGrantAcceptView
 
 
 urlpatterns = [

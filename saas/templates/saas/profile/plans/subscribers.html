@@ -3,7 +3,6 @@
 {% block saas_content %}
 <plan-subscriber-list inline-template id="subscribers">
   <div id="plan-subscribers-container">
-
     <form id="add-subscriber" @submit.prevent="submit">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
       <div>
@@ -13,8 +12,8 @@
       <div>
         <label>Email</label>
         <input id="new-request-email"
-                 name="email" type="text" max-length="150"
-                 v-model="newProfile.email" />
+               name="email" type="text" max-length="150"
+               v-model="newProfile.email" />
       </div>
       <div>
         <label>The following invite message will be sent:</label>
@@ -29,7 +28,7 @@ Thank you,
       <button type="submit">Add subscriber</button>
     </form>
     <div>
-      <h2>{{plan}} plan subscribers</h2></a>
+      <h2>{{plan}} plan subscribers</h2>
       <div>
         <label>Filter</label>
         <input type="text"
@@ -43,11 +42,12 @@ Thank you,
             <th>Since <button @click="sortBy('created_at')"></button></th>
             <th>Ends At <button @click="sortBy('ends_at')"></button></th>
             <th>Description</th>
+            <th>Grant/Request</th>
           </tr>
         </thead>
         <tbody v-show="!itemsLoaded">
           <tr>
-            <td colspan="5">
+            <td colspan="6">
               <h4>Loading ...</h4>
             </td>
           </tr>
@@ -55,14 +55,14 @@ Thank you,
         <tbody class="has-no-results"
                v-show="itemsLoaded && items.results.length == 0">
           <tr>
-            <td colspan="5">
+            <td colspan="6">
               <h4>No subscribers<span v-show="params.q"> with filter: '[[params.q]]'</span></h4>
             </td>
           </tr>
         </tbody>
         <tbody class="has-results"
                v-for="(entry, index) in items.results" v-show="itemsLoaded && items.results.length > 0">
-          <tr v-bind:class="endsSoon(entry)">
+          <tr :id="entry.profile.slug" v-bind:class="endsSoon(entry)">
             <td>
               <a v-bind:href="'{{urls.profile_base}}' + entry.profile.slug + '/subscriptions/'">[[entry.profile.printable_name]]</a>
             </td>
@@ -70,20 +70,39 @@ Thank you,
             <td>[[entry.created_at]]</td>
             <td>[[entry.ends_at]]</td>
             <td>
-                <span
-                   v-show="!entry.edit_description" @click="editDescription(entry, index)">
-                    [[entry.description]]
-                </span>
-                <input type="text"
-                       v-show="entry.edit_description"
-                       @blur="saveDescription(entry)"
-                       @keyup.13="saveDescription(entry)"
-                       v-model="entry.description"
-                       :ref="refId(entry, index)">
+              <span
+                v-show="!entry.edit_description" @click="editDescription(entry, index)">
+                [[entry.description]]
+              </span>
+              <input type="text"
+                     v-show="entry.edit_description"
+                     @blur="saveDescription(entry)"
+                     @keyup.13="saveDescription(entry)"
+                     v-model="entry.description"
+                     :ref="refId(entry, index)">
+            </td>
+            <td>
+              <button
+                @click="unsubscribe(entry.profile.slug, entry.plan.slug)"
+                v-if="entry.grant_key">
+                Revoke grant
+              </button>
+              <button
+                @click="acceptRequest('{{profile}}', entry.request_key)"
+                v-if="entry.request_key">
+                Accept request
+              </button>
+              <button
+                @click="unsubscribe(entry.profile.slug, entry.plan.slug)"
+                v-if="!(entry.grant_key || entry.request_key)">
+                Unsubscribe
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
       {% include "saas/_paginator.html" %}
+    </div>
+  </div>
 </plan-subscriber-list>
 {% endblock %}

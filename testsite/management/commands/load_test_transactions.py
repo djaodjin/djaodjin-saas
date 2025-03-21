@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # see LICENSE
 
 import datetime, logging, os, random
@@ -9,12 +9,12 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 from django.template.defaultfilters import slugify
-from django.utils.timezone import utc
 from faker import Faker
 from saas.models import (CartItem, Charge, ChargeItem, Coupon, Organization,
     Plan, Subscription, Transaction)
 
 from saas import humanize, settings as saas_settings
+from saas.compat import timezone_or_utc
 from saas.utils import datetime_or_now, generate_random_slug
 from saas import signals as saas_signals
 
@@ -91,7 +91,7 @@ class Command(BaseCommand):
         settings.SAAS['PROCESSOR']['BACKEND'] = \
             'saas.backends.fake_processor.FakeProcessorBackend'
 
-        now = datetime.datetime.utcnow().replace(tzinfo=utc)
+        now = datetime.datetime.utcnow().replace(tzinfo=timezone_or_utc())
         from_date = now
         from_date = datetime.datetime(
             year=from_date.year, month=from_date.month, day=1)
@@ -210,6 +210,7 @@ class Command(BaseCommand):
         queryset = Plan.objects.filter(
             organization=provider, period_amount__gt=0)
         nb_plans = queryset.count()
+        #pylint:disable=too-many-nested-blocks
         for end_period in month_periods(from_date=from_date):
             nb_new_customers = random.randint(0, 9)
             for _ in range(nb_new_customers):

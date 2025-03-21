@@ -314,6 +314,7 @@ SAAS = {
     'BROKER': {
         'GET_INSTANCE': 'cowork',
     },
+    'MAIL_PROVIDER_DOMAINS': ['localhost.localdomain'],
     'PLATFORM_NAME': 'cowork',
     'PROCESSOR': {
         'BACKEND': 'saas.backends.stripe_processor.StripeBackend',

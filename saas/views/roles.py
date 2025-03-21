@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,187 +25,83 @@ from __future__ import unicode_literals
 
 import logging
 
-from django import http
-from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
-from django.db import IntegrityError
-from django.db.models import Q
-from django.views.generic.base import (ContextMixin, TemplateResponseMixin,
-    RedirectView)
+from django.contrib import messages
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.views.generic.base import RedirectView
 
-from .. import settings
-from ..compat import reverse
+from .. import signals
+from ..compat import gettext_lazy as _
 from ..mixins import product_url
-from ..models import CartItem, RoleDescription
-from ..utils import (get_organization_model, get_role_model,
-    validate_redirect_url)
+from ..utils import get_role_model, validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
 
 
-class RoleImplicitGrantAcceptView(TemplateResponseMixin, ContextMixin,
-                                  RedirectView):
-    """
-    Accept implicit role on an organization if no role exists for the user.
-    """
+class RoleGrantAcceptView(RedirectView):
+
+    pattern_name = 'saas_organization_profile'
     permanent = False
-    implicit_create_on_none = False
-    slug_url_kwarg = settings.PROFILE_URL_KWARG
-    role_model = get_role_model()
-    user_model = get_user_model()
-    organization_model = get_organization_model()
-    template_name = 'saas/users/roles/accept.html'
 
-    def check_email_verified(self, request, user,
-                             redirect_field_name=REDIRECT_FIELD_NAME,
-                             next_url=None):
-        #pylint:disable=unused-argument
-        return True
-
-    def get_implicit_create_on_none(self):
-        return (self.implicit_create_on_none or
-            CartItem.objects.get_personal_cart(self.request.user).exists())
-
-
-    def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
-        context = self.get_context_data(**kwargs)
-        context.update({REDIRECT_FIELD_NAME: next_url})
-        if role:
-            context.update({
-                'role': role,
-                'contacts': ', '.join([user.get_full_name() for user
-                    in role.organization.with_role(settings.MANAGER).exclude(
-                    pk=self.request.user.pk)])
-            })
-        return self.render_to_response(context)
-
-
-    def get_natural_profile(self, request):
-        """
-        Returns an `Organization` which a user with `email` is naturally
-        connected with (ex: same domain).
-        """
-        email_parts = request.user.email.lower().split('@')
-        domain = email_parts[-1]
-        bypass_domain = settings.BYPASS_IMPLICIT_GRANT.get('domain')
-        bypass_slug = settings.BYPASS_IMPLICIT_GRANT.get('slug')
-        LOGGER.debug("attempts bypass with domain %s and slug %s",
-            bypass_domain, bypass_slug)
-        if bypass_domain and domain == bypass_domain:
-            try:
-                user = self.user_model.objects.filter(
-                    username=email_parts[0]).get()
-            except self.user_model.DoesNotExist:
-                user = request.user
-            organization = self.organization_model.objects.filter(
-                slug=bypass_slug).get()
-            LOGGER.debug("bypass implicit grant for %s with user %s: %s",
-                request.user, user, organization)
-        else:
-            user = request.user
-            try:
-                organization = self.organization_model.objects.filter(
-                    email__iexact=user.email).get()
-            except self.organization_model.DoesNotExist:
-                organization = \
-                    self.organization_model.objects.find_candidates_by_domain(
-                        domain).get()
-        return user, organization
-
-    def get_redirect_url(self, *args, **kwargs):
-        # XXX copy/pasted from `RoleGrantAcceptView`
-        redirect_path = validate_redirect_url(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None), sub=True, **kwargs)
-        if not redirect_path:
-            organization = kwargs.get(self.slug_url_kwarg)
-            if organization:
-                redirect_path = product_url(subscriber=organization,
-                    request=self.request)
-            else:
-                redirect_path = reverse('product_default_start')
-        return redirect_path
+    @property
+    def role(self):
+        #pylint:disable=attribute-defined-outside-init
+        if not hasattr(self, '_role'):
+            self._role = get_role_model().objects.filter(
+                grant_key=self.kwargs.get('verification_key')).first()
+        return self._role
 
     def get(self, request, *args, **kwargs):
-        redirect_to = reverse('saas_user_product_list', args=(request.user,))
-        next_to = validate_redirect_url(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if next_to:
-            redirect_to += '?%s=%s' % (REDIRECT_FIELD_NAME, next_to)
+        obj = self.role
+        if not obj:
+            # We either have a bogus `verification_key` or a `verification_key`
+            # that has already been used. Either way, it is better to redirect
+            # to the application page rather than showing a 404 to users
+            # clicking on the link in the grant e-mail multiple times.
+            return super(RoleGrantAcceptView, self).get(
+                request, *args, **kwargs)
 
-        # If there are no roles associated to the user, we will attempt
-        # to assign the user to a profile with a matching e-mail domain.
-        is_email_verified = True  # If there is a role, we don't force
-                                  # verification of the e-mail address.
-        if not self.role_model.objects.filter(user=self.request.user).exists():
-            # In all cases, we verify the user has access to the e-mail account.
-            next_url = self.get_redirect_url(*args, **kwargs)
-            is_email_verified = self.check_email_verified(request, request.user,
-                next_url=next_url)
-            # XXX copy/pasted from `OrganizationRedirectView`
-            domain = request.user.email.split('@')[-1].lower()
-            try:
-                user, organization = self.get_natural_profile(request)
-                # Find a RoleDescription we can implicitely grant to the user.
-                try:
-                    if organization.get_roles().exists():
-                        role_descr = RoleDescription.objects.filter(
-                            Q(organization__isnull=True) |
-                            Q(organization=organization),
-                            implicit_create_on_none=True).get()
-                    else:
-                        # If this profile is not yet claimed by any user,
-                        # then we implicitely grant a manager role.
-                        role_descr = organization.get_role_description(
-                            settings.MANAGER)
-                    # Create a granted role implicitely, but only if the e-mail
-                    # was verified.
-                    if is_email_verified:
-                        role, created = organization.add_role_request(
-                            user, role_descr=role_descr)
-                        if role.request_key:
-                            # We have done an implicit grant of a manager role.
-                            role.request_key = None
-                            role.save()
-                        # We create a profile-qualified url after the role
-                        # has been granted otherwise the redirect specified
-                        # in the verification of e-mail will lead to a
-                        # 403 permission denied.
-                        kwargs.update({self.slug_url_kwarg: organization})
-                        next_url = self.get_redirect_url(*args, **kwargs)
-                        return self.get_implicit_grant_response(
-                            next_url, role, *args, **kwargs)
-                except RoleDescription.DoesNotExist:
-                    LOGGER.debug("'%s' does not have a role on any profile but"
-                        " we cannot grant one implicitely because there is"
-                        " no role description that permits it.",
-                        user)
-                except RoleDescription.MultipleObjectsReturned:
-                    LOGGER.debug("'%s' does not have a role on any profile but"
-                      " we cannot grant one implicitely because we have"
-                      " multiple role description that permits it. Ambiguous.",
-                        user)
-            except self.organization_model.DoesNotExist:
-                LOGGER.debug("'%s' does not have a role on any profile but"
-                    " we cannot grant one implicitely because there is"
-                    " no profiles with @%s e-mail domain.",
-                    request.user, domain)
-                if self.get_implicit_create_on_none():
-                    try:
-                        kwargs.update({self.slug_url_kwarg: str(
-                self.organization_model.objects.create_organization_from_user(
-                            request.user))})
-                        redirect_to = self.get_redirect_url(*args, **kwargs)
-                    except IntegrityError:
-                        LOGGER.warning("tried to implicitely create"\
-                            " an organization that already exists.",
-                            extra={'request': request})
-            except self.organization_model.MultipleObjectsReturned:
-                LOGGER.debug("'%s' does not have a role on any profile but"
-                    " we cannot grant one implicitely because @%s is"
-                    " ambiguous. Multiple profiles share that email domain.",
-                    request.user, domain)
-        if not is_email_verified:
-            # We are redirecting because the e-mail must be verified
-            return self.get_implicit_grant_response(
-                redirect_to, None, *args, **kwargs)
-        # XXX This one must return to users/roles/!!!
-        return http.HttpResponseRedirect(redirect_to)
+        existing_role = get_role_model().objects.filter(
+            organization=obj.organization, user=request.user).exclude(
+            pk=obj.pk).first()
+        if existing_role:
+            # We could have an `existing_role` that is actually a pending
+            # request, in which case `existing_role.role_description is None`.
+            messages.error(request, _("You already have a %(existing_role)s"\
+                " role on %(organization)s. Please drop this role first if"\
+                " you want to accept a role of %(role)s instead.") % {
+                    'role': obj.role_description.title,
+                    'organization': obj.organization.printable_name,
+                    'existing_role': existing_role.role_description.title})
+            return super(RoleGrantAcceptView, self).get(
+                request, *args, organization=obj.organization)
+
+        obj.user = request.user       # We appropriate the Role here.
+        grant_key = obj.grant_key
+        obj.grant_key = None
+        obj.save()
+        LOGGER.info("%s accepted role of %s to %s (grant_key=%s)",
+            request.user, obj.role_description, obj.organization,
+            grant_key, extra={
+                'request': request, 'event': 'accept',
+                'user': str(request.user),
+                'organization': str(obj.organization),
+                'role_description': str(obj.role_description),
+                'grant_key': grant_key})
+        signals.role_grant_accepted.send(sender=__name__,
+            role=obj, grant_key=grant_key, request=request)
+        messages.success(request,
+            _("%(role)s role to %(organization)s accepted.") % {
+                'role': obj.role_description.title,
+                'organization': obj.organization.printable_name})
+        return super(RoleGrantAcceptView, self).get(
+            request, *args, organization=obj.organization)
+
+    def get_redirect_url(self, *args, **kwargs):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        if self.role:
+            return product_url(subscriber=self.role.organization,
+                request=self.request)
+        return product_url(request=self.request)

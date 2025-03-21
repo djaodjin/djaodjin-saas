@@ -394,6 +394,19 @@ def get_picture_storage(request, account=None, **kwargs):
     return default_storage
 
 
+def is_mail_provider_domain(domain):
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings #pylint:disable=import-outside-toplevel
+    if callable(settings.MAIL_PROVIDER_DOMAINS):
+        return settings.MAIL_PROVIDER_DOMAINS(domain)
+    if isinstance(settings.MAIL_PROVIDER_DOMAINS, six.string_types):
+        try:
+            return import_string(settings.MAIL_PROVIDER_DOMAINS)(domain)
+        except ImportError:
+            pass
+    return domain in settings.MAIL_PROVIDER_DOMAINS
+
+
 # XXX same prototype as djaodjin-multitier.mixins.build_absolute_uri
 def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf

@@ -47,7 +47,8 @@
     "period_amount": 18900,
     "period_type": 4,
     "description": "Premium Plan",
-    "is_active": 1,
+    "is_personal": true,
+    "is_active": true,
     "organization": 2, "slug": "premium" }, "model": "saas.Plan", "pk": 3
 },
 {
@@ -72,19 +73,16 @@
 {
     "fields": {
       "created_at": "2025-01-01T00:00:00+00:00",
-      "slug": "contributor",
-      "title": "Contributor"
-    },
-    "model": "saas.RoleDescription", "pk": 2
+      "skip_optin_on_grant": true,
+      "implicit_create_on_none": true,
+      "title": "Contributor",
+      "slug": "contributor"}, "model": "saas.RoleDescription", "pk": 2
 },
 {
     "fields": {
       "created_at": "2025-01-01T00:00:00+00:00",
-      "slug": "viewer",
       "title": "Viewer",
-      "implicit_create_on_none": true
-    },
-    "model": "saas.RoleDescription", "pk": 3
+      "slug": "viewer"}, "model": "saas.RoleDescription", "pk": 3
 },
 {
     "fields": {
@@ -96,7 +94,7 @@
       "is_superuser": true,
       "last_login": "2025-01-01T00:00:00+00:00",
       "last_name": "Broker",
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "password": "pbkdf2_sha256$600000$RbRWfhoqwcQxMMlPXtC999$sqc/L+VuCXbya5v9VCNbalsGMJEVjv39X+0aVcBZ3sI=",
       "username": "donny"
     },
     "model": "auth.User", "pk": 1
@@ -544,18 +542,16 @@
 },
 {
     "fields": {
-      "username": "melissa",
       "date_joined": "2025-01-01T00:00:00+00:00",
-      "email": "melissa@localhost.localdomain",
+      "email": "melissa+11@localhost.localdomain",
       "first_name": "Melissa",
-      "last_name": "Xia",
+      "last_name": "Billing",
       "is_active": true,
       "is_staff": false,
       "is_superuser": false,
       "last_login": "2025-01-01T00:00:00+00:00",
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc="
-    },
-    "model": "auth.User", "pk": 11
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "melissa11"}, "model": "auth.User", "pk": 11
 },
 {
     "fields": {
@@ -627,63 +623,6 @@
     "model": "saas.Role", "pk": 12
 },
 
-{
-    "fields": {
-      "slug": "dibaggio-parents",
-      "email": "cowork@localhost.localdomain",
-      "full_name": "Di Baggio Middle School Parents Association",
-      "created_at": "2025-01-01T00:00:00+00:00",
-      "processor": 1,
-      "is_provider": 1,
-      "is_active": 1
-    },
-    "model": "saas.Organization", "pk": 13
-},
-{
-    "fields":{
-        "title":"Di Baggio Middle School Parents Association",
-        "created_at":"2025-01-01T00:00:00+00:00",
-        "setup_amount":0,
-        "period_amount":10000,
-        "broker_fee_percent": 1000,
-        "period_type": 5,
-        "description": "",
-        "is_active": 1,
-        "organization": 13, "slug":"standard" }, "model": "saas.Plan", "pk": 12
-},
-{
-    "fields": {
-      "slug": "tennis-club",
-      "email": "cowork@localhost.localdomain",
-      "full_name": "Tennis Club of North Beach",
-      "created_at": "2025-01-01T00:00:00+00:00",
-      "processor": 1,
-      "is_provider": 1,
-      "is_active": 1
-    },
-    "model": "saas.Organization", "pk": 14
-},
-{
-    "fields": {
-      "created_at": "2025-01-01T00:00:00+00:00",
-      "role_description": 1,
-      "organization": 14,
-      "user": 3
-    },
-    "model": "saas.Role", "pk": 13
-},
-{
-    "fields": {
-        "title":"Tennis Club of North Beach",
-        "created_at":"2025-01-01T00:00:00+00:00",
-        "setup_amount":0,
-        "period_amount":10000,
-        "broker_fee_percent": 1000,
-        "period_type": 5,
-        "description":"",
-        "is_active": 1,
-        "organization": 14, "slug": "tennis-club" }, "model": "saas.Plan", "pk": 13
-},
 {
     "fields": {
       "date_joined": "2025-01-01T00:00:00+00:00",
@@ -1148,19 +1087,19 @@
     "period_amount": 24900,
     "broker_fee_percent": 0,
     "period_type": 4,
-    "is_active": 1,
+    "is_active": false,
     "organization": 11, "slug": "basic-cowork" }, "model": "saas.Plan", "pk": 4
 },
 {
   "fields": {
-    "title": "Medium",
+    "title": "Extra CoWork",
     "created_at":"2025-01-01T00:00:00+00:00",
     "setup_amount": 0,
     "period_amount": 24900,
     "period_type": 4,
-    "description": "Medium Plan",
-    "is_active": 1,
-    "organization": 11, "slug": "medium-cowork" }, "model": "saas.Plan", "pk": 5
+    "description": "Extra CoWork Plan",
+    "is_active": false,
+    "organization": 11, "slug": "extra-cowork" }, "model": "saas.Plan", "pk": 5
 },
 {
   "fields": {
@@ -1173,18 +1112,6 @@
     "is_active": 1,
     "organization": 11, "slug": "managed" }, "model": "saas.Plan", "pk": 6
 },
-{
-    "fields": {
-      "slug": "yoga-club",
-      "email": "cowork@localhost.localdomain",
-      "full_name": "Yoga Club of North Beach",
-      "created_at": "2025-01-01T00:00:00+00:00",
-      "processor": 1,
-      "is_provider": 1,
-      "is_active": 1
-    },
-    "model": "saas.Organization", "pk": 31
-},
 { "fields": {
     "title":"Alliance member",
     "created_at":"2025-01-01T00:00:00+00:00",
@@ -1194,28 +1121,5 @@
     "skip_optin_on_grant": false,
     "is_active" : 1,
     "organization": 2, "slug":"tier1-members" }, "model" : "saas.Plan", "pk": 7
-},
-{
-  "fields": {
-    "title": "Basic",
-    "description": "Basic Plan",
-    "created_at": "2025-01-01T00:00:00+00:00",
-    "setup_amount": 0,
-    "period_amount": 24900,
-    "broker_fee_percent": 0,
-    "period_type": 4,
-    "is_active": 1,
-    "organization": 13, "slug": "dibaggio-additional" }, "model": "saas.Plan", "pk": 8
-},
-{
-  "fields": {
-    "title": "Basic",
-    "description": "Basic Plan",
-    "created_at": "2025-01-01T00:00:00+00:00",
-    "setup_amount": 0,
-    "period_amount": 24900,
-    "broker_fee_percent": 0,
-    "period_type": 4,
-    "is_active": 1,
-    "organization": 14, "slug": "premium-additional" }, "model": "saas.Plan", "pk": 14
-}]
+}
+]

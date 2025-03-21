@@ -1,0 +1,76 @@
+<div>
+  <div>
+Request access to an existing profile or create a new profile
+  </div>
+  <div>
+    <form id="add-profile" @submit.prevent="submit">
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+      <!-- Workflow to create a new profile  -->
+      <input type="text"
+             name="profile"
+             placeholder="Start typing a profile name ..."
+             autocomplete="off"
+             ref="input"
+             v-model="query"
+             @input="update" />
+      <div>
+        <div>
+          <p>
+You are about to create a new profile with the following information. Is it correct?
+          </p>
+          <div>
+            <label>Profile name</label>
+            <input name="full_name" type="text"
+                   max-length="150"
+                   placeholder="ex: My Profile"
+                   v-model="newProfile.full_name" />
+          </div>
+          <div>
+            <label>Primary contact email</label>
+            <input name="email" type="text"
+                   max-length="150"
+                   placeholder="ex: myprofile@example.com"
+                   v-model="newProfile.email" />
+          </div>
+        </div>
+        <div>
+          <button @click.prevent="reset">Cancel</button>
+          <button id="create-profile-submit"
+                  type="submit">Create Profile</button>
+        </div>
+      </div>
+
+      <!-- Request to add a role to a user on a profile.  -->
+      <div tabindex="-1"
+           v-show="profileRequestDone" v-cloak>
+        <p>
+[[requestedProfilePrintableName]] was not found. This is an opportunity to invite this profile to join this site.
+        </p>
+        <div>
+          <label>To</label>
+          <input id="new-request-email"
+                 name="email" type="text"
+                 max-length="150" placeholder="invitee@example.com"
+                 autofocus
+                 v-model="unregistered.email" />
+        </div>
+        <div>
+          <div>
+            <label>The following invite message will be sent:</label>
+            <textarea name="message"
+                      maxlength="255" type="text" rows="10">Hello,
+
+I would like to request access to your profile on {{site}}.
+
+Thank you,
+- {{request.user.first_name}}
+            </textarea>
+          </div>
+        </div>
+        <div>
+          <button type="submit">Request access</button>
+        </div>
+      </div><!-- /.add-add-role-modal -->
+    </form>
+  </div>
+</div><!-- /.card -->

@@ -52,7 +52,7 @@
         "broker_fee_percent": 0,
         "period_type": 5,
         "description": "",
-        "is_active": 1,
+        "is_active": false,
         "organization": 130, "slug":"plan130" }, "model" : "saas.Plan", "pk": 130
 },
 {
@@ -64,7 +64,7 @@
         "broker_fee_percent": 0,
         "period_type": 5,
         "description": "",
-        "is_active": 1,
+        "is_active": false,
         "organization": 130, "slug":"plan131" }, "model" : "saas.Plan", "pk": 131
 },
 {

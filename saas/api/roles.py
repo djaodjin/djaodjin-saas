@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -145,6 +145,11 @@ class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
                 new_requests += [role]
         self.decorate_personal(organizations)
         return requests, new_requests
+
+    def paginate_queryset(self, queryset):
+        page = super(ListOptinAPIView, self).paginate_queryset(queryset)
+        page = self.decorate_personal(page)
+        return page
 
     def send_signals(self, relations, user, reason=None, invite=False):
         #pylint:disable=unused-argument
@@ -315,16 +320,18 @@ class AccessibleByQuerysetMixin(UserMixin):
     include_personal_profile_param = 'include_personal_profile'
 
     def get_queryset(self):
-        queryset = self.role_model.objects.filter(user=self.user)
         query_serializer = QueryParamPersonalProfSerializer(
             data=self.request.query_params)
         query_serializer.is_valid(raise_exception=True)
-
         include_personal_profile = query_serializer.validated_data.get(
             self.include_personal_profile_param, False)
+
+        # Creates implicit grants, then accepts grants that are not
+        # double-optins.
+        queryset = self.role_model.objects.accessible_by(
+            self.user, force_personal=include_personal_profile)
         if not include_personal_profile:
             queryset = queryset.exclude(organization__slug=self.user)
-
         # `RoleSerializer` will expand `user` and `role_description`.
         queryset = queryset.select_related('user').select_related(
             'role_description')
@@ -1079,10 +1086,11 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_str(reason)
-        role, created = self.organization.add_role(
+        role, created = self.organization.add_role_grant(
             user, self.role_description, grant_key=grant_key,
-            extra=serializer.validated_data.get('extra'),
-            reason=reason, request_user=request.user)
+            extra=serializer.validated_data.get('extra'))
+        signals.role_grant_created.send(sender=__name__,
+            role=role, reason=reason, request_user=request.user)
         if created:
             resp_status = status.HTTP_201_CREATED
         else:

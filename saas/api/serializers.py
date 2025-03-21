@@ -1193,6 +1193,10 @@ class AccessibleSerializer(serializers.ModelSerializer):
         return settings_location
 
     def get_home_url(self, obj):
+        try:
+            return obj.home_url
+        except AttributeError:
+            pass
         return product_url(subscriber=obj.organization,
             request=self.context['request'])
 
