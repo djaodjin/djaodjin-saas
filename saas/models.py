@@ -3527,7 +3527,7 @@ class SubscriptionQuerySet(models.QuerySet):
         """
         Returns valid (i.e. fully opted-in) subscriptions.
         """
-        return self.filter(grant_key=None, **kwargs)
+        return self.filter(grant_key=None, request_key=None, **kwargs)
 
     def unsubscribe(self, at_time=None):
         at_time = datetime_or_now(at_time)
