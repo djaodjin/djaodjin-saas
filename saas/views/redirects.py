@@ -48,7 +48,8 @@ from ..forms import OrganizationCreateForm
 from ..mixins import product_url
 from ..models import CartItem, get_broker
 from ..utils import (datetime_or_now, get_organization_model, get_role_model,
-    update_context_urls, validate_redirect_url as validate_redirect_url_base)
+    get_force_personal_profile, update_context_urls,
+    validate_redirect_url as validate_redirect_url_base)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class OrganizationRedirectView(RedirectFormMixin, TemplateView):
     - `force_personal_profile`: When this flag is set to `True`, a personal
     profile for the request user will be created (if it doesn't exist already).
 
-    - `force_redirect_options`: When this floag is set to `True`, the page with
+    - `force_redirect_options`: When this flag is set to `True`, the page with
     redirect options will always be displayed, disabling automatic redirect
     whenever possible.
     """
@@ -104,7 +105,7 @@ class OrganizationRedirectView(RedirectFormMixin, TemplateView):
     form_class = OrganizationCreateForm
     search_fields = ('organization__slug',)
 
-    force_personal_profile = False
+    force_personal_profile = None
     force_redirect_options = False
 
     organization_model = get_organization_model()
@@ -112,7 +113,9 @@ class OrganizationRedirectView(RedirectFormMixin, TemplateView):
     user_model = get_user_model()
 
     def get_force_personal_profile(self):
-        return self.force_personal_profile
+        if self.force_personal_profile is None:
+            return get_force_personal_profile(self.request)
+        return bool(self.force_personal_profile)
 
     def get_redirect_url(self, request, *args, **kwargs):
         redirect_path = validate_redirect_url_base(

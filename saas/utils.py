@@ -382,6 +382,19 @@ def handle_uniq_error(err, renames=None):
     raise err
 
 
+def get_force_personal_profile(request):
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings #pylint:disable=import-outside-toplevel
+    if callable(settings.FORCE_PERSONAL_PROFILE):
+        return settings.FORCE_PERSONAL_PROFILE(request)
+    if isinstance(settings.FORCE_PERSONAL_PROFILE, six.string_types):
+        try:
+            return import_string(settings.FORCE_PERSONAL_PROFILE)(request)
+        except ImportError:
+            pass
+    return bool(settings.FORCE_PERSONAL_PROFILE)
+
+
 def get_picture_storage(request, account=None, **kwargs):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel
