@@ -988,7 +988,8 @@ class ChurnedSubscribersAPIView(ChurnedSubscribersMixin, ListAPIView):
     serializer_class = ProvidedSubscriptionSerializer
 
 
-class SubscriptionRequestAcceptAPIView(GenericAPIView, ProvidedSubscriptionsMixin):
+class SubscriptionRequestAcceptAPIView(ProvidedSubscriptionsMixin,
+                                       GenericAPIView):
     """
     Accepts a subscription request
     """
