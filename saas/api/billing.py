@@ -160,14 +160,26 @@ class CartItemAPIView(CartMixin, generics.CreateAPIView):
         cart_items = request.session.get('cart_items', [])
         serialized_cart_items = []
         is_deleted = False
-        for item in cart_items:
-            if plan and item['plan'] == plan:
-                is_deleted = True
-                continue
-            if email and item['email'] == email:
-                is_deleted = True
-                continue
-            serialized_cart_items += [item]
+        if plan and email:
+            for item in cart_items:
+                if item['plan'] == plan and item['email'] == email:
+                    is_deleted = True
+                    continue
+                serialized_cart_items += [item]
+        elif plan:
+            for item in cart_items:
+                if item['plan'] == plan:
+                    is_deleted = True
+                    continue
+                serialized_cart_items += [item]
+        elif email:
+            for item in cart_items:
+                if item['email'] == email:
+                    is_deleted = True
+                    continue
+                serialized_cart_items += [item]
+        else:
+            is_deleted = True
         if is_deleted:
             request.session['cart_items'] = serialized_cart_items
         return is_deleted
