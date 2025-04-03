@@ -330,7 +330,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 
         signals.profile_updated.send(sender=__name__,
                 organization=self.object, changes=changes,
-                user=self.request.user)
+                user=self.request.user, request=self.request)
         return http.HttpResponseRedirect(self.get_success_url())
 
     def get_form_class(self):

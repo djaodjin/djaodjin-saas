@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -1464,7 +1464,7 @@ def product_url(subscriber=None, plan=None, request=None):
     if plan:
         location += '%s/' % plan
     if request:
-        return build_absolute_uri(request, location=location)
+        return build_absolute_uri(location=location, request=request)
     return location
 
 
@@ -1474,7 +1474,7 @@ def read_agreement_file(slug, context=None, request=None):
         broker = get_broker()
         context = {
             'organization': broker,
-            'site_url': build_absolute_uri(request),
+            'site_url': build_absolute_uri(request=request),
         }
     # We use context and not context=context in the following statement
     # such that the code is compatible with Django 1.7 and Django 1.8

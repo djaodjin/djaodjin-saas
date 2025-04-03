@@ -842,9 +842,9 @@ class SubscribedSubscriptionSerializer(SubscriptionSerializer):
             [subscription.plan.organization]))
 
     def get_remove_api_url(self, obj):
-        return build_absolute_uri(self.context['request'], location=reverse(
-            'saas_api_subscription_detail', args=(
-                obj.organization, obj.plan,)))
+        return build_absolute_uri(location=reverse(
+            'saas_api_subscription_detail', args=(obj.organization, obj.plan,)),
+            request=self.context['request'])
 
 
 class ProvidedSubscriptionSerializer(SubscriptionSerializer):
@@ -860,15 +860,17 @@ class ProvidedSubscriptionSerializer(SubscriptionSerializer):
 
     def get_accept_request_api_url(self, obj):
         if obj.request_key:
-            return build_absolute_uri(self.context['request'], location=reverse(
+            return build_absolute_uri(location=reverse(
                 'saas_api_subscription_grant_accept', args=(
-                obj.plan.organization, obj.request_key)))
+                obj.plan.organization, obj.request_key)),
+                request=self.context['request'])
         return None
 
     def get_remove_api_url(self, obj):
-        return build_absolute_uri(self.context['request'], location=reverse(
+        return build_absolute_uri(location=reverse(
             'saas_api_plan_subscription', args=(
-                obj.plan.organization, obj.plan, obj.organization)))
+                obj.plan.organization, obj.plan, obj.organization)),
+                request=self.context['request'])
 
 
 class ProvidedSubscriptionDetailSerializer(SubscriptionSerializer):
@@ -1170,26 +1172,28 @@ class AccessibleSerializer(serializers.ModelSerializer):
 
     def get_accept_grant_api_url(self, obj):
         if obj.grant_key:
-            return build_absolute_uri(self.context['request'], location=reverse(
-                'saas_api_accessibles_accept', args=(obj.user, obj.grant_key)))
+            return build_absolute_uri(location=reverse(
+                'saas_api_accessibles_accept', args=(obj.user, obj.grant_key)),
+                request=self.context['request'])
         return None
 
     def get_remove_api_url(self, obj):
         role_description = (obj.role_description
             if obj.role_description else settings.MANAGER)
-        return build_absolute_uri(self.context['request'], location=reverse(
+        return build_absolute_uri(location=reverse(
             'saas_api_accessible_detail', args=(
-                obj.user, role_description, obj.organization)))
+                obj.user, role_description, obj.organization)),
+                request=self.context['request'])
 
     def get_settings_url(self, obj):
         req = self.context['request']
         org = obj.organization
         if org.is_provider:
-            settings_location = build_absolute_uri(req, location=reverse(
-                'saas_dashboard', args=(org.slug,)))
+            settings_location = build_absolute_uri(location=reverse(
+                'saas_dashboard', args=(org.slug,)), request=req)
         else:
-            settings_location = build_absolute_uri(req, location=reverse(
-                'saas_organization_profile', args=(org.slug,)))
+            settings_location = build_absolute_uri(location=reverse(
+                'saas_organization_profile', args=(org.slug,)), request=req)
         return settings_location
 
     def get_home_url(self, obj):
@@ -1242,17 +1246,18 @@ class RoleSerializer(serializers.ModelSerializer):
 
     def get_accept_request_api_url(self, obj):
         if obj.request_key:
-            return build_absolute_uri(self.context['request'], location=reverse(
+            return build_absolute_uri(location=reverse(
                 'saas_api_roles_by_descr', args=(
-                    obj.organization, obj.role_description)))
+                obj.organization, obj.role_description)),
+                request=self.context['request'])
         return None
 
     def get_remove_api_url(self, obj):
         role_description = (obj.role_description
             if obj.role_description else settings.MANAGER)
-        return build_absolute_uri(self.context['request'], location=reverse(
-            'saas_api_role_detail', args=(
-                obj.organization, role_description, obj.user)))
+        return build_absolute_uri(location=reverse('saas_api_role_detail',
+            args=(obj.organization, role_description, obj.user)),
+            request=self.context['request'])
 
 
 class RoleCreateSerializer(NoModelSerializer):

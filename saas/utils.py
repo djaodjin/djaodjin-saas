@@ -385,13 +385,14 @@ def handle_uniq_error(err, renames=None):
 def get_force_personal_profile(request):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel
-    if callable(settings.FORCE_PERSONAL_PROFILE):
-        return settings.FORCE_PERSONAL_PROFILE(request)
     if isinstance(settings.FORCE_PERSONAL_PROFILE, six.string_types):
         try:
-            return import_string(settings.FORCE_PERSONAL_PROFILE)(request)
+            settings.FORCE_PERSONAL_PROFILE = import_string(
+                settings.FORCE_PERSONAL_PROFILE)
         except ImportError:
             pass
+    if callable(settings.FORCE_PERSONAL_PROFILE):
+        return settings.FORCE_PERSONAL_PROFILE(request)
     return bool(settings.FORCE_PERSONAL_PROFILE)
 
 
@@ -420,16 +421,17 @@ def is_mail_provider_domain(domain):
     return domain in settings.MAIL_PROVIDER_DOMAINS
 
 
-# XXX same prototype as djaodjin-multitier.mixins.build_absolute_uri
-def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
+# same prototype as djaodjin-multitier.mixins.build_absolute_uri
+def build_absolute_uri(location='/', request=None, site=None,
+                       with_scheme=True, force_subdomain=False):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
         try:
             return import_string(
-                settings.BUILD_ABSOLUTE_URI_CALLABLE)(request,
-                    location=location, provider=provider,
-                    with_scheme=with_scheme)
+                settings.BUILD_ABSOLUTE_URI_CALLABLE)(location=location,
+                    request=request, site=site,
+                    with_scheme=with_scheme, force_subdomain=force_subdomain)
         except ImportError:
             pass
     if request:

@@ -13,7 +13,7 @@ You were added as a {{role}} to {{organization.printable_name}}
 </pre>
 <p>
 You were added as a {{role}} to {{organization.printable_name}}
-and can access the <a href="{{request.build_absolute_uri}}{% url 'saas_metrics_summary' organization %}">Dashboard</a> now.
+and can access the <a href="{{back_url}}">Dashboard</a> now.
 </p>
 </body>
 </html>

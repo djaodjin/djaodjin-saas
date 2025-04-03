@@ -42,7 +42,7 @@ from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import (BalanceAndCartMixin, CartMixin, InvoicablesMixin,
                       UserMixin)
 from ..models import CartItem, get_broker
-from ..utils import build_absolute_uri, datetime_or_now, get_user_serializer
+from ..utils import datetime_or_now, get_user_serializer
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, PaylaterSerializer, RedeemCouponSerializer,
@@ -605,8 +605,8 @@ of Xia",
                 result = ChargeSerializer(charge)
                 return http.Response(result.data,
                     status=status.HTTP_201_CREATED,
-                    headers={'Location': build_absolute_uri(
-                        self.request, reverse('saas_charge_receipt',
+                    headers={'Location': self.request.build_absolute_uri(
+                        reverse('saas_charge_receipt',
                         args=(charge.customer, charge.processor_key)))})
         except ProcessorError as err:
             return http.Response({
@@ -702,9 +702,9 @@ a coupon code for a potential discount, and
         if charge and charge.invoiced_total.amount > 0:
             result = ChargeSerializer(charge)
             return http.Response(result.data, status=status.HTTP_201_CREATED,
-                headers={'Location': build_absolute_uri(
-                  self.request, reverse('saas_payment', args=(
-                charge.claim_code,)))})
+                headers={'Location': self.request.build_absolute_uri(
+                    reverse('saas_payment', args=(
+                    charge.claim_code,)))})
 
         return http.Response({}, status=status.HTTP_200_OK)
 

@@ -154,8 +154,9 @@ class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
     def send_signals(self, relations, user, reason=None, invite=False):
         #pylint:disable=unused-argument
         for role in relations:
-            signals.role_request_created.send(sender=__name__,
-                role=role, reason=reason)
+            signals.role_request_created.send(sender=__name__, role=role,
+                reason=reason, request_user=self.request.user,
+                request=self.request)
 
     def perform_optin(self, serializer, request, user=None):
         #pylint:disable=too-many-locals,too-many-statements
@@ -1089,8 +1090,8 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         role, created = self.organization.add_role_grant(
             user, self.role_description, grant_key=grant_key,
             extra=serializer.validated_data.get('extra'))
-        signals.role_grant_created.send(sender=__name__,
-            role=role, reason=reason, request_user=request.user)
+        signals.role_grant_created.send(sender=__name__, role=role,
+            reason=reason, request_user=request.user, request=request)
         if created:
             resp_status = status.HTTP_201_CREATED
         else:
@@ -1253,8 +1254,8 @@ class RoleDetailAPIView(UpdateModelMixin, RoleDetailBaseAPIView):
             }
         """
         role = self.get_object()
-        signals.role_grant_created.send(sender=__name__,
-            role=role, reason=None, request_user=request.user)
+        signals.role_grant_created.send(sender=__name__, role=role,
+            reason=None, request_user=request.user, request=request)
         role.detail = _("Invite for %(username)s has been sent") % {
             'username': role.user.username
         }
@@ -1412,8 +1413,8 @@ class AccessibleDetailAPIView(RoleDetailBaseAPIView):
             }
         """
         role = self.get_object()
-        signals.role_request_created.send(sender=__name__,
-            role=role, reason=None, request_user=request.user)
+        signals.role_request_created.send(sender=__name__, role=role,
+            reason=None, request_user=request.user, request=request)
         serializer = self.get_serializer(role)
         return Response(serializer.data)
 

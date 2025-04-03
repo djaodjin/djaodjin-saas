@@ -136,10 +136,12 @@ class BankUpdateView(BankMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super(BankUpdateView, self).get_context_data(**kwargs)
         context.update({'force_update': True})
-        deauthorize_url = self.provider.processor_backend.get_deauthorize_url(
-            self.provider)
-        update_context_urls(context, {'provider': {
-            'deauthorize_processor': deauthorize_url}})
+        if not self.provider.is_broker:
+            deauthorize_url = \
+                self.provider.processor_backend.get_deauthorize_url(
+                    self.provider)
+            update_context_urls(context, {'provider': {
+                'deauthorize_processor': deauthorize_url}})
         return context
 
     def get_object(self, queryset=None):
@@ -199,11 +201,13 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         provider = self.organization
         context.update(provider.processor_backend.retrieve_bank(
             provider, includes_balance=False))
-        authorize_url = provider.processor_backend.get_authorize_url(provider)
-        if authorize_url:
-            update_context_urls(context, {
-                'authorize_processor': authorize_url
-            })
+        if not self.provider.is_broker:
+            authorize_url = \
+                provider.processor_backend.get_authorize_url(provider)
+            if authorize_url:
+                update_context_urls(context, {
+                    'authorize_processor': authorize_url
+                })
         return context
 
     def connect_auth(self, auth_code):

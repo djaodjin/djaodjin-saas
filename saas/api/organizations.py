@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,7 @@ from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSearchOrderListMixin, OrganizationSmartListMixin,
     ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker, Subscription
-from ..utils import (build_absolute_uri, datetime_or_now,
+from ..utils import (datetime_or_now,
     get_organization_model, get_role_model, get_picture_storage,
     handle_uniq_error)
 
@@ -206,7 +206,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             serializer.instance.detail = _("Profile was updated.")
             signals.profile_updated.send(sender=__name__,
                 organization=serializer.instance, changes=changes,
-                user=self.request.user)
+                user=self.request.user, request=self.request)
         except IntegrityError as err:
             handle_uniq_error(err)
 
@@ -302,7 +302,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
         parts = urlparse(location)
         location = urlunparse((parts.scheme, parts.netloc, parts.path,
             "", "", ""))
-        location = build_absolute_uri(self.request, location=location)
+        location = self.request.build_absolute_uri(location)
 
         self.organization.picture = location
         self.organization.save()

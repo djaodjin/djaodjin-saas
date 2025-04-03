@@ -507,7 +507,7 @@ class AbstractOrganization(models.Model):
 
     @property
     def has_bank_account(self):
-        if is_broker(self):
+        if self.is_broker:
             processor_backend = self.processor_backend
             return processor_backend.pub_key and processor_backend.priv_key
         return self.processor_deposit_key
@@ -2171,7 +2171,7 @@ class Charge(models.Model):
                     'amount': self.amount, 'unit': self.unit})
             signals.processor_setup_error.send(sender=__name__,
                 provider=err.provider, error_message=str(err),
-                customer=self)
+                customer=self.customer)
             raise
         except ProcessorError as err:
             # An error from the processor which indicates the logic might be
@@ -5050,11 +5050,10 @@ def is_broker(organization):
     # We do a string compare here because both ``Organization`` might come
     # from a different db. That is if the organization parameter is not
     # a unicode string itself.
-    organization_slug = ''
-    if isinstance(organization, six.string_types):
-        organization_slug = organization
-    elif organization:
+    if isinstance(organization, get_organization_model()):
         organization_slug = organization.slug
+    else:
+        organization_slug = str(organization)
     if settings.IS_BROKER_CALLABLE:
         return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
     return get_broker().slug == organization_slug

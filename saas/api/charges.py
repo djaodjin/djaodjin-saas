@@ -43,7 +43,7 @@ from ..humanize import as_money
 from ..models import Charge, InsufficientFunds, Transaction, get_broker
 from ..mixins import ChargeMixin, DateRangeContextMixin, OrganizationMixin
 from ..pagination import TotalPagination
-from ..utils import build_absolute_uri, datetime_or_now
+from ..utils import datetime_or_now
 
 
 class ChargeResourceView(ChargeMixin, generics.RetrieveAPIView):
@@ -489,8 +489,8 @@ of Xia",
         return self.create(request, *args, **kwargs)
 
     def get_success_headers(self, data):
-        return {'Location': build_absolute_uri(
-            self.request, reverse('saas_payment', kwargs=self.kwargs))}
+        return {'Location': self.request.build_absolute_uri(
+            reverse('saas_payment', kwargs=self.kwargs))}
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

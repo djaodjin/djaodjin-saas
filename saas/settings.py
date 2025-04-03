@@ -142,7 +142,15 @@ _SETTINGS = {
     'CONTRIBUTOR': 'contributor',
     'PROFILE_URL_KWARG': 'profile' #Also modify organization_url_kwarg in extras
 }
-_SETTINGS.update(getattr(settings, 'SAAS', {}))
+
+def _merge_settings(default_values, updates):
+    for key in default_values:
+        if isinstance(default_values[key], dict):
+            default_values[key].update(updates.get(key, {}))
+        elif key in updates:
+            default_values.update({key: updates[key]})
+
+_merge_settings(_SETTINGS, getattr(settings, 'SAAS', {}))
 
 
 SLUG_RE = r'[-a-zA-Z0-9_]+'
