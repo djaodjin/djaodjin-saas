@@ -49,7 +49,7 @@ from rest_framework.generics import get_object_or_404
 import phonenumbers
 
 from .. import settings
-from ..compat import gettext_lazy as _, reverse, six
+from ..compat import gettext_lazy as _, is_authenticated, reverse, six
 from ..decorators import _valid_manager
 from ..humanize import MONTHLY, as_money
 from ..mixins import as_html_description, product_url, read_agreement_file
@@ -838,7 +838,9 @@ class SubscribedSubscriptionSerializer(SubscriptionSerializer):
             'remove_api_url', 'editable')
 
     def get_editable(self, subscription):
-        return bool(_valid_manager(self.context['request'],
+        request = self.context['request']
+        return bool(_valid_manager(
+            request.user if is_authenticated(request) else None,
             [subscription.plan.organization]))
 
     def get_remove_api_url(self, obj):
@@ -1140,7 +1142,10 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
         # In notifications (triggered by signals), we will not have
         # `request` in the context either.
         if 'request' in self.context:
-            return bool(_valid_manager(self.context['request'], candidates))
+            request = self.context['request']
+            return bool(_valid_manager(
+                request.user if is_authenticated(request) else None,
+                candidates))
         return False
 
 

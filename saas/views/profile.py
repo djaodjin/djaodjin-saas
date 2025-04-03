@@ -33,7 +33,7 @@ from django.db import transaction
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView
 
 from .. import settings, signals
-from ..compat import reverse, gettext_lazy as _
+from ..compat import gettext_lazy as _, is_authenticated, reverse
 from ..decorators import _valid_manager
 from ..forms import OrganizationForm, ManagerAndOrganizationForm
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
@@ -316,7 +316,9 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
         if 'extra' in validated_data:
             self.object.extra = validated_data['extra']
         is_provider = self.object.is_provider
-        if _valid_manager(self.request, [get_broker()]):
+        if _valid_manager(
+                self.request.user if is_authenticated(self.request) else None,
+                [get_broker()]):
             self.object.is_provider = validated_data.get(
                 'is_provider', is_provider)
 
@@ -342,7 +344,9 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
-        if _valid_manager(self.request, [get_broker()]):
+        if _valid_manager(
+                self.request.user if is_authenticated(self.request) else None,
+                [get_broker()]):
             # Shows checkbox for `is_bulk_buyer` and `is_provider` only
             # to brokers.
             if Plan.objects.exists() and settings.DISPLAY_BULK_BUYER_TOGGLE:

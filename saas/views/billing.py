@@ -491,7 +491,9 @@ reference/djaoapp/latest/api/#listBillings>`__
                     'saas_organization_balance', args=(self.organization,)),
                 'update_card': reverse(
                     'saas_update_card', args=(self.organization,))}})
-        if _valid_manager(self.request, [get_broker()]):
+        if _valid_manager(
+                self.request.user if is_authenticated(self.request) else None,
+                [get_broker()]):
             context['urls']['organization'].update({
                 'api_cancel_balance_due': reverse(
                     'saas_api_cancel_balance_due', args=(self.organization,)),
@@ -912,7 +914,9 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
                                               # or Coupon (i.e. Group buy)
             setattr(line, 'rank', rank)
             setattr(line, 'refundable',
-                event and _valid_manager(self.request, [event.provider]))
+                event and _valid_manager(
+                  self.request.user if is_authenticated(self.request) else None,
+                  [event.provider]))
         return context
 
 

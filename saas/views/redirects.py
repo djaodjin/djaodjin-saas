@@ -228,7 +228,9 @@ class OrganizationRedirectView(RedirectFormMixin, TemplateView):
         with transaction.atomic():
             #pylint:disable=attribute-defined-outside-init
             self.object = form.save()
-            if not _valid_manager(self.request, [get_broker()]):
+            if not _valid_manager(
+                self.request.user if is_authenticated(self.request) else None,
+                [get_broker()]):
                 # If it is a manager of the broker platform creating
                 # the newly created Organization will be accessible anyway.
                 self.object.add_manager(self.request.user)

@@ -34,7 +34,7 @@ from django.utils.safestring import mark_safe
 from django.utils import formats
 from django.utils.dateparse import parse_date, parse_datetime
 
-from ..compat import gettext_lazy as _, six, timezone_or_utc
+from ..compat import gettext_lazy as _, is_authenticated, six, timezone_or_utc
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money, as_percentage
 from ..mixins import as_html_description
@@ -199,7 +199,8 @@ def is_manager(request, organization):
     organization_model = get_organization_model()
     if not isinstance(organization, organization_model):
         organization = get_object_or_404(organization_model, slug=organization)
-    return _valid_manager(request, [organization])
+    return _valid_manager(request.user if is_authenticated(request) else None,
+        [organization])
 
 
 @register.filter(needs_autoescape=False)

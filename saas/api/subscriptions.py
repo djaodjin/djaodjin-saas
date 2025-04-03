@@ -32,7 +32,7 @@ from rest_framework.generics import (get_object_or_404, GenericAPIView,
     ListAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from ..compat import gettext_lazy as _
+from ..compat import gettext_lazy as _, is_authenticated
 from ..decorators import _valid_manager
 from ..docs import OpenApiResponse, extend_schema
 from ..filters import (ActiveInPeriodFilter, ChurnedInPeriodFilter,
@@ -211,7 +211,8 @@ class SubscriptionDetailMixin(object):
 
     def perform_update(self, serializer):
         if not _valid_manager(
-                self.request, [serializer.instance.plan.organization]):
+                self.request.user if is_authenticated(self.request) else None,
+                [serializer.instance.plan.organization]):
             serializer.validated_data['created_at'] \
                 = serializer.instance.created_at
             serializer.validated_data['ends_at'] = serializer.instance.ends_at

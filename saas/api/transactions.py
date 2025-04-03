@@ -32,7 +32,7 @@ from rest_framework.pagination import PageNumberPagination
 
 from .serializers import (CartItemCreateSerializer,
     QueryParamCancelBalanceSerializer, TransactionSerializer)
-from ..compat import gettext_lazy as _, six
+from ..compat import gettext_lazy as _, is_authenticated, six
 from ..decorators import _valid_manager
 from ..docs import extend_schema, OpenApiResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
@@ -657,7 +657,9 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
 
     def destroy(self, request, *args, **kwargs):
         #pylint:disable=unused-argument,too-many-nested-blocks,too-many-locals
-        if not _valid_manager(request, [get_broker()]):
+        if not _valid_manager(
+                request.user if is_authenticated(request) else None,
+                [get_broker()]):
             # XXX temporary workaround to provide GET balance API
             # to subscribers and providers.
             raise PermissionDenied()

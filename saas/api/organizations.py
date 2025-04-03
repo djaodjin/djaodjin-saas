@@ -37,7 +37,8 @@ from .serializers import (EngagedSubscriberSerializer, OrganizationSerializer,
     OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
     UploadBlobSerializer)
 from .. import settings, signals
-from ..compat import force_str, gettext_lazy as _, urlparse, urlunparse
+from ..compat import (force_str, gettext_lazy as _, is_authenticated, urlparse,
+    urlunparse)
 from ..decorators import _valid_manager
 from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
@@ -191,7 +192,9 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     def perform_update(self, serializer):
         is_provider = serializer.instance.is_provider
-        if _valid_manager(self.request, [get_broker()]):
+        if _valid_manager(
+                self.request.user if is_authenticated(self.request) else None,
+                [get_broker()]):
             is_provider = serializer.validated_data.get(
                 'is_provider', is_provider)
         changes = serializer.instance.get_changes(serializer.validated_data)

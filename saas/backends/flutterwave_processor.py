@@ -44,7 +44,8 @@ then copy/paste the keys into your project settings.py
         }
     }
 
-The backend relies on `Flutterwave Inline <https://developer.flutterwave.com/docs/collecting-payments/inline/>`_
+The backend relies on `Flutterwave Inline
+<https://developer.flutterwave.com/docs/collecting-payments/inline/>`_
 such that credit cards numbers are never posted to the application server
 running djaodjin-saas (PCI compliance).
 """
@@ -99,7 +100,7 @@ class FlutterwaveBackend(object):
                        processor_card_key=None,
                        descr=None, stmt_descr=None, created_at=None,
                        broker_fee_amount=0, provider=None, broker=None):
-        #pylint: disable=too-many-arguments,unused-argument
+        #pylint: disable=too-many-arguments,unused-argument,too-many-locals
         rave = Rave(self.pub_key, self.priv_key,
             usingEnv=False)
         LOGGER.debug(

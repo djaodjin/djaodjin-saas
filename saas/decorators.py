@@ -59,22 +59,22 @@ NORMAL = 1
 STRONG = 2
 
 
-def _valid_role(request, candidates, role):
+def _valid_role(user, candidates, role):
     """
     Returns the subset of a set of ``Organization`` *candidates*
-    which have *request.user* listed with a role.
+    which have *user* listed with a role.
     """
     organization_model = get_organization_model()
     results = []
     if settings.BYPASS_PERMISSION_CHECK:
-        if request.user:
-            username = request.user.username
+        if user:
+            username = user.username
         else:
             username = '(none)'
         LOGGER.warning("Skip permission check for %s on organizations %s",
                        username, candidates)
         return candidates
-    if role is not None and request.user and is_authenticated(request):
+    if role is not None and user:
         if isinstance(role, (list, tuple)):
             kwargs = {'role_description__slug__in': role}
         else:
@@ -82,17 +82,17 @@ def _valid_role(request, candidates, role):
         results = organization_model.objects.filter(
             pk__in=get_role_model().objects.valid_for(
                 organization__in=candidates,
-                user=request.user, **kwargs).values(
+                user=user, **kwargs).values(
                 'organization')).values('slug')
     return results
 
 
-def _valid_manager(request, candidates):
+def _valid_manager(user, candidates):
     """
     Returns the subset of a queryset of ``Organization``, *candidates*
     which have *user* as a manager.
     """
-    return _valid_role(request, candidates, settings.MANAGER)
+    return _valid_role(user, candidates, settings.MANAGER)
 
 
 def _filter_valid_access(request, candidates,
@@ -107,17 +107,18 @@ def _filter_valid_access(request, candidates,
     The set of contributed organizations is further filtered by
     *request.method* and *strength*.
     """
+    user = request.user if is_authenticated(request) else None
     if roledescription is None:
         roledescription = settings.CONTRIBUTOR
     managed = []
     contributed = []
-    managed = _valid_manager(request, candidates)
+    managed = _valid_manager(user, candidates)
     if request.method == "GET":
         if strength != STRONG:
-            contributed = _valid_role(request, candidates, roledescription)
+            contributed = _valid_role(user, candidates, roledescription)
     else:
         if strength == WEAK:
-            contributed = _valid_role(request, candidates, roledescription)
+            contributed = _valid_role(user, candidates, roledescription)
     return managed, contributed
 
 
