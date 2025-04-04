@@ -87,6 +87,8 @@ initdb: clean-dbs
         testsite/fixtures/160-renewals.json \
         testsite/fixtures/170-billing.json \
         testsite/fixtures/200-saas-roles.json
+	@echo "-- getting STRIPE_TEST_CONNECTED_KEY from $(if $(TESTSITE_SETTINGS_LOCATION),$(TESTSITE_SETTINGS_LOCATION),$(RUN_DIR))/credentials"
+	$(SQLITE) $(DB_NAME) "UPDATE saas_organization set processor_deposit_key='$(shell grep ^STRIPE_TEST_CONNECTED_KEY $(if $(TESTSITE_SETTINGS_LOCATION),$(TESTSITE_SETTINGS_LOCATION),$(RUN_DIR))/credentials | cut -f 2 -d \")' where is_provider;"
 
 
 vendor-assets-prerequisites: $(libDir)/.npm/djaodjin-saas-packages

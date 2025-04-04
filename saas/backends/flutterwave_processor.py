@@ -71,10 +71,10 @@ class FlutterwaveBackend(object):
         self.priv_key = settings.PROCESSOR.get("PRIV_KEY", None)
 
 
-    def charge_distribution(self, charge,
+    def charge_distribution(self, charge, broker,
                             refunded=0, orig_total_broker_fee_amount=0,
                             unit=settings.DEFAULT_UNIT):
-        #pylint:disable=unused-argument
+        #pylint:disable=unused-argument,too-many-arguments
         # Stripe processing fee associated to a transaction
         # is 2.9% + 30 cents.
         # Stripe rounds up so we do the same here. Be careful Python 3.x
@@ -110,6 +110,7 @@ class FlutterwaveBackend(object):
         created_at = None
         receipt_info = {}
         try:
+            #pylint:disable=no-member
             resp = rave.Card.verify(token)
             LOGGER.info(
                 "[Flutterwave verification response for '%s': %s",
@@ -121,6 +122,7 @@ class FlutterwaveBackend(object):
                     resp['chargecode'],
                     charge_processor_key=charge_key)
         except RaveExceptions.TransactionVerificationError as err:
+            #pylint:disable=no-member
             raise CardError(str(err), err.code,
                 charge_processor_key=err.flwRef,
                 backend_except=err)

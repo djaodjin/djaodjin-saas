@@ -199,8 +199,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
     def get_context_data(self, **kwargs):
         context = super(ProcessorAuthorizeView, self).get_context_data(**kwargs)
         provider = self.organization
-        context.update(provider.processor_backend.retrieve_bank(
-            provider, includes_balance=False))
+        context.update(provider.retrieve_bank(includes_balance=False))
         if not self.provider.is_broker:
             authorize_url = \
                 provider.processor_backend.get_authorize_url(provider)

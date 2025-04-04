@@ -1075,13 +1075,14 @@ class AbstractOrganization(models.Model):
     def get_deposit_context(self):
         return self.processor_backend.get_deposit_context()
 
-    def retrieve_bank(self):
+    def retrieve_bank(self, includes_balance=True):
         """
         Returns associated bank account as a dictionnary.
         """
-        context = self.processor_backend.retrieve_bank(self)
-        available_amount = context.get('balance_amount', 0)
-        if isinstance(available_amount, six.integer_types):
+        context = self.processor_backend.retrieve_bank(
+            self, get_broker(), includes_balance=includes_balance)
+        available_amount = context.get('balance_amount', "N/A")
+        if includes_balance and isinstance(available_amount, six.integer_types):
             # The processor could return "N/A" if the organization is not
             # connected to a processor account.
             balance = Transaction.objects.get_balance(
@@ -1982,7 +1983,7 @@ class Charge(models.Model):
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     @property
-    def broker(self):
+    def provider(self):
         """
         All the invoiced items on this charge must be related to the same
         broker ``Organization``.
@@ -2012,7 +2013,7 @@ class Charge(models.Model):
         charge_available_amount, provider_unit, \
             charge_processor_fee_amount, processor_unit, \
             charge_broker_fee_amount, broker_unit \
-            = self.processor_backend.charge_distribution(self)
+            = self.processor_backend.charge_distribution(self, get_broker())
         corrected_available_amount = charge_available_amount
         corrected_processor_fee_amount = charge_processor_fee_amount
         corrected_broker_fee_amount = charge_broker_fee_amount
@@ -2100,7 +2101,7 @@ class Charge(models.Model):
         #pylint:disable=too-many-arguments
         created_at = datetime_or_now(created_at)
         broker = get_broker()
-        provider = self.broker
+        provider = self.provider
         self.processor = provider.validate_processor()
         prev_processor_card_key = self.customer.processor_card_key
 
@@ -2307,12 +2308,13 @@ class Charge(models.Model):
             # 2014/01/15 charge on xia card
             #     stripe:Funds                                 15800
             #     xia:Liability
+            broker = get_broker()
             orig_total = self.amount
             orig_broker_fee = self.broker_fee_amount
             charge_available_amount, funds_unit, \
                 charge_processor_fee_amount, processor_funds_unit, \
                 charge_broker_fee_amount, broker_funds_unit \
-                = self.processor_backend.charge_distribution(self,
+                = self.processor_backend.charge_distribution(self, broker,
                     orig_total_broker_fee_amount=orig_broker_fee)
             charge_amount = (charge_available_amount
                 + charge_processor_fee_amount + charge_broker_fee_amount)
@@ -2373,7 +2375,6 @@ class Charge(models.Model):
                 # XXX event_id is used for provider and in description.
                 event = None
                 event_id = invoiced_item.event_id
-                broker = get_broker()
                 item_orig_broker_fee = 0
                 event = invoiced_item.get_event() # Subscription,
                                                   # or Coupon (i.e. Group buy)
@@ -2597,11 +2598,12 @@ class Charge(models.Model):
 % {'refund_available': humanize.as_money(refund_available, self.unit),
    'refund_required': humanize.as_money(refunded_amount, self.unit)})
 
+        broker = get_broker()
         charge_available_amount, provider_unit, \
             charge_processor_fee_amount, processor_unit, \
             charge_broker_fee_amount, broker_unit \
             = self.processor_backend.charge_distribution(
-                self, refunded=previously_refunded)
+                self, broker, refunded=previously_refunded)
 
         # We execute the refund on the processor backend here such that
         # the following call to ``processor_backend.charge_distribution``
@@ -2614,7 +2616,7 @@ class Charge(models.Model):
             corrected_processor_fee_amount, processor_unit, \
             corrected_broker_fee_amount, broker_unit \
             = self.processor_backend.charge_distribution(
-                self, refunded=previously_refunded + refunded_amount)
+                self, broker, refunded=previously_refunded + refunded_amount)
 
         charge_item.create_refund_transactions(
             refunded_amount,
@@ -2639,7 +2641,7 @@ class Charge(models.Model):
         Retrieve the state of charge from the processor.
         """
         if self.processor_key:
-            self.processor_backend.retrieve_charge(self)
+            self.processor_backend.retrieve_charge(self, get_broker())
         return self
 
 

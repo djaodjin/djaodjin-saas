@@ -23,23 +23,62 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-The `Stripe <https://stripe.com/>`_ backend works in 3 different modes:
+The `Stripe <https://stripe.com/>`_ backend works in 3 different modes
+that reflect the kind of sites being deployed.
 
-  - ``LOCAL``
-  - ``FORWARD``
-  - ``REMOTE``
+  - LOCAL
+  - FORWARD
+  - REMOTE
 
 In LOCAL mode, Stripe Customer and Charge objects are created on the Stripe
-Account identified by settings.PROCESSOR['PRIV_KEY']. All transfers are made to
-the bank account associated to that account. Stripe fees are paid by the broker.
+Account for the broker. All transfers are made to the bank account associated
+to that broker Stripe account. Stripe fees are paid by the broker.
 
 In FORWARD mode, Stripe Customer and Charge objects are also created on
-the Stripe account identified by settings.PROCESSOR['PRIV_KEY'] but each
-Charge is tied automatically to a Stripe Transfer to a Stripe Connect Account.
-Stripe fees are paid by the broker.
+the Stripe account for the broker but each Charge is tied automatically
+to a Stripe Transfer to a provider Stripe account. Stripe fees are paid
+by the broker.
 
 In REMOTE mode, Stripe Customer and Charge objects are created on
-the Stripe Connect Account. Stripe fees are paid by the provider.
+either on the broker or provider Stripe account, based on which profile
+owns the plan being invoiced. Stripe fees are paid by that profile.
+
+To determine the best settings for your use case, i.e. "Where cards are stored?"
+and "Where charges are paid?", you should answer the following questions:
+
+- How much is the StripeConnect account involved in the transactions?
+  local, forward, remote?
+- Who owns the plans being invoiced? broker, provider?
+- Which StripeConnect keys are we using? platform, broker?
+
++=========+================+============+=================+=================+
+| mode    | plans invoiced |  Keys used | Cards stored?   | Charges paid?   |
++=========+================+============+=================+=================+
+| local   | broker         | platform   | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| local   | broker         | broker     | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| local   | provider       | platform   | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| local   | provider       | broker     | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| forward | broker         | platform   | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| forward | broker         | broker     | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| forward | provider       | platform   | broker Stripe   | provider Stripe |
++---------+----------------+------------+-----------------+-----------------+
+| forward | provider       | broker     | broker Stripe   | provider Stripe |
++---------+----------------+------------+-----------------+-----------------+
+| remote  | broker         | platform   | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| remote  | broker         | broker     | broker Stripe   | broker Stripe   |
++---------+----------------+------------+-----------------+-----------------+
+| remote  | provider       | platform   | provider Stripe | provider Stripe |
++---------+----------------+------------+-----------------+-----------------+
+| remote  | provider       | broker     | provider Stripe | provider Stripe |
++---------+----------------+------------+-----------------+-----------------+
+
 
 To configure Stripe Connect, follow the instructions
 at https://stripe.com/docs/connect,
@@ -58,6 +97,7 @@ Edit the redirect_url and copy/paste the keys into your project settings.py
         # optional
             'CLIENT_ID': "...",
             'MODE': "...",
+            'USE_PLATFORM_KEYS': "..."
         }
     }
 """
@@ -94,15 +134,18 @@ class StripeBackend(object):
         self.pub_key = settings.PROCESSOR['PUB_KEY']
         self.priv_key = settings.PROCESSOR['PRIV_KEY']
         self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
-        self.mode = settings.PROCESSOR.get('MODE', self.LOCAL)
+        self.mode = settings.PROCESSOR.get('MODE', self.FORWARD)
+        self.use_platform_keys = settings.PROCESSOR.get(
+            'USE_PLATFORM_KEYS', False)
         self.connect_callback_url = settings.PROCESSOR.get(
             'CONNECT_CALLBACK_URL', None)
 
-    def _get_processor_charge(self, stripe_charge_key, broker,
+    def _get_processor_charge(self, stripe_charge_key, provider, broker,
                               includes_fee=False):
         stripe_charge = None
-        provider = None # XXX
         charge_headers = self._prepare_charge_request(provider, broker)
+        # We can't set the destination in Stripe API calls to retrieve a Charge.
+        charge_headers.pop('transfer_data', None)
         kwargs = charge_headers
         if includes_fee:
             kwargs = {}
@@ -142,53 +185,81 @@ class StripeBackend(object):
 
         return stripe_charge, charge_headers
 
-    def _is_platform(self, profile):
-        return profile and str(profile) == settings.PLATFORM_NAME
-
     def _prepare_request(self):
         stripe.api_version = '2022-11-15'
         stripe.api_key = self.priv_key
         return {}
 
-    def _prepare_card_request(self, broker):
+    def _prepare_card_request(self, profile):
         card_kwargs = self._prepare_request()
         if self.mode in (self.REMOTE,):
-            if not self._is_platform(broker):
-                # Card is also generated in the connect account.
-                # https://stripe.com/docs/connect/enable-payment-acceptance-\
-                #guide?platform=web#create-a-payment-intent
-                card_kwargs.update({
-                    'stripe_account': broker.processor_deposit_key})
+            # Card is also generated in the connect account.
+            # https://stripe.com/docs/connect/enable-payment-acceptance-\
+            #guide?platform=web#create-a-payment-intent
+            if not profile.processor_deposit_key:
+                raise ProcessorSetupError(
+                    (_("%(profile)s is not connected to a Stripe account.") +
+                     "[_prepare_card_request/REMOTE]") % {'profile': profile},
+                    profile)
+            card_kwargs.update({
+                'stripe_account': profile.processor_deposit_key})
+        elif self.use_platform_keys:
+            if not profile.processor_deposit_key:
+                raise ProcessorSetupError(
+                    (_("%(profile)s is not connected to a Stripe account.") +
+                     "[_prepare_card_request/USE_PLATFORM_KEYS]") % {
+                    'profile': profile}, profile)
+            card_kwargs.update({
+                'stripe_account': profile.processor_deposit_key})
         return card_kwargs
 
     def _prepare_charge_request(self, provider, broker):
         charge_kwargs = self._prepare_request()
-        if self.mode in (self.FORWARD,) and provider:
-            if (not self._is_platform(provider) and
-                provider.processor_deposit_key):
+        if self.mode in (self.LOCAL,):
+            if self.use_platform_keys:
+                if not broker.processor_deposit_key:
+                    raise ProcessorSetupError(
+                      (_("%(profile)s is not connected to a Stripe account.") +
+                       "[_prepare_card_request/LOCAL>USE_PLATFORM_KEYS]") % {
+                       'profile': broker}, broker)
+                charge_kwargs.update({
+                    'stripe_account': broker.processor_deposit_key})
+        elif self.mode in (self.FORWARD,):
+            if self.use_platform_keys:
+                if not broker.processor_deposit_key:
+                    raise ProcessorSetupError(
+                      (_("%(profile)s is not connected to a Stripe account.") +
+                       "[_prepare_card_request/FORWARD>USE_PLATFORM_KEYS]") % {
+                       'profile': broker}, broker)
+                charge_kwargs.update({
+                    'stripe_account': broker.processor_deposit_key})
+            if provider != broker:
                 # Charge is generated in connected account.
+                if not provider.processor_deposit_key:
+                    raise ProcessorSetupError(
+                      (_("%(profile)s is not connected to a Stripe account.") +
+                       "[_prepare_card_request/FORWARD]") % {
+                       'profile': provider}, provider)
                 charge_kwargs.update({
                     'transfer_data': {
                         'destination': provider.processor_deposit_key}})
-        elif self.mode in (self.REMOTE,) and broker:
-            if not broker.processor_deposit_key:
-                raise ProcessorSetupError(
-                (_("%(organization)s is not connected to a Stripe account.") +
-                 "[_prepare_charge_request/REMOTE]") % {
-                     'organization': broker}, broker)
-            if not self._is_platform(broker):
+        elif self.mode in (self.REMOTE,):
+            if provider != broker:
+                if not provider.processor_deposit_key:
+                    raise ProcessorSetupError(
+                      (_("%(profile)s is not connected to a Stripe account.") +
+                       "[_prepare_card_request/REMOTE]") % {
+                       'profile': provider}, provider)
+                charge_kwargs.update({
+                    'stripe_account': provider.processor_deposit_key})
+            elif self.use_platform_keys:
+                if not broker.processor_deposit_key:
+                    raise ProcessorSetupError(
+                      (_("%(profile)s is not connected to a Stripe account.") +
+                       "[_prepare_card_request/REMOTE>USE_PLATFORM_KEYS]") % {
+                       'profile': broker}, broker)
                 charge_kwargs.update({
                     'stripe_account': broker.processor_deposit_key})
-            if provider and provider != broker:
-                # Charge is generated in connected account.
-                stripe_account = charge_kwargs.get('stripe_account')
-                if (stripe_account and
-                    stripe_account != provider.processor_deposit_key):
-                    # corner case where we set the same Stripe keys for provider
-                    # and broker. It should only happen during testing.
-                    charge_kwargs.update({
-                        'transfer_data': {
-                            'destination': provider.processor_deposit_key}})
         return charge_kwargs
 
     def _prepare_transfer_request(self, provider):
@@ -244,12 +315,12 @@ class StripeBackend(object):
             all_custs = response['data']
         return customers
 
-    def charge_distribution(self, charge,
+    def charge_distribution(self, charge, broker,
                             refunded=0, orig_total_broker_fee_amount=0,
                             unit=settings.DEFAULT_UNIT):
-        #pylint:disable=too-many-locals
+        #pylint:disable=too-many-locals,too-many-arguments
         stripe_charge, kwargs = self._get_processor_charge(
-            charge.processor_key, charge.broker, includes_fee=True)
+            charge.processor_key, charge.provider, broker, includes_fee=True)
         LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
             " => stripe_charge=\n%s", charge.processor_key, refunded, unit,
             stripe_charge)
@@ -623,7 +694,6 @@ class StripeBackend(object):
         """
         #pylint:disable=too-many-arguments,too-many-statements
         card_kwargs = self._prepare_card_request(broker)
-        charge_kwargs = self._prepare_charge_request(provider, broker)
         old_card = {}
         p_customer = None
         if subscriber.processor_card_key:
@@ -647,6 +717,7 @@ class StripeBackend(object):
                 raise ProcessorError(str(err), backend_except=err)
 
         if token.startswith('pi_'):
+            charge_kwargs = self._prepare_charge_request(provider, broker)
             payment_intent = stripe.PaymentIntent.retrieve(
                 id=token, **charge_kwargs)
             card_token = payment_intent.payment_method
@@ -655,7 +726,7 @@ class StripeBackend(object):
                 # We rely on caller (``update_card``) to do the ``save``.
         elif token.startswith('seti_'):
             setup_intent = stripe.SetupIntent.retrieve(
-                id=token, **charge_kwargs)
+                id=token, **card_kwargs)
             card_token = setup_intent.payment_method
             if not subscriber.processor_card_key:
                 subscriber.processor_card_key = setup_intent.customer
@@ -731,7 +802,7 @@ class StripeBackend(object):
         """
         Refund a charge on the associated card.
         """
-        card_kwargs = self._prepare_card_request(charge.broker)
+        card_kwargs = self._prepare_card_request(charge.provider)
         try:
             refund = stripe.Refund.create(
                 charge=charge.processor_key,
@@ -755,7 +826,7 @@ class StripeBackend(object):
         except stripe.error.AuthenticationError as err:
             raise ProcessorSetupError(
                 _("Invalid request on processor for %(organization)s") % {
-                'organization': charge.broker}, charge.broker,
+                'organization': charge.provider}, charge.provider,
                 backend_except=err)
         except stripe.error.StripeError as err:
             LOGGER.exception(err)
@@ -898,11 +969,11 @@ class StripeBackend(object):
         }
         return context
 
-    def retrieve_bank(self, provider, includes_balance=True):
+    def retrieve_bank(self, provider, broker, includes_balance=True):
         context = {'bank_name': "N/A", 'last4': "N/A"}
         try:
             last4 = None
-            if self._is_platform(provider):
+            if provider == broker and not self.use_platform_keys:
                 if self.priv_key:
                     last4 = self.priv_key[-min(len(self.priv_key), 4):]
             elif provider.processor_deposit_key:
@@ -995,13 +1066,14 @@ class StripeBackend(object):
     def retrieve_card(self, subscriber, broker=None):
         return self._retrieve_card(subscriber, broker=broker)
 
-    def retrieve_charge(self, charge):
-        return self._update_charge_state(charge)
+    def retrieve_charge(self, charge, broker):
+        return self._update_charge_state(charge, broker)
 
-    def _update_charge_state(self, charge, stripe_charge=None, event_type=None):
+    def _update_charge_state(self, charge, broker,
+                             stripe_charge=None, event_type=None):
         if stripe_charge is None:
             stripe_charge, _ = self._get_processor_charge(
-                charge.processor_key, charge.broker)
+                charge.processor_key, charge.provider, broker)
             if stripe_charge is None:
                 # cannot find charge on Stripe.
                 return charge

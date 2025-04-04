@@ -47,7 +47,8 @@ class FakeProcessorBackend(object):
         self.mode = settings.PROCESSOR.get('MODE', 0)
 
     @staticmethod
-    def charge_distribution(charge, refunded=0, orig_total_broker_fee_amount=0,
+    def charge_distribution(charge, broker,
+                            refunded=0, orig_total_broker_fee_amount=0,
                             unit=settings.DEFAULT_UNIT):
         #pylint:disable=unused-argument
         # Stripe processing fee associated to a transaction

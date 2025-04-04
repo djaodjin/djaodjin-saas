@@ -437,7 +437,7 @@ class PaymentDetailAPIView(mixins.CreateModelMixin, generics.RetrieveAPIView):
         instance.retrieve() # This will settle the charge on the processor
                             # if necessary.
         if instance.state == instance.CREATED:
-            provider = instance.broker
+            provider = instance.provider
             # XXX OK to override Charge.processor?
             instance.processor_info = \
                 provider.processor_backend.get_payment_context(

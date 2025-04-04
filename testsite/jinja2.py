@@ -24,7 +24,6 @@
 
 from __future__ import absolute_import
 
-from django.conf import settings
 import django.template.defaultfilters
 from django.utils.translation import gettext, ngettext
 from jinja2.sandbox import SandboxedEnvironment as Jinja2Environment

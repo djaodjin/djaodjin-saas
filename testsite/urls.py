@@ -38,7 +38,7 @@ from saas.decorators import (fail_active_roles, fail_agreement,
     fail_self_provider)
 from saas.views import OrganizationRedirectView, UserRedirectView
 
-from . import signals
+from . import signals #pylint:disable=unused-import
 from .views.app import AppView
 from .views.auth import LoginAPIView, PersonalRegistrationView
 from .views.organization import OrganizationListView, UserProfileView

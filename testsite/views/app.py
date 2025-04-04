@@ -22,11 +22,8 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.contrib import messages
-from django.http import HttpResponseRedirect
 from django.views.generic import TemplateView
 from saas import settings as saas_settings
-from saas.backends import ProcessorConnectionError
 from saas.compat import reverse
 from saas.utils import get_organization_model, update_context_urls
 

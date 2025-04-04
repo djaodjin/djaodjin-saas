@@ -41,16 +41,13 @@ def load_config(confpath):
                     if look:
                         value = look.group(2) \
                             % {'LOCALSTATEDIR': RUN_DIR + '/var'}
-                        try:
-                            # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
-                            # definitely in the site.conf set), we had no choice
-                            # other than using eval. The {} are here to restrict
-                            # the globals and locals context eval has access to.
-                            # pylint: disable=eval-used
-                            setattr(sys.modules[__name__],
-                                look.group(1).upper(), eval(value, {}, {}))
-                        except Exception:
-                            raise
+                        # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
+                        # definitely in the site.conf set), we had no choice
+                        # other than using eval. The {} are here to restrict
+                        # the globals and locals context eval has access to.
+                        # pylint: disable=eval-used
+                        setattr(sys.modules[__name__],
+                            look.group(1).upper(), eval(value, {}, {}))
                 line = conffile.readline()
     else:
         sys.stderr.write('warning: config file %s does not exist.\n' % confpath)
@@ -315,7 +312,6 @@ SAAS = {
         'GET_INSTANCE': 'cowork',
     },
     'MAIL_PROVIDER_DOMAINS': ['localhost.localdomain'],
-    'PLATFORM_NAME': 'cowork',
     'PROCESSOR': {
         'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
         'MODE': 0, # `LOCAL`

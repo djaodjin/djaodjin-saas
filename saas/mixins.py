@@ -1443,7 +1443,7 @@ def get_charge_context(charge):
         'refunded': charge.refunded.exists(),
         'charge_items': charge.line_items,
         'organization': charge.customer, # XXX Use settings.PROFILE_URL_KWARG?
-        'provider': charge.broker, # XXX update templates
+        'provider': charge.provider, # XXX update templates
     }
     return context
 

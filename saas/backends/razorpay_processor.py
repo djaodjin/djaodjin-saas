@@ -65,9 +65,9 @@ class RazorpayBackend(object):
         self.priv_key = settings.PROCESSOR['PRIV_KEY']
         self.razor = razorpay.Client(auth=(self.pub_key, self.priv_key))
 
-    def charge_distribution(self, charge, refunded=0,
+    def charge_distribution(self, charge, broker, refunded=0,
                             orig_total_broker_fee_amount=0, unit='inr'):
-        #pylint:disable=no-member,unused-argument
+        #pylint:disable=no-member,unused-argument,too-many-arguments
         if self.bypass_api:
             processor_charge = {
                 'fee': 0, 'service_tax': 0, 'amount': charge.amount}
@@ -144,7 +144,7 @@ class RazorpayBackend(object):
         #pylint:disable=unused-argument
         LOGGER.warning("There are no RazorPay APIs to implement this method.")
 
-    def retrieve_bank(self, provider):
+    def retrieve_bank(self, provider, broker):
         #pylint:disable=unused-argument
         return self.get_deposit_context()
 
