@@ -359,6 +359,18 @@ class StripeBackend(object):
                 processor_fee_amount += stripe_fee.amount
                 processor_fee_unit = stripe_fee.currency
 
+        LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+            " -- before stripe_charge.application_fee --"\
+            " distribute: %d %s,"\
+            " broker fee: %d %s,"\
+            " processor fee: %d %s"\
+            " has_stripe_application_fee: %s",
+            charge.processor_key, refunded, unit,
+            distribute_amount, distribute_unit,
+            broker_fee_amount, broker_fee_unit,
+            processor_fee_amount, processor_fee_unit,
+            has_stripe_application_fee)
+
         # The broker fees actually do not show up
         # in `balance_transaction.fee_details` but in `application_fee`.
         # Same, refunds of broker fee do not appear in refunds
@@ -377,15 +389,25 @@ class StripeBackend(object):
                 broker_fee_amount = application_fee.amount
                 broker_fee_unit = application_fee.currency
                 # The amount to distribute is not reflected in
-                # `balance_transaction` but instead computed as such.
-                # XXX the amount to distribute is not
-                #     in `transfer.destination_payment`.
-                #     Have to investigate about cross-currency transfers.
-                distribute_amount = stripe_charge.amount - broker_fee_amount
+                # `balance_transaction` but instead extracted
+                # out of `stripe_charge['application_fee']`.
+                distribute_amount -= broker_fee_amount
 
         if not has_stripe_application_fee and orig_total_broker_fee_amount:
             broker_fee_amount = orig_total_broker_fee_amount
             distribute_amount -= broker_fee_amount
+
+        LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+            " -- before refunds --"\
+            " distribute: %d %s,"\
+            " broker fee: %d %s,"\
+            " processor fee: %d %s"\
+            " has_stripe_application_fee: %s",
+            charge.processor_key, refunded, unit,
+            distribute_amount, distribute_unit,
+            broker_fee_amount, broker_fee_unit,
+            processor_fee_amount, processor_fee_unit,
+            has_stripe_application_fee)
 
         # Refunds
         if application_fee:
