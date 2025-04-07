@@ -124,7 +124,8 @@ class OrganizationRedirectView(RedirectFormMixin, TemplateView):
             # default value
             organization = kwargs.get(self.slug_url_kwarg)
             if organization:
-                redirect_path = product_url(subscriber=organization)
+                redirect_path = product_url(
+                    subscriber=organization, request=request)
             else:
                 redirect_path = reverse('product_default_start')
             # customized redirect urls

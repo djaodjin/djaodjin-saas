@@ -342,12 +342,7 @@ class AbstractOrganization(models.Model):
         if not hasattr(self, '_is_broker'):
             # We do a string compare here because both ``Organization`` might
             # come from a different db.
-            organization_slug = self.slug
-            if settings.IS_BROKER_CALLABLE:
-                self._is_broker = import_string(settings.IS_BROKER_CALLABLE)(
-                    organization_slug)
-            else:
-                self._is_broker = (get_broker().slug == organization_slug)
+            self._is_broker = is_broker(self)
         return self._is_broker
 
     def get_active_subscriptions(self, at_time=None):
@@ -5037,10 +5032,14 @@ def get_broker():
     Returns the site-wide provider from a request.
     """
     LOGGER.debug("get_broker('%s')", settings.BROKER_CALLABLE)
-    try:
-        return import_string(settings.BROKER_CALLABLE)()
-    except ImportError:
-        pass
+    if isinstance(settings.BROKER_CALLABLE, six.string_types):
+        try:
+            settings.BROKER_CALLABLE = import_string(settings.BROKER_CALLABLE)
+        except (ImportError, ModuleNotFoundError):
+            pass
+    if callable(settings.BROKER_CALLABLE):
+        return settings.BROKER_CALLABLE()
+
     return get_organization_model().objects.get(slug=settings.BROKER_CALLABLE)
 
 
@@ -5056,8 +5055,17 @@ def is_broker(organization):
         organization_slug = organization.slug
     else:
         organization_slug = str(organization)
+
     if settings.IS_BROKER_CALLABLE:
-        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
+        if isinstance(settings.IS_BROKER_CALLABLE, six.string_types):
+            try:
+                settings.IS_BROKER_CALLABLE = import_string(
+                    settings.IS_BROKER_CALLABLE)
+            except (ImportError, ModuleNotFoundError):
+                pass
+        if callable(settings.IS_BROKER_CALLABLE):
+            return settings.IS_BROKER_CALLABLE(organization_slug)
+
     return get_broker().slug == organization_slug
 
 

@@ -93,7 +93,7 @@
       "is_staff": true,
       "is_superuser": true,
       "last_login": "2025-01-01T00:00:00+00:00",
-      "last_name": "Broker",
+      "last_name": "",
       "password": "pbkdf2_sha256$600000$RbRWfhoqwcQxMMlPXtC999$sqc/L+VuCXbya5v9VCNbalsGMJEVjv39X+0aVcBZ3sI=",
       "username": "donny"
     },

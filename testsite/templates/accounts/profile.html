@@ -1,7 +1,12 @@
 {% extends "accounts/base.html" %}
 
 {% block saas_content %}
+<div>
 <p>
 Profile page for {{user}}.
 </p>
+<div>
+{{form.as_p}}
+</div>
+</div>
 {% endblock %}

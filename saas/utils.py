@@ -400,24 +400,32 @@ def get_picture_storage(request, account=None, **kwargs):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel
     if settings.PICTURE_STORAGE_CALLABLE:
-        try:
-            return import_string(settings.PICTURE_STORAGE_CALLABLE)(
+        if isinstance(settings.PICTURE_STORAGE_CALLABLE, six.string_types):
+            try:
+                settings.PICTURE_STORAGE_CALLABLE = import_string(
+                    settings.PICTURE_STORAGE_CALLABLE)
+            except ImportError:
+                pass
+        if callable(settings.PICTURE_STORAGE_CALLABLE):
+            return settings.PICTURE_STORAGE_CALLABLE(
                 request, account=account, **kwargs)
-        except ImportError:
-            pass
+
     return default_storage
 
 
 def is_mail_provider_domain(domain):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel
-    if callable(settings.MAIL_PROVIDER_DOMAINS):
-        return settings.MAIL_PROVIDER_DOMAINS(domain)
-    if isinstance(settings.MAIL_PROVIDER_DOMAINS, six.string_types):
-        try:
-            return import_string(settings.MAIL_PROVIDER_DOMAINS)(domain)
-        except ImportError:
-            pass
+    if settings.MAIL_PROVIDER_DOMAINS:
+        if isinstance(settings.MAIL_PROVIDER_DOMAINS, six.string_types):
+            try:
+                settings.MAIL_PROVIDER_DOMAINS = import_string(
+                    settings.MAIL_PROVIDER_DOMAINS)
+            except ImportError:
+                pass
+        if callable(settings.MAIL_PROVIDER_DOMAINS):
+            return settings.MAIL_PROVIDER_DOMAINS(domain)
+
     return domain in settings.MAIL_PROVIDER_DOMAINS
 
 
@@ -427,13 +435,17 @@ def build_absolute_uri(location='/', request=None, site=None,
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-        try:
-            return import_string(
-                settings.BUILD_ABSOLUTE_URI_CALLABLE)(location=location,
-                    request=request, site=site,
-                    with_scheme=with_scheme, force_subdomain=force_subdomain)
-        except ImportError:
-            pass
+        if isinstance(settings.BUILD_ABSOLUTE_URI_CALLABLE, six.string_types):
+            try:
+                settings.BUILD_ABSOLUTE_URI_CALLABLE = import_string(
+                    settings.BUILD_ABSOLUTE_URI_CALLABLE)
+            except ImportError:
+                pass
+        if callable(settings.BUILD_ABSOLUTE_URI_CALLABLE):
+            return settings.BUILD_ABSOLUTE_URI_CALLABLE(
+                location=location, request=request, site=site,
+                with_scheme=with_scheme, force_subdomain=force_subdomain)
+
     if request:
         return request.build_absolute_uri(location)
     # If we don't have a `request` object, better to return a URL path
