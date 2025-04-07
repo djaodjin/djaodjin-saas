@@ -442,6 +442,8 @@ class BillingStatementDownloadView(SmartTransactionListMixin,
 class TransferDownloadView(SmartTransactionListMixin,
                            TransferQuerysetMixin, CSVDownloadView):
 
+    default_reconcile = False
+
     basename = 'transfers'
     CSV_CUSTOMER_CONTACTS_INCLUDED = settings.CSV_CUSTOMER_CONTACTS_INCLUDED
 

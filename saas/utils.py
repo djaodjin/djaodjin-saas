@@ -193,6 +193,14 @@ def generate_random_slug(length=40, prefix=None):
     return suffix
 
 
+def get_query_param(request, key, default_value=None):
+    try:
+        return request.query_params.get(key, default_value)
+    except AttributeError:
+        pass
+    return request.GET.get(key, default_value)
+
+
 def get_organization_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel

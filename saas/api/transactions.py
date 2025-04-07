@@ -42,7 +42,7 @@ from ..models import (get_broker, record_use_charge, sum_orig_amount,
 from ..backends import ProcessorError
 from ..pagination import (BalancePagination, StatementBalancePagination,
     TotalPagination)
-from ..utils import datetime_or_now
+from ..utils import datetime_or_now, get_query_param
 
 
 class IncludesSyncErrorPagination(PageNumberPagination):
@@ -136,7 +136,7 @@ class SmartTransactionListMixin(DateRangeContextMixin):
 class TransactionQuerysetMixin(object):
 
     def get_queryset(self):
-        self.selector = self.request.GET.get('selector', None)
+        self.selector = get_query_param(self.request, 'selector', None)
         if self.selector is not None:
             queryset = Transaction.objects.filter(
                 Q(dest_account__icontains=self.selector)
@@ -384,12 +384,15 @@ class ReceivablesListAPIView(TotalAnnotateMixin, SmartTransactionListMixin,
 
 class TransferQuerysetMixin(ProviderMixin):
 
+    default_reconcile = True
+
     def get_queryset(self):
         """
         Get the list of transactions for this organization.
         """
         try:
-            reconcile = not bool(self.request.GET.get('force', False))
+            reconcile = get_query_param(
+                self.request, 'force', self.default_reconcile)
             return self.organization.get_transfers(reconcile=reconcile)
         except ProcessorError as err:
             self.processor_error = _("The latest transfers might"\
