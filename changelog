@@ -8,6 +8,15 @@ Roadmap
 Released versions
 =================
 
+1.1.0
+
+  * reworks profile redirect view workflow in the presence of various roles
+  * matches `DELETE /api/cart` for cookies and db
+  * defines Stripe platform keys vs. Stripe broker keys explicitely
+  * passes request in context of `product_url`
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Mon,  7 Apr 2025 17:35:00 -0700
+
 1.0.2
 
   * enables translation of Transaction descr suffixes
