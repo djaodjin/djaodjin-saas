@@ -8,6 +8,12 @@ Roadmap
 Released versions
 =================
 
+1.1.1
+
+  * handles edge cases when DEFAULT_FROM_EMAIL is empty or None
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Mon,  9 Apr 2025 17:35:00 -0700
+
 1.1.0
 
   * reworks profile redirect view workflow in the presence of various roles

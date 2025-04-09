@@ -105,8 +105,9 @@ Tested with
 - **Python:** 3.12, **Django:** 5.1 (next)
 - **Python:** 3.7, **Django:** 3.2 (legacy)
 
-1.1.0
+1.1.1
 
+  * handles edge cases when DEFAULT_FROM_EMAIL is empty or None
   * reworks profile redirect view workflow in the presence of various roles
   * matches `DELETE /api/cart` for cookies and db
   * defines Stripe platform keys vs. Stripe broker keys explicitely
