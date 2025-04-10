@@ -223,13 +223,14 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         user = obj.attached_user()
         email = obj.email
         slug = '_archive_%d' % obj.id
+        domain = None
         if django_settings.DEFAULT_FROM_EMAIL:
-            look = re.match(r'.*(@\S+)', django_settings.DEFAULT_FROM_EMAIL)
+            look = re.match(r'.*@(\S+)', django_settings.DEFAULT_FROM_EMAIL)
             if look:
-                email = '%s+%d%s' % (obj.slug, obj.id, look.group(1))
-            else:
-                LOGGER.warning("DEFAULT_FROM_EMAIL is empty."\
-                    " Profile email will not be anonymized.")
+                domain = look.group(1)
+        if not domain:
+            domain = "anonimized.local"
+        email = "%s@%s" % (slug, domain)
         with transaction.atomic():
             if user:
                 user.is_active = False
