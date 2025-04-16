@@ -428,10 +428,10 @@ def create_charge_for_balance_organization(organization,
                     if not organization.processor_card_key:
                         raise CardError(_("No payment method attached"),
                             'card_absent')
-                    charges = Charge.objects.create_charges_by_processor(
-                        organization, invoiceables, created_at=until)
-                    nb_charges += len(charges)
                     if not dry_run:
+                        charges = Charge.objects.create_charges_by_processor(
+                            organization, invoiceables, created_at=until)
+                        nb_charges += len(charges)
                         for charge in charges:
                             charge.execute()
                         # XXX It might be too early, and we don't know yet
@@ -439,9 +439,9 @@ def create_charge_for_balance_organization(organization,
                         organization.billing_start += relativedelta(months=1)
                         organization.nb_renewal_attempts = 0
                         organization.save()
-                    LOGGER.info('CHARGE %d %s to %s',
-                        invoiceable_amount, invoiceable_unit,
-                        organization)
+                    LOGGER.info('%sCHARGE %d %s to %s',
+                        "(dry-run) " if dry_run else "",
+                        invoiceable_amount, invoiceable_unit, organization)
                 except CardError as err:
                     # There was a problem with the Card (i.e. expired,
                     # underfunded, etc.)

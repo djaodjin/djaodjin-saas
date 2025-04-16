@@ -1716,8 +1716,10 @@ class ChargeManager(models.Manager):
             pass
         return None
 
+
     def in_progress_for_customer(self, organization):
-        return self.by_customer(organization).filter(state=Charge.CREATED)
+        return self.by_customer(organization).filter(
+            state=Charge.CREATED).exclude(processor_key__isnull=True)
 
 
     def settle_customer_payments(self, organization):
