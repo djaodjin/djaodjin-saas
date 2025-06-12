@@ -74,7 +74,9 @@ var messagesMixin = {
                                 } else if( data[key].hasOwnProperty('detail') ) {
                                     message = data[key].detail;
                                 }
-                                messages.push(key + ": " + message);
+                                if( message ) {
+                                    messages.push(key + ": " + message);
+                                }
                                 var inputField = jQuery("[name=\"" + key + "\"]");
                                 var parent = inputField.parents('.form-group');
                                 inputField.addClass("is-invalid");

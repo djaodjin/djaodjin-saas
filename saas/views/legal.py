@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,12 +30,14 @@ from django import forms
 from django.forms.widgets import CheckboxInput
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, DetailView, ListView
 
+from .. import settings
 from ..compat import reverse
 from ..mixins import ProviderMixin, read_agreement_file
-from ..models import Agreement, Signature
-from ..utils import validate_redirect_url
+from ..models import Agreement, Signature, get_broker
+from ..utils import build_absolute_uri, validate_redirect_url
 
 
 class AgreementDetailView(DetailView):
@@ -61,8 +63,19 @@ djaodjin-saas/tree/master/saas/templates/saas/legal/agreement.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(AgreementDetailView, self).get_context_data(**kwargs)
-        context.update({
-                'page': read_agreement_file(context['agreement'].slug)})
+        agreement_slug = context['agreement'].slug
+        broker = get_broker()
+        page_context = {
+            'organization': broker,
+            'site_url': build_absolute_uri(request=self.request),
+        }
+        privacy_settings = self.request.session.get(agreement_slug, {})
+        for setting_key in settings.PRIVACY_COOKIES_ENABLED:
+            setting_value = privacy_settings.get(setting_key, 1)
+            page_context.update({setting_key: setting_value})
+        page = read_agreement_file(agreement_slug,
+            context=page_context, request=self.request)
+        context.update({'page': page})
         return context
 
 

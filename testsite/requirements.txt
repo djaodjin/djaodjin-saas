@@ -1,9 +1,9 @@
 # Unified requirements file supporting py37-django3.2, py39-django4.2,
-# py312-django5.1.
+# py312-django5.2.
 
 Django==3.2.25 ; python_version < "3.9"
-Django==4.2.21 ; python_version >= "3.9" and python_version < "3.12"
-Django==5.1.9  ; python_version >= "3.12"
+Django==4.2.22 ; python_version >= "3.9" and python_version < "3.12"
+Django==5.2.2  ; python_version >= "3.12"
 djangorestframework==3.14.0 ; python_version < "3.9"
                                       # 3.12.4 not compatible with Django4.2
 djangorestframework==3.15.2 ; python_version >= "3.9" # Breaking
@@ -12,8 +12,7 @@ djangorestframework==3.15.2 ; python_version >= "3.9" # Breaking
 django-countries==7.2.1
 django-localflavor==3.1
 django-phonenumber-field==7.1.0
-# We need Python Markdown for django.contrib.markup. markdown2 is not enough.
-Markdown==3.4.1
+Markdown==3.8               # To htmlize legal agreements
 phonenumbers==8.13.7
 python-dateutil==2.8.2
 PyJWT==2.8.0                ; python_version < "3.9"

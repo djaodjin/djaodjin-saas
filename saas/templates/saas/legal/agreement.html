@@ -3,3 +3,8 @@
 {% block content %}
 {{page|safe}}{# OK to use a safe here. We load a committed source .md file #}
 {% endblock %}
+
+{% block bodyscripts %}
+<script type="text/javascript" src="/static/js/djaodjin-resources.js"></script>
+<script type="text/javascript" src="/static/js/djaodjin-privacy.js"></script>
+{% endblock %}

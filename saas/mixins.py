@@ -1482,5 +1482,6 @@ def read_agreement_file(slug, context=None, request=None):
         }
     # We use context and not context=context in the following statement
     # such that the code is compatible with Django 1.7 and Django 1.8
-    return markdown.markdown(
-        render_to_string('saas/agreements/%s.md' % slug, context))
+    page = render_to_string('saas/agreements/%s.md' % slug, context)
+    md_content = markdown.markdown(page, extensions=['attr_list', 'tables'])
+    return md_content

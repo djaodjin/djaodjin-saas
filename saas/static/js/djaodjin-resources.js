@@ -180,6 +180,233 @@ function getUrlParameter(name) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 };
 
+
+const http = {
+
+    apiBase: (typeof DJAOAPP_API_BASE_URL !== 'undefined' ?
+        DJAOAPP_API_BASE_URL : '/api'),
+
+    csrfToken: null,
+
+    _isArray: function (obj) {
+        return obj instanceof Object && obj.constructor === Array;
+    },
+
+    _isFunction: function (func){
+        // https://stackoverflow.com/a/7356528/1491475
+        return func && {}.toString.call(func) === '[object Function]';
+    },
+
+    _isObject: function (obj) {
+        // https://stackoverflow.com/a/46663081/1491475
+        return obj instanceof Object && obj.constructor === Object;
+    },
+
+    _getAuthToken: function() {
+        return sessionStorage.getItem('authToken');
+    },
+
+    _csrfSafeMethod: function(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    },
+
+    _getCSRFToken: function() {
+        var self = this;
+        if( !self.csrfToken ) {
+            // If the csrfToken is not set, look for a CSRF token in the meta
+            // tags, i.e. `<meta name="csrf-token" content="{{csrf_token}}">`.
+            var metas = document.getElementsByTagName('meta');
+            for( var i = 0; i < metas.length; i++) {
+                if (metas[i].getAttribute("name") == "csrf-token") {
+                    self.csrfToken = metas[i].getAttribute("content");
+                    break;
+                }
+            }
+        }
+        return self.csrfToken;
+    },
+
+    /** This method generates a GET HTTP request to `url` with a query
+        string built of a `queryParams` dictionnary.
+
+        It supports the following prototypes:
+
+        - get(url, successCallback)
+        - get(url, queryParams, successCallback)
+        - get(url, queryParams, successCallback, failureCallback)
+        - get(url, successCallback, failureCallback)
+
+        `queryParams` when it is specified is a dictionnary
+        of (key, value) pairs that is converted to an HTTP
+        query string.
+
+        `successCallback` and `failureCallback` must be Javascript
+        functions (i.e. instance of type `Function`).
+    */
+    get: function(url, arg, arg2, arg3) {
+        var self = this;
+        var queryParams, successCallback;
+        var failureCallback = self.showErrorMessages;
+        if( self._isFunction(arg) ) {
+            // We are parsing reqGet(url, successCallback)
+            // or reqGet(url, successCallback, errorCallback).
+            successCallback = arg;
+            if( self._isFunction(arg2) ) {
+                // We are parsing reqGet(url, successCallback, errorCallback)
+                failureCallback = arg2;
+            } else if( arg2 !== undefined ) {
+                throw 'arg2 should be a failureCallback function';
+            }
+        } else if( self._isObject(arg) ) {
+            // We are parsing
+            // reqGet(url, queryParams, successCallback)
+            // or reqGet(url, queryParams, successCallback, errorCallback).
+            queryParams = arg;
+            if( self._isFunction(arg2) ) {
+                // We are parsing reqGet(url, queryParams, successCallback)
+                // or reqGet(url, queryParams, successCallback, errorCallback).
+                successCallback = arg2;
+                if( self._isFunction(arg3) ) {
+                    // We are parsing reqGet(url, queryParams, successCallback, errorCallback)
+                    failureCallback = arg3;
+                } else if( arg3 !== undefined ){
+                    throw 'arg3 should be a failureCallback function';
+                }
+            } else {
+                throw 'arg2 should be a successCallback function';
+            }
+        } else {
+            throw 'arg should be a queryParams Object or a successCallback function';
+        }
+        if(typeof url != 'string') throw 'url should be a string';
+        if( !url ) {
+            self.showErrorMessages(
+                "Attempting GET request for component '" +
+                    self.$options.name + "' but no url was set.");
+        }
+
+        let headers = {
+            "Content-Type": "application/json",
+        };
+        const authToken = self._getAuthToken();
+        if( authToken ) {
+            headers['Authorization'] = "Bearer " + authToken;
+        }
+
+        const resp = fetch(self.apiBase + ul, {
+            method: "GET",
+            headers: headers,
+            data: queryParams,
+            credentials: 'include',
+            traditional: true,
+            cache: false,       // force requested pages not to be cached
+        }).then(function(resp) {
+
+            if( !resp.ok ) {
+                failureCallback(resp)
+            }
+
+            const result = resp.json();
+            if( successCallback ) {
+                successCallback(result);
+            }
+        });
+    },
+
+
+    /** This method generates a POST HTTP request to `url` with
+        contentType 'application/json'.
+
+        It supports the following prototypes:
+
+        - post(url, data)
+        - post(url, data, successCallback)
+        - post(url, data, successCallback, failureCallback)
+        - post(url, successCallback)
+        - post(url, successCallback, failureCallback)
+
+        `data` when it is specified is a dictionnary of (key, value) pairs
+        that is passed as a JSON encoded body.
+
+        `successCallback` and `failureCallback` must be Javascript
+        functions (i.e. instance of type `Function`).
+    */
+    post: function(url, arg, arg2, arg3) {
+        const self = this;
+
+        var data, successCallback;
+        var failureCallback = showErrorMessages;
+        if( self._isFunction(arg) ) {
+            // We are parsing reqPost(url, successCallback)
+            // or reqPost(url, successCallback, errorCallback).
+            successCallback = arg;
+            if( self._isFunction(arg2) ) {
+                // We are parsing reqPost(url, successCallback, errorCallback)
+                failureCallback = arg2;
+            } else if( arg2 !== undefined ) {
+                throw 'arg2 should be a failureCallback function';
+            }
+        } else if( self._isObject(arg) || self._isArray(arg) ) {
+            // We are parsing reqPost(url, data)
+            // or reqPost(url, data, successCallback)
+            // or reqPost(url, data, successCallback, errorCallback).
+            data = arg;
+            if( self._isFunction(arg2) ) {
+                // We are parsing reqPost(url, data, successCallback)
+                // or reqPost(url, data, successCallback, errorCallback).
+                successCallback = arg2;
+                if( self._isFunction(arg3) ) {
+                    // We are parsing reqPost(url, data, successCallback, errorCallback)
+                    failureCallback = arg3;
+                } else if( arg3 !== undefined ) {
+                    throw 'arg3 should be a failureCallback function';
+                }
+            } else if( arg2 !== undefined ) {
+                throw 'arg2 should be a successCallback function';
+            }
+        } else if( arg !== undefined ) {
+            throw 'arg should be a data Object or a successCallback function';
+        }
+        if(typeof url != 'string') throw 'url should be a string';
+        if( !url ) {
+            self.showErrorMessages(
+                "Attempting POST request for component '" +
+                    self.$options.name + "' but no url was set.");
+        }
+
+        let headers = {
+            "Content-Type": "application/json",
+        };
+        const authToken = self._getAuthToken();
+        if( authToken ) {
+            headers['Authorization'] = "Bearer " + authToken;
+        } else {
+            const csrfToken = self._getCSRFToken();
+            if( csrfToken ) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+        }
+
+        fetch(self.apiBase + url, {
+            method: "POST",
+            credentials: 'include',
+            headers: headers,
+            body: JSON.stringify(data),
+        }).then(function(resp) {
+
+            if( !resp.ok ) {
+                failureCallback(resp)
+            }
+
+            const result = resp.json();
+            if( successCallback ) {
+                successCallback(result);
+            }
+        });
+    }
+}
+
     // attach properties to the exports object to define
     // the exported module properties.
     exports.clearMessages = clearMessages;
@@ -187,4 +414,5 @@ function getUrlParameter(name) {
     exports.showErrorMessages = showErrorMessages;
     exports.getMetaCSRFToken = getMetaCSRFToken;
     exports.getUrlParameter = getUrlParameter;
+    exports.http = http;
 }));

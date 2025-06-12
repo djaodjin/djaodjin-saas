@@ -8,6 +8,14 @@
     "model": "saas.agreement", "pk": 2
 },
 {
+    "fields": {
+      "slug": "privacy",
+      "title": "Privacy Policy",
+      "updated_at": "2025-01-01T00:00:00+00:00"
+    },
+    "model": "saas.agreement", "pk": 3
+},
+{
   "fields": {
     "title": "Basic",
     "description": "Basic Plan",

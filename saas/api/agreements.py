@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@ from rest_framework.response import Response
 
 from .serializers import (AgreementSerializer, AgreementCreateSerializer,
     AgreementDetailSerializer, AgreementUpdateSerializer)
+from .. import settings
 from ..docs import extend_schema, OpenApiResponse
 from ..filters import OrderingFilter, SearchFilter
 from ..models import Agreement
@@ -212,6 +213,46 @@ class AgreementDetailAPIView(generics.RetrieveAPIView):
     queryset = Agreement.objects.all()
     lookup_field = 'slug'
     lookup_url_kwarg = 'agreement'
+
+    def post(self, request, *args, **kwargs):
+        """
+        Update privacy settings
+
+        Enable and disable a specific set of optional cookies
+
+        **Tags**: legal, visitor
+
+        **Examples**
+
+        .. code-block:: http
+
+             POST /api/legal/privacy HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "analytics": false
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "slug": "terms-of-use",
+                "title": "Terms of Use",
+                "updated_at": "2023-08-16T00:00:00Z",
+                "text": "..."
+            }
+        """
+        agreement_slug = kwargs.get(self.lookup_url_kwarg)
+        privacy_settings = self.request.session.get(agreement_slug, {})
+        for setting_key in settings.PRIVACY_COOKIES_ENABLED:
+            setting_value = request.data.get(setting_key)
+            if setting_value is not None:
+                privacy_settings.update({setting_key: setting_value})
+        self.request.session[agreement_slug] = privacy_settings
+        return self.get(request, *args, **kwargs)
 
 
 class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
