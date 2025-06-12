@@ -46,10 +46,11 @@ from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (OrganizationMixin, OrganizationCreateMixin,
     OrganizationSmartListMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
-from ..models import _clean_field, get_broker
+from ..models import _clean_field, get_broker, CartItem
 from ..pagination import RoleListPagination
-from ..utils import (full_name_natural_split, get_organization_model,
-    get_role_model, get_role_serializer, generate_random_slug)
+from ..utils import (full_name_natural_split, get_force_personal_profile,
+    get_organization_model, get_role_model, get_role_serializer,
+    generate_random_slug)
 from .organizations import OrganizationDecorateMixin
 from .serializers import (AccessibleSerializer, QueryParamForceSerializer,
     OrganizationCreateSerializer,
@@ -319,6 +320,12 @@ class AccessibleByQuerysetMixin(UserMixin):
 
     role_model = get_role_model()
     include_personal_profile_param = 'include_personal_profile'
+    force_personal_profile = None
+
+    def get_force_personal_profile(self):
+        if self.force_personal_profile is None:
+            return get_force_personal_profile(self.request)
+        return bool(self.force_personal_profile)
 
     def get_queryset(self):
         query_serializer = QueryParamPersonalProfSerializer(
@@ -329,8 +336,11 @@ class AccessibleByQuerysetMixin(UserMixin):
 
         # Creates implicit grants, then accepts grants that are not
         # double-optins.
+        force_personal = (self.get_force_personal_profile() or
+            CartItem.objects.get_personal_cart(self.user).exists())
+
         queryset = self.role_model.objects.accessible_by(
-            self.user, force_personal=include_personal_profile)
+            self.user, force_personal=force_personal)
         if not include_personal_profile:
             queryset = queryset.exclude(organization__slug=self.user)
         # `RoleSerializer` will expand `user` and `role_description`.
