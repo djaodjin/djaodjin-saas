@@ -34,6 +34,7 @@ from django.utils.safestring import mark_safe
 from django.utils import formats
 from django.utils.dateparse import parse_date, parse_datetime
 
+from .. import settings
 from ..compat import gettext_lazy as _, is_authenticated, six, timezone_or_utc
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money, as_percentage
@@ -258,3 +259,18 @@ def humanize_short_date(dtime_at):
         return formats.date_format(
             as_datetime, format=formats.get_format("SHORT_DATE_FORMAT"))
     return as_datetime
+
+
+@register.filter()
+def privacy_settings(request):
+    # Note: "Starting in Firefox version 135, the “Do Not Track” setting
+    # has been removed."
+    # https://support.mozilla.org/en-US/kb/how-do-i-turn-do-not-track-feature
+    do_not_track = bool(request.META.get('HTTP_DNT') == '1')
+    gpc = bool(request.META.get('HTTP_SEC_GPC') == '1')
+    if do_not_track or gpc:
+        privacy_settings = {
+            key:False for key in settings.PRIVACY_COOKIES_ENABLED}
+    else:
+        privacy_settings = request.session.get('privacy', {}) if request else {}
+    return privacy_settings

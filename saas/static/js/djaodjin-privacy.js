@@ -20,12 +20,43 @@
     }
 }(typeof self !== 'undefined' ? self : this, function (exports, http) {
 
+const COOKIE_BANNER_ID = "cookie-banner";
 
-function updatePrivacySettings(elemId, value) {
+function enableTrackingScripts(event) {
+    var banner = document.getElementById(COOKIE_BANNER_ID);
+    banner.style.display = "none";
     let data = {};
-    data[elemId] = value;
+    for( const key in PRIVACY_COOKIES_ENABLED ) {
+        data[key] = true;
+    }
+    http.post('/legal/privacy', data);
+    for( const key in PRIVACY_COOKIES_ENABLED ) {
+        if( PRIVACY_COOKIES_ENABLED[key] ) {
+            PRIVACY_COOKIES_ENABLED[key]();
+        }
+    }
+}
+
+function disableTrackingScripts(event) {
+    var banner = document.getElementById(COOKIE_BANNER_ID);
+    banner.style.display = "none";
+    let data = {};
+    for( const key in PRIVACY_COOKIES_ENABLED ) {
+        data[key] = false;
+    }
     http.post('/legal/privacy', data);
 }
+
+
+function updatePrivacySettings(key, value) {
+    let data = {};
+    data[key] = value;
+    http.post('/legal/privacy', data);
+    if( value && PRIVACY_COOKIES_ENABLED[elemId] ) {
+        PRIVACY_COOKIES_ENABLED[key]();
+    }
+}
+
 
     // attach properties to the exports object to define
     // the exported module properties.
@@ -42,6 +73,20 @@ function updatePrivacySettings(elemId, value) {
                 });
             }
         });
+
+        // toggle cookie banner off
+        try {
+            var btnDisable = document.getElementById(
+                COOKIE_BANNER_ID).getElementsByTagName('button')[0];
+            btnDisable.addEventListener("click", disableTrackingScripts);
+        } catch( TypeError ) {
+        }
+        try {
+            var btnEnable = document.getElementById(
+                COOKIE_BANNER_ID).getElementsByTagName('button')[1];
+            btnEnable.addEventListener("click", enableTrackingScripts);
+        } catch( TypeError ) {
+        }
     }
 
     if (document.readyState !== 'loading') {
