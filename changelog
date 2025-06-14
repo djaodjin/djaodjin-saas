@@ -8,6 +8,15 @@ Roadmap
 Released versions
 =================
 
+1.1.2
+
+  * adds beta of privacy settings
+  * forces personal profile in user roles API based on same rules as redirect
+  * fixes charge created in dry-run
+  * anonimizes email properly even when DEFAULT_FROM_EMAIL is empty
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Sat, 14 Jun 2025 11:45:00 -0700
+
 1.1.1
 
   * handles edge cases when DEFAULT_FROM_EMAIL is empty or None

@@ -102,15 +102,14 @@ Release Notes
 Tested with
 
 - **Python:** 3.10, **Django:** 4.2 ([LTS](https://www.djangoproject.com/download/))
-- **Python:** 3.12, **Django:** 5.1 (next)
+- **Python:** 3.12, **Django:** 5.2 (next)
 - **Python:** 3.7, **Django:** 3.2 (legacy)
 
-1.1.1
+1.1.2
 
-  * handles edge cases when DEFAULT_FROM_EMAIL is empty or None
-  * reworks profile redirect view workflow in the presence of various roles
-  * matches `DELETE /api/cart` for cookies and db
-  * defines Stripe platform keys vs. Stripe broker keys explicitely
-  * passes request in context of `product_url`
+  * adds beta of privacy settings
+  * forces personal profile in user roles API based on same rules as redirect
+  * fixes charge created in dry-run
+  * anonimizes email properly even when DEFAULT_FROM_EMAIL is empty
 
 [previous release notes](changelog)
