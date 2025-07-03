@@ -8,6 +8,12 @@ Roadmap
 Released versions
 =================
 
+1.1.3
+
+  * fixes js module such that it works with webpack
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 2 Jul 2025 22:15:00 -0700
+
 1.1.2
 
   * adds beta of privacy settings

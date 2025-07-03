@@ -2,23 +2,23 @@
    Functionality related to privacy policies.
  */
 
-/* global getMetaCSRFToken showErrorMessages */
+/* uses exports from djaodjin-resources.js: http */
 
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['exports', 'http'], factory);
+        define(['exports'], factory);
     } else if (typeof exports === 'object' && typeof exports.nodeName !== 'string') {
         // CommonJS
-        factory(exports, require('http'));
+        factory(exports);
     } else {
         // Browser true globals added to `window`.
-        factory(root, root.http);
+        factory(root);
         // If we want to put the exports in a namespace, use the following line
         // instead.
-        // factory((root.djResources = {}), root.http);
+        // factory((root.djResources = {}));
     }
-}(typeof self !== 'undefined' ? self : this, function (exports, http) {
+}(typeof self !== 'undefined' ? self : this, function (exports) {
 
 const COOKIE_BANNER_ID = "cookie-banner";
 
