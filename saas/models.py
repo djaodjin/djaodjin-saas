@@ -166,6 +166,8 @@ class OrganizationManager(models.Manager):
             is_active=True, pk__in=roles.values('organization')).distinct()
 
     def find_candidates_by_domain(self, domain):
+        if domain and domain[0] != '@':
+            domain = '@' + domain
         return self.filter(is_active=True, email__endswith=domain)
 
     def find_candidates(self, full_name, user=None):

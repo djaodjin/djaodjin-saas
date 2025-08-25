@@ -1181,5 +1181,69 @@
       "role_description": 1,
       "request_key": "2470000000ed0123456789012345678901234572",
       "organization": 247, "user": 245}, "model": "saas.Role", "pk": 247
+},
+
+{
+    "fields": {
+      "slug": "org248",
+      "full_name": "Org 248",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "email": "org248@endswith.localdomain",
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 248
+},
+{
+    "fields": {
+      "date_joined": "2025-01-01T00:00:00-09:00",
+      "last_login": "2025-01-01T00:00:00-09:00",
+      "email": "xia+248@strictendswith.localdomain",
+      "first_name": "Xia248",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_name": "RolesCard29",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "xia248"}, "model": "auth.User", "pk": 248
+},
+{
+    "fields": {
+      "last_signed": "2025-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 248
+    },
+    "model": "saas.signature", "pk": 248
+},
+
+{
+    "fields": {
+      "slug": "org249",
+      "full_name": "Org 249",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "email": "org249@strictsuffix.localdomain",
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 249
+},
+{
+    "fields": {
+      "date_joined": "2025-01-01T00:00:00-09:00",
+      "last_login": "2025-01-01T00:00:00-09:00",
+      "email": "xia+249@suffix.localdomain",
+      "first_name": "Xia249",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_name": "RolesCard30",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "xia249"}, "model": "auth.User", "pk": 249
+},
+{
+    "fields": {
+      "last_signed": "2025-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 249
+    },
+    "model": "saas.signature", "pk": 249
 }
 ]
