@@ -213,6 +213,9 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         except IntegrityError as err:
             handle_uniq_error(err)
 
+    def delete_records(self, user):
+        pass
+
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Archive the organization. We don't want to loose the subscriptions
@@ -221,8 +224,6 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         at_time = datetime_or_now()
         obj = self.get_object()
         user = obj.attached_user()
-        email = obj.email
-        slug = '_archive_%d' % obj.id
         domain = None
         if django_settings.DEFAULT_FROM_EMAIL:
             look = re.match(r'.*@(\S+)', django_settings.DEFAULT_FROM_EMAIL)
@@ -230,12 +231,14 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
                 domain = look.group(1)
         if not domain:
             domain = "anonimized.local"
-        email = "%s@%s" % (slug, domain)
+
         with transaction.atomic():
             if user:
+                self.delete_records(user)
+                user.username = '_archive_%d' % user.pk
+                user.email = "%s@%s" % (user.username, domain)
+                user.password = '!'
                 user.is_active = False
-                user.username = slug
-                user.email = email
                 user.save()
             # Removes all roles on the organization such that the organization
             # is not picked up inadvertently.
@@ -250,14 +253,16 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
             # If we are deleting a provider, freeze all its plans as well
             # subscriptions to these plans.
-            Subscription.objects.filter(plan__organization=obj,
-                ends_at__gt=at_time).update(ends_at=at_time)
-            Subscription.objects.filter(plan__organization=obj,
-                auto_renew=True).update(auto_renew=False)
+            Subscription.objects.filter(
+                plan__organization=obj, ends_at__gt=at_time).update(
+                ends_at=at_time)
+            Subscription.objects.filter(
+                plan__organization=obj, auto_renew=True).update(
+                auto_renew=False)
             obj.plans.update(is_active=False)
 
-            obj.slug = slug
-            obj.email = email
+            obj.slug = '_archive_%d' % obj.pk
+            obj.email = "%s@%s" % (obj.slug, domain)
             obj.is_active = False
             obj.save()
             if request.user == user:
