@@ -1267,7 +1267,7 @@
       "is_superuser": false,
       "last_name": "",
       "password": "!",
-      "username": "_archive250"}, "model": "auth.User", "pk": 250
+      "username": "_archive_250"}, "model": "auth.User", "pk": 250
 },
 {
     "fields": {
