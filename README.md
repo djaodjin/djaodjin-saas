@@ -105,11 +105,9 @@ Tested with
 - **Python:** 3.12, **Django:** 5.2 (next)
 - **Python:** 3.7, **Django:** 3.2 (legacy)
 
-1.1.3
+1.1.4
 
-  * adds beta of privacy settings
-  * forces personal profile in user roles API based on same rules as redirect
-  * fixes charge created in dry-run
-  * anonimizes email properly even when DEFAULT_FROM_EMAIL is empty
+  * fixes deleting personal profiles
+  * fixes implicit role when e-mail domain is a suffix of another domain
 
 [previous release notes](changelog)
