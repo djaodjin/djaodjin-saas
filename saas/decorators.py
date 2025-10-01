@@ -59,6 +59,23 @@ NORMAL = 1
 STRONG = 2
 
 
+def _broker_models(brokers=None):
+    organization_model = get_organization_model()
+    candidates = [get_broker()]
+    if brokers:
+        for extra_broker in brokers:
+            if extra_broker and not isinstance(
+                    extra_broker, organization_model):
+                try:
+                    extra_broker = organization_model.objects.get(
+                        slug=str(extra_broker))
+                except organization_model.DoesNotExist:
+                    extra_broker = None
+            if extra_broker:
+                candidates += [extra_broker]
+    return candidates
+
+
 def _valid_role(user, candidates, role):
     """
     Returns the subset of a set of ``Organization`` *candidates*
@@ -216,9 +233,10 @@ def _valid_subscriptions(request, organization=None, plan=None):
         if not isinstance(organization, organization_model):
             organization = get_object_or_404(organization_model,
                 slug=organization)
-        candidates = [organization]
-    else:
-        candidates = organization_model.objects.accessible_by(request.user)
+    candidates = organization_model.objects.accessible_by(request.user)
+    if organization:
+        candidates = candidates.filter(pk=organization.pk)
+
     subscriptions = Subscription.objects.valid_for(organization__in=candidates)
     if plan:
         if isinstance(plan, (list, tuple)):
@@ -254,7 +272,7 @@ def _valid_subscriptions(request, organization=None, plan=None):
     return accessible_providers, subscriptions
 
 
-def fail_subscription(request, profile=None, plan=None):
+def fail_subscription(request, profile=None, plan=None, brokers=None):
     """
     Subscribed or was subscribed to %(saas.Plan)s
 
@@ -264,17 +282,21 @@ def fail_subscription(request, profile=None, plan=None):
     the ``profile`` is subscribed or was subscribed to.
     Users with valid access to the broker will always pass the check.
     """
-    if _has_valid_access(request, [get_broker()]):
+    #pylint:disable=too-many-return-statements
+    if _has_valid_access(request, _broker_models(brokers)):
         # Bypass if a manager for the broker.
         return False
     accessible_providers, subscriptions = _valid_subscriptions(
         request, organization=profile, plan=plan)
-
     if accessible_providers.exists():
         # The request.user has a role on the plan provider.
         return False
 
     if not subscriptions.exists():
+        accessible_providers, subscriptions = _valid_subscriptions(
+            request, plan=plan)
+        if subscriptions.exists():
+            return True
         if plan and not isinstance(plan, (list, tuple)):
             if not isinstance(plan, Plan):
                 plan = get_object_or_404(Plan, slug=plan)
@@ -288,7 +310,7 @@ def fail_subscription(request, profile=None, plan=None):
     return False
 
 
-def fail_paid_subscription(request, profile=None, plan=None):
+def fail_paid_subscription(request, profile=None, plan=None, brokers=None):
     """
     Subscribed to %(saas.Plan)s
 
@@ -297,7 +319,7 @@ def fail_paid_subscription(request, profile=None, plan=None):
     will also pass the check.
     """
     #pylint:disable=too-many-return-statements
-    if _has_valid_access(request, [get_broker()]):
+    if _has_valid_access(request, _broker_models(brokers)):
         # Bypass if a manager for the broker.
         return False
 
@@ -327,11 +349,12 @@ def fail_paid_subscription(request, profile=None, plan=None):
     if active_subscription.is_locked:
         return reverse('saas_subscription_balance', args=(
             active_subscription.organization, active_subscription.plan))
+
     return False
 
 
 def _fail_direct(request, organization=None, roledescription=None,
-                 strength=NORMAL):
+                 strength=NORMAL, brokers=None):
     organization_model = get_organization_model()
     if organization and not isinstance(organization, organization_model):
         try:
@@ -339,15 +362,14 @@ def _fail_direct(request, organization=None, roledescription=None,
                 slug=str(organization))
         except organization_model.DoesNotExist:
             organization = None
+    candidates = _broker_models(brokers)
     if organization:
-        candidates = [get_broker(), organization]
-    else:
-        candidates = [get_broker()]
+        candidates += [organization]
     return not(_has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription))
 
 
-def fail_direct(request, profile=None, roledescription=None):
+def fail_direct(request, profile=None, roledescription=None, brokers=None):
     """
     Direct %(saas.RoleDescription)s for :profile restricted to GET
 
@@ -363,7 +385,7 @@ def fail_direct(request, profile=None, roledescription=None):
     for the broker will always have access to the URL end-point.
     """
     return _fail_direct(request, organization=profile,
-        strength=NORMAL, roledescription=roledescription)
+        strength=NORMAL, roledescription=roledescription, brokers=brokers)
 
 
 def fail_direct_weak(request, profile=None, roledescription=None):
@@ -395,7 +417,8 @@ def fail_direct_strong(request, profile=None):
     return _fail_direct(request, organization=profile, strength=STRONG)
 
 
-def fail_provider_readable(request, profile=None, roledescription=None):
+def fail_provider_readable(request, profile=None, roledescription=None,
+                           brokers=None):
     #pylint:disable=line-too-long
     """
     Direct %(saas.RoleDescription)s for :profile or provider restricted to GET
@@ -421,15 +444,15 @@ def fail_provider_readable(request, profile=None, roledescription=None):
         # Not a direct manager/`roledescription`
         # and not a read-only method? Don't even bother.
         return True
-    candidates = []
+    candidates = _broker_models(brokers)
     if profile:
-        candidates = list(organization_model.objects.providers_to(profile))
+        candidates += list(organization_model.objects.providers_to(profile))
     return not _has_valid_access(request, candidates,
         strength=NORMAL, roledescription=roledescription)
 
 
 def _fail_provider(request, organization=None,
-                   strength=NORMAL, roledescription=None):
+                   strength=NORMAL, roledescription=None, brokers=None):
     organization_model = get_organization_model()
     if organization and not isinstance(organization, organization_model):
         try:
@@ -437,7 +460,7 @@ def _fail_provider(request, organization=None,
                 slug=str(organization))
         except organization_model.DoesNotExist:
             organization = None
-    candidates = [get_broker()]
+    candidates = _broker_models(brokers)
     if organization:
         candidates += ([organization]
                 + list(organization_model.objects.providers_to(organization)))
@@ -445,7 +468,7 @@ def _fail_provider(request, organization=None,
         strength=strength, roledescription=roledescription)
 
 
-def fail_provider(request, profile=None, roledescription=None):
+def fail_provider(request, profile=None, roledescription=None, brokers=None):
     #pylint:disable=line-too-long
     """
     Provider or Direct %(saas.RoleDescription)s for :profile restricted to GET
@@ -460,7 +483,7 @@ def fail_provider(request, profile=None, roledescription=None):
     to GET requests.
     """
     return _fail_provider(request, organization=profile,
-        strength=NORMAL, roledescription=roledescription)
+        strength=NORMAL, roledescription=roledescription, brokers=brokers)
 
 
 def fail_provider_weak(request, profile=None, roledescription=None):
@@ -488,7 +511,7 @@ def fail_provider_strong(request, profile=None):
 
 
 def _fail_provider_only(request, organization=None, strength=NORMAL,
-                        roledescription=None):
+                        roledescription=None, brokers=None):
     organization_model = get_organization_model()
     if organization and not isinstance(organization, organization_model):
         try:
@@ -496,7 +519,7 @@ def _fail_provider_only(request, organization=None, strength=NORMAL,
                 slug=str(organization))
         except organization_model.DoesNotExist:
             organization = None
-    candidates = [get_broker()]
+    candidates = _broker_models(brokers)
     if organization:
         candidates += list(
             organization_model.objects.providers_to(organization))
@@ -504,7 +527,8 @@ def _fail_provider_only(request, organization=None, strength=NORMAL,
         strength=strength, roledescription=roledescription)
 
 
-def fail_provider_only(request, profile=None, roledescription=None):
+def fail_provider_only(request, profile=None, roledescription=None,
+                       brokers=None):
     """
     Provider %(saas.RoleDescription)s for :profile restricted to GET
 
@@ -517,7 +541,7 @@ def fail_provider_only(request, profile=None, roledescription=None):
     """
     return _fail_provider_only(
         request, organization=profile,
-        strength=NORMAL, roledescription=roledescription)
+        strength=NORMAL, roledescription=roledescription, brokers=brokers)
 
 
 def fail_provider_only_weak(request, profile=None, roledescription=None):
