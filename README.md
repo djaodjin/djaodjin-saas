@@ -105,9 +105,8 @@ Tested with
 - **Python:** 3.12, **Django:** 5.2 (next)
 - **Python:** 3.7, **Django:** 3.2 (legacy)
 
-1.1.4
+1.1.5
 
-  * fixes deleting personal profiles
-  * fixes implicit role when e-mail domain is a suffix of another domain
+  * fixes profile to `fail_subscription` not matching {profile} in URL path
 
 [previous release notes](changelog)

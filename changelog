@@ -8,18 +8,24 @@ Roadmap
 Released versions
 =================
 
+1.1.5
+
+  * fixes profile to `fail_subscription` not matching {profile} in URL path
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed,  1 Oct 2025 10:25:00 -0700
+
 1.1.4
 
   * fixes deleting personal profiles
   * fixes implicit role when e-mail domain is a suffix of another domain
 
- -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 5 Sep 2025 12:00:00 -0700
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri,  5 Sep 2025 12:00:00 -0700
 
 1.1.3
 
   * fixes js module such that it works with webpack
 
- -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 2 Jul 2025 22:15:00 -0700
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed,  2 Jul 2025 22:15:00 -0700
 
 1.1.2
 
