@@ -30,7 +30,7 @@ dependencies = [
   "Markdown>=2.4",
   "phonenumbers>=8.12.6",
   "python-dateutil>=2.2",
-  "stripe>=2.71.0",
+  "stripe==12.5.1",
   "razorpay>=0.2.0"
 ]
 
