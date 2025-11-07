@@ -87,7 +87,7 @@
         <button type="submit">{% if form.submit_title %}{{form.submit_title}}{% else %}Submit{% endif %}</button>
     </form>
     {% if show_delete %}
-    <div id="confirm-delete" data-plan="{{form.instance.slug}}">
+    <div id="delete-plan-confirm" data-plan="{{form.instance.slug}}">
         <button id="delete-plan" class="delete" @click="deletePlan">Delete</button>
     </div>
     {% endif %}

@@ -43,7 +43,7 @@ Edit your project urls.py to add the djaojdin-saas urls
 .. code-block:: python
 
    urlpatterns += [
-       url(r'^', include('saas.urls')),
+       path('', include('saas.urls')),
    ]
 
 
