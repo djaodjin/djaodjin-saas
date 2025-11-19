@@ -29,7 +29,7 @@ function enableTrackingScripts(event) {
     for( const key in PRIVACY_COOKIES_ENABLED ) {
         data[key] = true;
     }
-    http.post('/legal/privacy', data);
+    djApi.post('/api/legal/privacy', data);
     for( const key in PRIVACY_COOKIES_ENABLED ) {
         if( PRIVACY_COOKIES_ENABLED[key] ) {
             PRIVACY_COOKIES_ENABLED[key]();
@@ -44,14 +44,14 @@ function disableTrackingScripts(event) {
     for( const key in PRIVACY_COOKIES_ENABLED ) {
         data[key] = false;
     }
-    http.post('/legal/privacy', data);
+    djApi.post('/api/legal/privacy', data);
 }
 
 
 function updatePrivacySettings(key, value) {
     let data = {};
     data[key] = value;
-    http.post('/legal/privacy', data);
+    djApi.post('/api/legal/privacy', data);
     if( value && PRIVACY_COOKIES_ENABLED[elemId] ) {
         PRIVACY_COOKIES_ENABLED[key]();
     }

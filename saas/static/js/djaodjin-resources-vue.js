@@ -22,7 +22,7 @@ const DESC_SORT_PRE = '-';
 
 /** Displays notification messages to the user
 
-     requires `jQuery`, _showErrorMessagesProviderNotified
+     requires `jQuery`, showErrorMessages
      optional toastr
  */
 var messagesMixin = {
@@ -33,144 +33,16 @@ var messagesMixin = {
         }
     },
     methods: {
-        _isArray: function (obj) {
-            return obj instanceof Object && obj.constructor === Array;
-        },
-        /**
-           Decorates elements when details exist, otherwise return messages
-           to be shown globally.
 
-           This method takes a `resp` argument as passed by jQuery ajax calls.
-        */
-        _showErrorMessages: function (resp) {
-            var vm = this;
-            var messages = [];
-            if( typeof resp === "string" ) {
-                messages = [resp];
-            } else {
-                var data = resp.data || resp.responseJSON;
-                if( data && typeof data === "object" ) {
-                    if( data.detail ) {
-                        messages = [data.detail];
-                    } else if( vm._isArray(data) ) {
-                        for( var idx = 0; idx < data.length; ++idx ) {
-                            messages = messages.concat(vm._showErrorMessages(data[idx]));
-                        }
-                    } else {
-                        for( var key in data ) {
-                            if (data.hasOwnProperty(key)) {
-                                var message = data[key];
-                                if( vm._isArray(data[key]) ) {
-                                    message = "";
-                                    var sep = "";
-                                    for( var i = 0; i < data[key].length; ++i ) {
-                                        var messagePart = data[key][i];
-                                        if( typeof data[key][i] !== 'string' ) {
-                                            messagePart = JSON.stringify(data[key][i]);
-                                        }
-                                        message += sep + messagePart;
-                                        sep = ", ";
-                                    }
-                                } else if( data[key].hasOwnProperty('detail') ) {
-                                    message = data[key].detail;
-                                }
-                                if( message ) {
-                                    messages.push(key + ": " + message);
-                                }
-                                var inputField = jQuery("[name=\"" + key + "\"]");
-                                var parent = inputField.parents('.form-group');
-                                inputField.addClass("is-invalid");
-                                parent.addClass("has-error");
-                                var help = parent.find('.invalid-feedback');
-                                if( help.length > 0 ) { help.text(message); }
-                            }
-                        }
-                    }
-                } else if( resp.detail ) {
-                    messages = [resp.detail];
-                }
-            }
-            return messages;
-        },
         clearMessages: function() {
             var vm = this;
             vm.getMessagesElement().empty();
         },
+
         getMessagesElement: function() {
             return jQuery(this.messagesElement);
         },
-        showMessages: function (messages, style) {
-            var vm = this;
-            var messagesElement = vm.getMessagesElement();
-            if( typeof toastr !== 'undefined'
-                && $(toastr.options.containerId).length > 0 ) {
-                for( var i = 0; i < messages.length; ++i ) {
-                    toastr[style](messages[i]);
-                }
-            } else {
-                var blockStyle = "";
-                if( style ) {
-                    if( style === "error" ) {
-                        style = "danger";
-                    }
-                    blockStyle = " alert-" + style;
-                }
-                var messageBlock = messagesElement.find(
-                    ".alert" + blockStyle.replace(' ', '.'));
-                if( messageBlock.length === 0 ) {
-                    const blockText = "<div class=\"alert" + blockStyle
-                        + " alert-dismissible fade show\">"
-                        + "<button type=\"button\" class=\"btn-close\""
-                        + " data-bs-dismiss=\"alert\" aria-label=\"Close\">"
-                        + "</button></div>";
-                    var div = document.createElement('div');
-                    div.innerHTML = blockText;
-                    messageBlock = jQuery(div.firstChild);
-                } else {
-                    messageBlock = jQuery(messageBlock[0].cloneNode(true));
-                    messageBlock.find('div').remove();
-                }
 
-                // insert the actual messages
-                if( typeof messages === "string" ) {
-                    messages = [messages];
-                }
-                for( var i = 0; i < messages.length; ++i ) {
-                    messageBlock.append("<div>" + messages[i] + "</div>");
-                }
-                if( messageBlock.css('display') === 'none' ) {
-                    messageBlock.css('display', 'block');
-                }
-                messagesElement.append(messageBlock);
-            }
-            var messagesContainer = messagesElement.parent();
-            if( messagesContainer && messagesContainer.hasClass("hidden") ) {
-                messagesContainer.removeClass("hidden");
-            }
-            if( vm.scrollToTopOnMessages ) {
-                jQuery("html, body").animate({
-                    // scrollTop: $("#messages").offset().top - 50
-                    // avoid weird animation when messages at the top:
-                    scrollTop: jQuery("body").offset().top
-                }, 500);
-            }
-        },
-        showErrorMessages: function (resp) {
-            var vm = this;
-            if( resp.status >= 500 && resp.status < 600 ) {
-                msg = "Err " + resp.status + ": " + resp.statusText;
-                if( _showErrorMessagesProviderNotified ) {
-                    msg += "<br />" + _showErrorMessagesProviderNotified;
-                }
-                messages = [msg];
-            } else {
-                var messages = vm._showErrorMessages(resp);
-                if( messages.length === 0 ) {
-                    messages = ["Err " + resp.status + ": " + resp.statusText];
-                }
-            }
-            vm.showMessages(messages, "error");
-        },
     }
 };
 
@@ -323,75 +195,8 @@ var httpRequestMixin = {
     // basically a wrapper around jQuery ajax functions
     methods: {
 
-        _isFunction: function (func){
-            // https://stackoverflow.com/a/7356528/1491475
-            return func && {}.toString.call(func) === '[object Function]';
-        },
-
-        _isObject: function (obj) {
-            // https://stackoverflow.com/a/46663081/1491475
-            return obj instanceof Object && obj.constructor === Object;
-        },
-
-        _getAuthToken: function() {
-            return null; // XXX NotYetImplemented
-        },
-
-        _csrfSafeMethod: function(method) {
-            // these HTTP methods do not require CSRF protection
-            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-        },
-
-        _getCSRFToken: function() {
-            var vm = this;
-            // Look first for an input node in the HTML page, i.e.
-            // <input type="hidden" name="csrfmiddlewaretoken"
-            //     value="{{csrf_token}}">
-            var crsfNode = vm.$el.querySelector("[name='csrfmiddlewaretoken']");
-            if( crsfNode ) {
-                return crsfNode.value;
-            }
-            // Then look for a CSRF token in the meta tags, i.e.
-            // <meta name="csrf-token" content="{{csrf_token}}">
-            var metas = document.getElementsByTagName('meta');
-            for( var i = 0; i < metas.length; i++) {
-                if (metas[i].getAttribute("name") == "csrf-token") {
-                    return metas[i].getAttribute("content");
-                }
-            }
-            return "";
-        },
-
         _safeUrl: function(base, path) {
-            if( !path ) return base;
-
-            const parts = [base].concat(
-                ( typeof path === 'string' ) ? [path] : path);
-            var cleanParts = [];
-            var start, end;
-            for( var idx = 0; idx < parts.length; ++idx ) {
-                const part = parts[idx];
-                for( start = 0; start < part.length; ++start ) {
-                    if( part[start] !== '/') {
-                        break;
-                    }
-                }
-                for( end = part.length - 1; end >= 0; --end ) {
-                    if( part[end] !== '/') {
-                        break;
-                    }
-                }
-                if( start < end ) {
-                    cleanParts.push(part.slice(start, end + 1));
-                } else {
-                    cleanParts.push(part);
-                }
-            }
-            var cleanUrl = cleanParts[0];
-            for( idx = 1; idx < cleanParts.length; ++idx ) {
-                cleanUrl += '/' + cleanParts[idx];
-            }
-            return cleanUrl.startsWith('http') ? cleanUrl[0] : '/' + cleanUrl;
+            return djApi._safeUrl(base, path);
         },
 
         /** This method generates a GET HTTP request to `url` with a query
@@ -413,66 +218,7 @@ var httpRequestMixin = {
         */
         reqGet: function(url, arg, arg2, arg3){
             var vm = this;
-            var queryParams, successCallback;
-            var failureCallback = vm.showErrorMessages;
-            if(typeof url != 'string') throw 'url should be a string';
-            if(vm._isFunction(arg)){
-                // We are parsing reqGet(url, successCallback)
-                // or reqGet(url, successCallback, errorCallback).
-                successCallback = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqGet(url, successCallback, errorCallback)
-                    failureCallback = arg2;
-                } else if( arg2 !== undefined ) {
-                    throw 'arg2 should be a failureCallback function';
-                }
-            } else if(vm._isObject(arg)){
-                // We are parsing
-                // reqGet(url, queryParams, successCallback)
-                // or reqGet(url, queryParams, successCallback, errorCallback).
-                queryParams = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqGet(url, queryParams, successCallback)
-                    // or reqGet(url, queryParams, successCallback, errorCallback).
-                    successCallback = arg2;
-                    if(vm._isFunction(arg3)){
-                        // We are parsing reqGet(url, queryParams, successCallback, errorCallback)
-                        failureCallback = arg3;
-                    } else if( arg3 !== undefined ){
-                        throw 'arg3 should be a failureCallback function';
-                    }
-                } else {
-                    throw 'arg2 should be a successCallback function';
-                }
-            } else {
-                throw 'arg should be a queryParams Object or a successCallback function';
-            }
-            if( !url ) {
-                vm.showErrorMessages(
-                    "Attempting GET request for component '" +
-                    vm.$options.name + "' but no url was set.");
-            }
-            return jQuery.ajax({
-                method: 'GET',
-                url: url,
-                beforeSend: function(xhr, settings) {
-                    var authToken = vm._getAuthToken();
-                    if( authToken ) {
-                        xhr.setRequestHeader("Authorization",
-                            "Bearer " + authToken);
-                    } else {
-                        if( !vm._csrfSafeMethod(settings.type) ) {
-                            var csrfToken = vm._getCSRFToken();
-                            if( csrfToken ) {
-                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            }
-                        }
-                    }
-                },
-                data: queryParams,
-                traditional: true,
-                cache: false,       // force requested pages not to be cached
-           }).done(successCallback).fail(failureCallback);
+            return djApi.get(vm.$el, url, arg, arg2, arg3);
         },
 
         /** This method generates a POST HTTP request to `url` with
@@ -494,65 +240,7 @@ var httpRequestMixin = {
         */
         reqPost: function(url, arg, arg2, arg3){
             var vm = this;
-            var data, successCallback;
-            var failureCallback = vm.showErrorMessages;
-            if(typeof url != 'string') throw 'url should be a string';
-            if(vm._isFunction(arg)){
-                // We are parsing reqPost(url, successCallback)
-                // or reqPost(url, successCallback, errorCallback).
-                successCallback = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqPost(url, successCallback, errorCallback)
-                    failureCallback = arg2;
-                } else if (arg2 !== undefined){
-                    throw 'arg2 should be a failureCallback function';
-                }
-            } else if( vm._isObject(arg) || vm._isArray(arg) ) {
-                // We are parsing reqPost(url, data)
-                // or reqPost(url, data, successCallback)
-                // or reqPost(url, data, successCallback, errorCallback).
-                data = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqPost(url, data, successCallback)
-                    // or reqPost(url, data, successCallback, errorCallback).
-                    successCallback = arg2;
-                    if(vm._isFunction(arg3)){
-                        // We are parsing reqPost(url, data, successCallback, errorCallback)
-                        failureCallback = arg3;
-                    } else if (arg3 !== undefined){
-                        throw 'arg3 should be a failureCallback function';
-                    }
-                } else if (arg2 !== undefined){
-                    throw 'arg2 should be a successCallback function';
-                }
-            } else if (arg !== undefined){
-                throw 'arg should be a data Object or a successCallback function';
-            }
-            if( !url ) {
-                vm.showErrorMessages(
-                    "Attempting POST request for component '" +
-                    vm.$options.name + "' but no url was set.");
-            }
-            return jQuery.ajax({
-                method: 'POST',
-                url: url,
-                beforeSend: function(xhr, settings) {
-                    var authToken = vm._getAuthToken();
-                    if( authToken ) {
-                        xhr.setRequestHeader("Authorization",
-                            "Bearer " + authToken);
-                    } else {
-                        if( !vm._csrfSafeMethod(settings.type) ) {
-                            var csrfToken = vm._getCSRFToken();
-                            if( csrfToken ) {
-                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            }
-                        }
-                    }
-                },
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-            }).done(successCallback).fail(failureCallback);
+            return djApi.post(vm.$el, url, arg, arg2, arg3);
         },
 
         /** This method generates a POST HTTP request to `url` with
@@ -571,49 +259,7 @@ var httpRequestMixin = {
         */
         reqPostBlob: function(url, form, arg2, arg3) {
             var vm = this;
-            var successCallback;
-            var failureCallback = vm.showErrorMessages;
-            if(typeof url != 'string') throw 'url should be a string';
-            if(vm._isFunction(arg2)){
-                // We are parsing reqPostBlob(url, successCallback)
-                // or reqPostBlob(url, successCallback, errorCallback).
-                successCallback = arg2;
-                if(vm._isFunction(arg3)){
-                    // We are parsing
-                    // reqPostBlob(url, successCallback, errorCallback)
-                    failureCallback = arg3;
-                } else if( arg3 !== undefined ) {
-                    throw 'arg3 should be a failureCallback function';
-                }
-            } else if( arg2 !== undefined ) {
-                throw 'arg2 should be successCallback function';
-            }
-            if( !url ) {
-                vm.showErrorMessages(
-                    "Attempting POST request for component '" +
-                    vm.$options.name + "' but no url was set.");
-            }
-            return jQuery.ajax({
-                method: 'POST',
-                url: url,
-                beforeSend: function(xhr, settings) {
-                    var authToken = vm._getAuthToken();
-                    if( authToken ) {
-                        xhr.setRequestHeader("Authorization",
-                            "Bearer " + authToken);
-                    } else {
-                        if( !vm._csrfSafeMethod(settings.type) ) {
-                            var csrfToken = vm._getCSRFToken();
-                            if( csrfToken ) {
-                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            }
-                        }
-                    }
-                },
-                contentType: false,
-                processData: false,
-                data: form,
-            }).done(successCallback).fail(failureCallback);
+            return djApi.postBlob(vm.$el, url, arg, arg2, arg3);
         },
 
         /** This method generates a PUT HTTP request to `url` with
@@ -635,66 +281,9 @@ var httpRequestMixin = {
         */
         reqPut: function(url, arg, arg2, arg3){
             var vm = this;
-            var data, successCallback;
-            var failureCallback = vm.showErrorMessages;
-            if(typeof url != 'string') throw 'url should be a string';
-            if(vm._isFunction(arg)){
-                // We are parsing reqPut(url, successCallback)
-                // or reqPut(url, successCallback, errorCallback).
-                successCallback = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqPut(url, successCallback, errorCallback)
-                    failureCallback = arg2;
-                } else if (arg2 !== undefined){
-                    throw 'arg2 should be a failureCallback function';
-                }
-            } else if(vm._isObject(arg)){
-                // We are parsing reqPut(url, data)
-                // or reqPut(url, data, successCallback)
-                // or reqPut(url, data, successCallback, errorCallback).
-                data = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqPut(url, data, successCallback)
-                    // or reqPut(url, data, successCallback, errorCallback).
-                    successCallback = arg2;
-                    if(vm._isFunction(arg3)){
-                        // We are parsing reqPut(url, data, successCallback, errorCallback)
-                        failureCallback = arg3;
-                    } else if (arg3 !== undefined){
-                        throw 'arg3 should be a failureCallback function';
-                    }
-                } else if (arg2 !== undefined){
-                    throw 'arg2 should be a successCallback function';
-                }
-            } else if (arg !== undefined){
-                throw 'arg should be a data Object or a successCallback function';
-            }
-            if( !url ) {
-                vm.showErrorMessages(
-                    "Attempting PUT request for component '" +
-                    vm.$options.name + "' but no url was set.");
-            }
-            return jQuery.ajax({
-                method: 'PUT',
-                url: url,
-                beforeSend: function(xhr, settings) {
-                    var authToken = vm._getAuthToken();
-                    if( authToken ) {
-                        xhr.setRequestHeader("Authorization",
-                            "Bearer " + authToken);
-                    } else {
-                        if( !vm._csrfSafeMethod(settings.type) ) {
-                            var csrfToken = vm._getCSRFToken();
-                            if( csrfToken ) {
-                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            }
-                        }
-                    }
-                },
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-            }).done(successCallback).fail(failureCallback);
+            return djApi.put(vm.$el, url, arg, arg2, arg3);
         },
+
         /** This method generates a PATCH HTTP request to `url` with
             contentType 'application/json'.
 
@@ -714,66 +303,9 @@ var httpRequestMixin = {
         */
         reqPatch: function(url, arg, arg2, arg3){
             var vm = this;
-            var data, successCallback;
-            var failureCallback = vm.showErrorMessages;
-            if(typeof url != 'string') throw 'url should be a string';
-            if(vm._isFunction(arg)){
-                // We are parsing reqPatch(url, successCallback)
-                // or reqPatch(url, successCallback, errorCallback).
-                successCallback = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqPatch(url, successCallback, errorCallback)
-                    failureCallback = arg2;
-                } else if (arg2 !== undefined){
-                    throw 'arg2 should be a failureCallback function';
-                }
-            } else if(vm._isObject(arg)){
-                // We are parsing reqPatch(url, data)
-                // or reqPatch(url, data, successCallback)
-                // or reqPatch(url, data, successCallback, errorCallback).
-                data = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqPatch(url, data, successCallback)
-                    // or reqPatch(url, data, successCallback, errorCallback).
-                    successCallback = arg2;
-                    if(vm._isFunction(arg3)){
-                        // We are parsing reqPatch(url, data, successCallback, errorCallback)
-                        failureCallback = arg3;
-                    } else if (arg3 !== undefined){
-                        throw 'arg3 should be a failureCallback function';
-                    }
-                } else if (arg2 !== undefined){
-                    throw 'arg2 should be a successCallback function';
-                }
-            } else if (arg !== undefined){
-                throw 'arg should be a data Object or a successCallback function';
-            }
-            if( !url ) {
-                vm.showErrorMessages(
-                    "Attempting PATCH request for component '" +
-                    vm.$options.name + "' but no url was set.");
-            }
-            return jQuery.ajax({
-                method: 'PATCH',
-                url: url,
-                beforeSend: function(xhr, settings) {
-                    var authToken = vm._getAuthToken();
-                    if( authToken ) {
-                        xhr.setRequestHeader("Authorization",
-                            "Bearer " + authToken);
-                    } else {
-                        if( !vm._csrfSafeMethod(settings.type) ) {
-                            var csrfToken = vm._getCSRFToken();
-                            if( csrfToken ) {
-                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            }
-                        }
-                    }
-                },
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-            }).done(successCallback).fail(failureCallback);
+            return djApi.patch(vm.$el, url, arg, arg2, arg3);
         },
+
         /** This method generates a DELETE HTTP request to `url` with a query
             string built of a `queryParams` dictionnary.
 
@@ -788,46 +320,9 @@ var httpRequestMixin = {
         */
         reqDelete: function(url, arg, arg2){
             var vm = this;
-            var successCallback;
-            var failureCallback = vm.showErrorMessages;
-            if(typeof url != 'string') throw 'url should be a string';
-            if(vm._isFunction(arg)){
-                // We are parsing reqDelete(url, successCallback)
-                // or reqDelete(url, successCallback, errorCallback).
-                successCallback = arg;
-                if(vm._isFunction(arg2)){
-                    // We are parsing reqDelete(url, successCallback, errorCallback)
-                    failureCallback = arg2;
-                } else if (arg2 !== undefined){
-                    throw 'arg2 should be a failureCallback function';
-                }
-            } else if (arg !== undefined){
-                throw 'arg should be a successCallback function';
-            }
-            if( !url ) {
-                vm.showErrorMessages(
-                    "Attempting PATCH request for component '" +
-                    vm.$options.name + "' but no url was set.");
-            }
-            return jQuery.ajax({
-                method: 'DELETE',
-                url: url,
-                beforeSend: function(xhr, settings) {
-                    var authToken = vm._getAuthToken();
-                    if( authToken ) {
-                        xhr.setRequestHeader("Authorization",
-                            "Bearer " + authToken);
-                    } else {
-                        if( !vm._csrfSafeMethod(settings.type) ) {
-                            var csrfToken = vm._getCSRFToken();
-                            if( csrfToken ) {
-                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            }
-                        }
-                    }
-                },
-            }).done(successCallback).fail(failureCallback);
+            return djApi.delete(vm.$el, url, arg, arg2);
         },
+
         /** This method generates multiple queries, and execute
             success/failure callbacks when all have completed.
 
@@ -842,37 +337,8 @@ var httpRequestMixin = {
         */
         reqMultiple: function(queryArray, successCallback, failureCallback) {
             var vm = this;
-            var ajaxCalls = [];
-            if( !successCallback ) {
-                successCallback = function() {};
-            }
-            if( !failureCallback ) {
-                failureCallback = vm.showErrorMessages;
-            }
-            for(var idx = 0; idx < queryArray.length; ++idx ) {
-                ajaxCalls.push($.ajax({
-                    method: queryArray[idx].method,
-                    url: queryArray[idx].url,
-                    data: JSON.stringify(queryArray[idx].data),
-                    beforeSend: function(xhr, settings) {
-                        var authToken = vm._getAuthToken();
-                        if( authToken ) {
-                            xhr.setRequestHeader("Authorization",
-                                                 "Bearer " + authToken);
-                        } else {
-                            if( !vm._csrfSafeMethod(settings.type) ) {
-                                var csrfToken = vm._getCSRFToken();
-                                if( csrfToken ) {
-                                    xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                                }
-                            }
-                        }
-                    },
-                    contentType: 'application/json',
-                }));
-            }
-            jQuery.when.apply(jQuery, ajaxCalls).done(successCallback).fail(
-                failureCallback);
+            return djApi.multiple(vm.$el, queryArray,
+                successCallback, failureCallback);
         },
     }
 }
@@ -892,7 +358,7 @@ var itemMixin = {
         get: function(){
             var vm = this;
             if( !vm.url ) {
-                vm.showErrorMessages(
+                showErrorMessages(
                     "API endpoint to fetch an item for component '" +
                     vm.$options.name + "' is not configured.");
                 return;
@@ -956,7 +422,7 @@ var paginationMixin = {
         },
         handleScroll: function(evt) {
             var vm = this;
-            let element = this.$el;
+            let element = vm.$el;
             if( element.getBoundingClientRect().bottom < window.innerHeight ) {
                 let menubar = vm.$el.querySelector('[role="pagination"]');
                 if( menubar) {
@@ -1054,11 +520,9 @@ var sortableMixin = {
     data: function(){
         var defaultDir = this.$sortDirection || 'desc';
         var dir = (defaultDir === 'desc') ? DESC_SORT_PRE : '';
-        var o = this.$sortByField || 'created_at';
+        var params = this.$sortByField ? {o: (dir + this.$sortByField)} : {};
         return {
-            params: {
-                o: dir + o,
-            },
+            params: params,
             mixinSortCb: 'get'
         }
     },
@@ -1164,7 +628,7 @@ var itemListMixin = {
                     start_at: null,
                     ends_at: null,
                     // The timezone for both start_at and ends_at.
-                    timezone: null,
+                    timezone: 'local',
                     q: '',
                 },
                 itemsLoaded: false,
@@ -1193,7 +657,7 @@ var itemListMixin = {
         get: function(){
             var vm = this;
             if( !vm.url ) {
-                vm.showErrorMessages(
+                showErrorMessages(
                     "API endpoint to fetch items for component '" +
                     vm.$options.name + "' is not configured.");
                 return;
@@ -1211,15 +675,19 @@ var itemListMixin = {
                     }
                 }
             } else {
-                cb = function(res){
+                cb = function(resp){
                     if(vm.mergeResults){
-                        res.results = vm.items.results.concat(res.results);
+                        resp.results = vm.items.results.concat(resp.results);
                     }
-                    vm.items = res;
+                    for( var key in resp ) {
+                        if( resp.hasOwnProperty(key) ) {
+                            vm.items[key] = resp[key];
+                        }
+                    }
                     vm.itemsLoaded = true;
 
-                    if( res.detail ) {
-                        vm.showMessages([res.detail], "warning");
+                    if( resp.detail ) {
+                        showMessages([resp.detail], "warning");
                     }
 
                     if(vm[vm.getCompleteCb]){
@@ -1269,6 +737,16 @@ var typeAheadMixin = {
             return this.current === index ? " active" : "";
         },
 
+        highlightQuery: function(text) {
+            var vm = this;
+            if( !vm.query ) {
+                return text;
+            }
+            let regex = new RegExp(vm.query, "gi"); // search for all instances
+            let newText = text.replace(regex, `<mark>$&</mark>`);
+            return newText;
+        },
+
         cancel: function() {},
 
         clear: function() {
@@ -1293,7 +771,7 @@ var typeAheadMixin = {
             }
         },
 
-        onHit: function onHit() {
+        onHit: function(item) {
             console.warn('You need to implement the `onHit` method', this);
         },
 
@@ -1301,6 +779,18 @@ var typeAheadMixin = {
             var vm = this;
             vm.clear();
             vm.query = '';
+            vm.$nextTick(function() {
+                var inputs = vm.$refs.input;
+                if( inputs.length > 0 ) {
+                    inputs[0].focus();
+                }
+            });
+            vm.$emit('typeaheadreset');
+        },
+        resetAndReload: function() {
+            var vm = this;
+            vm.reset();
+            vm.reload();
         },
 
         setActive: function(index) {
@@ -1318,6 +808,32 @@ var typeAheadMixin = {
                 vm.current = -1;
             }
         },
+        reload: function() {
+            var vm = this;
+            vm.loading = true;
+            var params = {};
+            params[vm.queryParamName] = vm.query;
+            vm.reqGet(vm.url, params,
+            function (resp) {
+                const data = vm.prepareResponseData ?
+                    vm.prepareResponseData(resp.results) : resp.results;
+                vm.items = vm.limit ? data.slice(0, vm.limit) : data;
+                vm.current = -1;
+                vm.loading = false;
+                vm.$nextTick(function() {
+                    var inputs = vm.$refs.input;
+                    if( inputs.length > 0 ) {
+                        inputs[0].focus();
+                    }
+                    if (vm.selectFirst) {
+                        vm.down();
+                    }
+                });
+            }, function() {
+                // on failure we just do nothing. - i.e. we don't want a bunch
+                // of error messages to pop up.
+            });
+        },
         search: function() {
             this.update();
         },
@@ -1330,25 +846,7 @@ var typeAheadMixin = {
             if( vm.minChars && vm.query.length < vm.minChars ) {
                 return;
             }
-            vm.loading = true;
-            var params = {};
-            params[vm.queryParamName] = vm.query;
-            vm.reqGet(vm.url, params,
-            function (resp) {
-                if (resp && vm.query) {
-                    var data = resp.results;
-                    data = vm.prepareResponseData ? vm.prepareResponseData(data) : data;
-                    vm.items = vm.limit ? data.slice(0, vm.limit) : data;
-                    vm.current = -1;
-                    vm.loading = false;
-                    if (vm.selectFirst) {
-                        vm.down();
-                    }
-                }
-            }, function() {
-                // on failure we just do nothing. - i.e. we don't want a bunch
-                // of error messages to pop up.
-            });
+            vm.reload();
         },
     },
     computed: {
@@ -1369,6 +867,173 @@ var typeAheadMixin = {
     }
 };
 
+
+/** Mixin to load profile or user details from the profile APIs
+ */
+var accountDetailMixin = {
+    data: function() {
+        return {
+            api_accounts_url: this.$urls.api_accounts,
+            accountsBySlug: {}
+        }
+    },
+    methods: {
+        getAccountField: function(account, fieldName) {
+            var vm = this;
+            if( account ) {
+                let fieldValue = account.hasOwnProperty(fieldName) ?
+                    account[fieldName] : null;
+                if( fieldValue ) {
+                    return fieldValue;
+                }
+                const accountSlug = account.slug ? account.slug : account;
+                const cached = vm.accountsBySlug[accountSlug];
+                if( cached && cached.hasOwnProperty(fieldName) ) {
+                    return cached[fieldName];
+                }
+                // XXX disable loading individually. we need to give
+                // `populateAccounts` a chance to run and complete.
+                if( false && vm.api_accounts_url ) {
+                    vm.accountsBySlug[accountSlug] = {
+                        picture: null,
+                        printable_name: accountSlug
+                    };
+                    vm.reqGet(vm._safeUrl(vm.api_accounts_url, accountSlug),
+                    function(resp) {
+                        vm.accountsBySlug[resp.slug] = resp;
+                    }, function() {
+                        // discard errors (ex: "not found").
+                    });
+                }
+            }
+            // If we don't return `undefined` here, we might inadvertently
+            // post initialized fields (null, or "") in HTTP requests.
+            return undefined;
+        },
+        getAccountPicture: function(account) {
+            return this.getAccountField(account, 'picture');
+        },
+        getAccountPrintableName: function(account) {
+            return this.getAccountField(account, 'printable_name');
+        },
+        populateAccounts: function(elements, fieldName) {
+            var vm = this;
+            if( !vm.api_accounts_url ) return;
+
+            if( !fieldName ) {
+                fieldName = 'slug';
+            }
+
+            const accounts = new Set();
+            for( let idx = 0; idx < elements.length; ++idx ) {
+                const item = elements[idx];
+                accounts.add((fieldName && item[fieldName]) ?
+                    item[fieldName] : item);
+            }
+            if( accounts.size ) {
+                let queryParams = "?q_f==slug&q=";
+                let sep = "";
+                for( const account of accounts ) {
+                    queryParams += sep + account;
+                    sep = ",";
+                }
+                vm.reqGet(vm.api_accounts_url + queryParams,
+                function(resp) {
+                    for( let idx = 0; idx < resp.results.length; ++idx ) {
+                        vm.$set(vm.accountsBySlug, resp.results[idx].slug,
+                            resp.results[idx]);
+                    }
+                    vm.$forceUpdate();
+                }, function() {
+                    // discard errors (ex: "not found").
+                });
+            }
+        },
+    }
+};
+
+/** Mixin to load user details from the profile APIs
+ */
+var userDetailMixin = {
+    data: function() {
+        return {
+            api_users_url: this.$urls.api_users,
+            usersBySlug: {}
+        }
+    },
+    methods: {
+        getUserField: function(user, fieldName) {
+            var vm = this;
+            if( user ) {
+                let fieldValue = user.hasOwnProperty(fieldName) ?
+                    user[fieldName] : null;
+                if( fieldValue ) {
+                    return fieldValue;
+                }
+                const userSlug = user.slug ? user.slug : user;
+                const cached = vm.usersBySlug[userSlug];
+                if( cached && cached.hasOwnProperty(fieldName) ) {
+                    return cached[fieldName];
+                }
+                // XXX disable loading individually. we need to give
+                // `populateUsers` a chance to run and complete.
+                if( false && vm.api_users_url ) {
+                    vm.usersBySlug[userSlug] = {
+                        picture: null,
+                        printable_name: userSlug
+                    };
+                    vm.reqGet(vm._safeUrl(vm.api_users_url, userSlug),
+                    function(resp) {
+                        vm.usersBySlug[resp.slug] = resp;
+                    }, function() {
+                        // discard errors (ex: "not found").
+                    });
+                }
+            }
+            return "";
+        },
+        getUserPicture: function(user) {
+            return this.getUserField(user, 'picture');
+        },
+        getUserPrintableName: function(user) {
+            return this.getUserField(user, 'printable_name');
+        },
+        populateUsers: function(elements, fieldName) {
+            var vm = this;
+            if( !vm.api_users_url ) return;
+
+            if( !fieldName ) {
+                fieldName = 'slug';
+            }
+
+            const users = new Set();
+            for( let idx = 0; idx < elements.length; ++idx ) {
+                const item = elements[idx];
+                users.add((fieldName && item[fieldName]) ?
+                    item[fieldName] : item.slug);
+            }
+            if( users.size ) {
+                let queryParams = "?q_f==slug&q=";
+                let sep = "";
+                for( const user of users ) {
+                    queryParams += sep + user;
+                    sep = ",";
+                }
+                vm.reqGet(vm.api_users_url + queryParams,
+                function(resp) {
+                    for( let idx = 0; idx < resp.results.length; ++idx ) {
+                        vm.$set(vm.usersBySlug, resp.results[idx].slug,
+                            resp.results[idx]);
+                    }
+                    vm.$forceUpdate();
+                }, function() {
+                    // discard errors (ex: "not found").
+                });
+            }
+        },
+    }
+};
+
     // attach properties to the exports object to define
     // the exported module properties.
     exports.httpRequestMixin = httpRequestMixin;
@@ -1377,4 +1042,6 @@ var typeAheadMixin = {
     exports.messagesMixin = messagesMixin;
     exports.paramsMixin = paramsMixin;
     exports.typeAheadMixin = typeAheadMixin;
+    exports.accountDetailMixin = accountDetailMixin;
+    exports.userDetailMixin = userDetailMixin;
 }));

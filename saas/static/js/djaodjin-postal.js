@@ -5,7 +5,6 @@
  */
 
 /* global location setTimeout jQuery */
-/* global getMetaCSRFToken showErrorMessages */
 
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {

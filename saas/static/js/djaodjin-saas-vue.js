@@ -2355,12 +2355,12 @@ Vue.component('profile-update', {
             function(resp) {
                 vm.modalHide();
                 if( resp.detail ) {
-                    vm.showMessages([resp.detail], "success");
+                    showMessages([resp.detail], "success");
                 }
             }, function(resp) {
                 vm.codeSent = true;
                 if( resp.detail ) {
-                    vm.showMessages([resp.detail], "success");
+                    showMessages([resp.detail], "success");
                 }
             });
         },
@@ -2370,12 +2370,12 @@ Vue.component('profile-update', {
             function(resp) {
                 vm.codeSent = true;
                 if( resp.detail ) {
-                    vm.showMessages([resp.detail], "success");
+                    showMessages([resp.detail], "success");
                 }
             }, function(resp) {
                 vm.codeSent = true;
                 if( resp.detail ) {
-                    vm.showMessages([resp.detail], "success");
+                    showMessages([resp.detail], "success");
                 }
             });
         },
@@ -2387,7 +2387,7 @@ Vue.component('profile-update', {
             function(resp) {
                 vm.modalHide();
                 if( resp.detail ) {
-                    vm.showMessages([resp.detail], "success");
+                    showMessages([resp.detail], "success");
                 }
             });
         },
@@ -2396,7 +2396,7 @@ Vue.component('profile-update', {
                 vm.reqPost(vm.profile_url + `?convert_from_personal=1`, { full_name: vm.formFields.full_name },
                     function(resp) {
                         if (  resp.detail  ) {
-                            vm.showMessages([resp.detail], "success");
+                            showMessages([resp.detail], "success");
                         }
                     }
                 );
@@ -2664,7 +2664,7 @@ Vue.component('checkout', {
             }
             vm.reqPost(vm.url, data,
             function(resp, textStatus, jqXHR) {
-                const location = jqXHR.getResponseHeader('Location');
+                const location = jqXHR.headers.get('Location');
                 window.location = location;
             });
         },

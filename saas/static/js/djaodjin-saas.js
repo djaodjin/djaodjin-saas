@@ -5,7 +5,7 @@
  */
 
 /*global location setTimeout jQuery*/
-/*global getMetaCSRFToken showMessages*/
+/*global djApi showMessages showErrorMessages */
 
 
 (function ($) {
@@ -21,7 +21,8 @@
         </form>
      */
     function CartItem(el, options) {
-        this.element = $(el);
+        this.el = el;
+        this.$el = $(el);
         this.options = options;
         this.init();
     }
@@ -38,12 +39,12 @@
                     self.item[key] = self.options[key];
                 }
             }
-            if( self.element.attr('id') ) {
-                self.item.plan = self.element.attr('id');
+            if( self.$el.attr('id') ) {
+                self.item.plan = self.$el.attr('id');
             }
-            self.submitBtn = self.element.find("[type='submit']");
+            self.submitBtn = self.$el.find("[type='submit']");
             if( self.submitBtn.empty() ) {
-                self.submitBtn = self.element;
+                self.submitBtn = self.$el;
             }
             self.submitBtn.click(function (event) {
                 event.preventDefault();
@@ -55,56 +56,27 @@
             });
         },
 
-        _getCSRFToken: function() {
-            var self = this;
-            if( self.options.csrfToken ) {
-                return self.options.csrfToken;
-            }
-            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( crsfNode.length > 0 ) {
-                return crsfNode.val();
-            }
-            return getMetaCSRFToken();
-        },
-
         add: function() {
             var self = this;
-            $.ajax({
-                type: "POST", // XXX Might still prefer to do PUT on list.
-                url: self.options.api_cart,
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                },
-                data: JSON.stringify(self.item),
-                datatype: "json",
-                contentType: "application/json; charset=utf-8",
-                success: function(data) {
-                    if( self.options.reload ) {
-                        location.reload();
-                    } else {
-                        self.submitBtn.text(self.options.removeLabel);
-                    }
-                },
-                error: function(resp) {
-                    showErrorMessages(resp);
+            djApi.post(self.el, self.options.api_cart, self.item,
+            function(data) {
+                if( self.options.reload ) {
+                    location.reload();
+                } else {
+                    self.submitBtn.text(self.options.removeLabel);
                 }
             });
         },
 
         remove: function(successFunction) {
             var self = this;
-            $.ajax({
-                type: "DELETE",
-                url: self.options.api_cart + "?plan=" + self.item.plan,
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                },
-                success: function(data) {
-                    if( self.options.reload ) {
-                        location.reload();
-                    } else {
-                        self.submitBtn.text(self.options.addLabel);
-                    }
+            djApi.delete(self.el,
+                self.options.api_cart + "?plan=" + self.item.plan,
+            function(data) {
+                if( self.options.reload ) {
+                    location.reload();
+                } else {
+                    self.submitBtn.text(self.options.addLabel);
                 }
             });
         }
@@ -113,13 +85,14 @@
     $.fn.cartItem = function(options) {
         var opts = $.extend( {}, $.fn.cartItem.defaults, options );
         return this.each(function() {
-            $(this).data("cartItem", new CartItem($(this), opts));
+            if (!$.data(this, "cartItem")) {
+                $.data(this, "cartItem", new CartItem(this, opts));
+            }
         });
     };
 
     $.fn.cartItem.defaults = {
         api_cart: '/api/cart/',
-        csrfToken: null,
         addLabel: "Add to Cart",
         removeLabel: "Remove from Cart",
         nb_periods: 1,
@@ -139,7 +112,8 @@
         </...>
      */
     function ChargeMonitor(el, options){
-        this.element = $(el);
+        this.el = el;
+        this.$el = $(el);
         this.options = options;
         this.init();
     }
@@ -154,20 +128,15 @@
 
         waitForCompletion: function() {
             var self = this;
-            $.ajax({
-                type: "GET",
-                url: self.options.saas_api_charge,
-                datatype: "json",
-                contentType: "application/json; charset=utf-8",
-                success: function(data) {
-                    if( data.state === "created" ) {
-                        setTimeout(function() {
-                            self.waitForCompletion(); }, 1000);
-                    } else {
-                        var statusElement = self.element.find(".charge-status");
-                        statusElement.text(
-                            statusElement.attr("data-charge-" + data.state));
-                    }
+            djApi.get(self.el, self.options.saas_api_charge,
+            function(data) {
+                if( data.state === "created" ) {
+                    setTimeout(function() {
+                        self.waitForCompletion(); }, 1000);
+                } else {
+                    var statusElement = self.$el.find(".charge-status");
+                    statusElement.text(
+                        statusElement.attr("data-charge-" + data.state));
                 }
             });
         }
@@ -176,13 +145,14 @@
     $.fn.chargeMonitor = function(options) {
         var opts = $.extend( {}, $.fn.chargeMonitor.defaults, options );
         return this.each(function() {
-            $(this).data("chargeMonitor", new ChargeMonitor($(this), opts));
+            if (!$.data(this, "chargeMonitor")) {
+                $.data(this, "chargeMonitor", new ChargeMonitor(this, opts));
+            }
         });
     };
 
     $.fn.chargeMonitor.defaults = {
         saas_api_charge: null,
-        csrfToken: null,
         initialState: "created",
     };
 
@@ -190,7 +160,8 @@
         to a button.
      */
     function ChargeEmailReceipt(el, options){
-        this.element = $(el);
+        this.el = el;
+        this.$el = $(el);
         this.options = options;
         this.init();
     }
@@ -199,55 +170,27 @@
         init: function () {
             var self = this;
             self.state = self.options.initialState;
-            self.element.submit(function (event) {
+            self.$el.submit(function (event) {
                 event.preventDefault();
                 self.emailReceipt();
             });
-        },
-
-        _getCSRFToken: function() {
-            var self = this;
-            if( self.options.csrfToken ) {
-                return self.options.csrfToken;
-            }
-            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( crsfNode.length > 0 ) {
-                return crsfNode.val();
-            }
-            return getMetaCSRFToken();
         },
 
         emailReceipt: function() {
             var self = this;
             if( self.state === "created" ) {
                 setTimeout(function() {
-                    $.ajax({
-                        type: "GET",
-                        url: self.options.saas_api_charge,
-                        datatype: "json",
-                        contentType: "application/json; charset=utf-8",
-                        success: function(data) {
-                            self.state = data.state;
-                            self.emailReceipt();
-                        }
+                    djApi.get(self.el, self.options.saas_api_charge,
+                    function(data) {
+                        self.state = data.state;
+                        self.emailReceipt();
                     });
                 }, 1000);
             } else {
-                $.ajax({
-                    type: "POST",
-                    url: self.options.saas_api_email_charge_receipt,
-                    beforeSend: function(xhr) {
-                        xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                    },
-                    datatype: "json",
-                    contentType: "application/json; charset=utf-8",
-                    success: function(data) {
-                        if( data.detail ) {
-                            showMessages([data.detail], "info");
-                        }
-                    },
-                    error: function(resp) {
-                        showErrorMessages(resp);
+                djApi.post(self.el, self.options.saas_api_email_charge_receipt,
+                function(data) {
+                    if( data.detail ) {
+                        showMessages([data.detail], "info");
                     }
                 });
             }
@@ -275,7 +218,8 @@
      */
     function Refund(el, options){
         var self = this;
-        self.element = $(el);
+        self.el = el;
+        self.$el = $(el);
         self.setOptions(options);
         self.init();
     }
@@ -284,10 +228,10 @@
         init: function () {
             var self = this;
             // Make sure we unbind the previous handler to avoid double submits
-            self.element.off("submit.refund");
-            self.element.on("submit.refund", function() {
-                if( typeof self.element.modal !== 'undefined' ) {
-                    self.element.modal("hide");
+            self.$el.off("submit.refund");
+            self.$el.on("submit.refund", function() {
+                if( typeof self.$el.modal !== 'undefined' ) {
+                    self.$el.modal("hide");
                 }
                 self.submit();
                 // prevent the form from submitting with the default action
@@ -295,22 +239,10 @@
             });
         },
 
-        _getCSRFToken: function() {
-            var self = this;
-            if( self.options.csrfToken ) {
-                return self.options.csrfToken;
-            }
-            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( crsfNode.length > 0 ) {
-                return crsfNode.val();
-            }
-            return getMetaCSRFToken();
-        },
-
         setOptions: function(opts) {
             var self = this;
             self.options = opts;
-            var refundedInput = self.element.find("[name='amount']");
+            var refundedInput = self.$el.find("[name='amount']");
             var availableAmount =
                 (self.options.availableAmount / 100).toFixed(2);
             refundedInput.attr("max", availableAmount);
@@ -321,7 +253,7 @@
         submit: function() {
             var self = this;
             var refundButton = self.options.refundButton;
-            var refundedInput = self.element.find("[name='amount']");
+            var refundedInput = self.$el.find("[name='amount']");
             var availableAmount = refundedInput.attr("max");
             var linenum = refundedInput.attr("data-linenum");
             var refundedAmount = refundedInput.val();
@@ -334,29 +266,20 @@
             }
             if( refundedAmount > 0 ) {
                 refundButton.attr("disabled", "disabled");
-                $.ajax({
-                    type: "POST",
-                    url: self.options.saas_api_charge_refund,
-                    beforeSend: function(xhr) {
-                        xhr.setRequestHeader(
-                            "X-CSRFToken", self._getCSRFToken());
-                    },
-                    data: JSON.stringify({"lines":
-                        [{"num": linenum, "refunded_amount": refundedAmount}]}),
-                    datatype: "json",
-                    contentType: "application/json; charset=utf-8",
-                    success: function(data) {
-                        var message = data.detail ?
-                            data.detail : "Amount refunded.";
-                        if( message ) {
-                            showMessages([message], "info");
-                        }
-                        refundButton.replaceWith(self.options.refundedLabel);
-                    },
-                    error: function(resp) {
-                        showErrorMessages(resp);
-                        refundButton.removeAttr("disabled");
+                djApi.post(self.el,
+                    self.options.saas_api_charge_refund, {"lines":[{
+                    "num": linenum, "refunded_amount": refundedAmount}]},
+                function(data) {
+                    var message = data.detail ?
+                        data.detail : "Amount refunded.";
+                    if( message ) {
+                        showMessages([message], "info");
                     }
+                    refundButton.replaceWith(self.options.refundedLabel);
+                },
+                function(resp) {
+                    showErrorMessages(resp);
+                    refundButton.removeAttr("disabled");
                 });
             }
             return false;
@@ -366,7 +289,7 @@
     $.fn.refund = function(options) {
         var opts = $.extend({}, $.fn.refund.defaults, options);
         return this.each(function() {
-            var element = $(this)[0];
+            var element = this;
             var refund = $.data(element, "refund");
             if( !refund ) {
                 var v = $.data(element, "refund", new Refund(element, opts));
@@ -378,7 +301,6 @@
 
     $.fn.refund.defaults = {
         saas_api_charge_refund: null,
-        csrfToken: null,
         availableAmount: 0,
         linenum: 0,
         refundButton: null,
@@ -388,7 +310,8 @@
     /** Invoice
      */
     function Invoice(el, options){
-        this.element = $(el);
+        this.el = el;
+        this.$el = $(el);
         this.options = options;
         this.init();
     }
@@ -397,11 +320,22 @@
         init: function () {
             var self = this;
 
-            self.element.find("input:radio").change(function() {
+            self.$el.find("input:radio").change(function() {
                 self.updateTotalAmount();
             });
 
-            self.element.find(".add-seat").click(function(event) {
+            self.$el.find(".remove-from-cart").click(function(event) {
+                event.preventDefault();
+                var plan = $(this).attr('id');
+                djApi.delete(self.el,
+                    self.options.saas_api_cart + "?plan=" + plan,
+                    function(data) {
+                        location.reload();
+                });
+                return false;
+            });
+
+            self.$el.find(".add-seat").click(function(event) {
                 event.preventDefault();
                 var subscription = $(this).parents("tbody");
                 var seatFullname = subscription.find(".seat-fullname");
@@ -424,92 +358,57 @@
                     email: seatEmail.val(),
                 };
                 seatEmail.val("");
-                $.ajax({
-                    type: "POST", // XXX Might still prefer to do PUT on list.
-                    url: self.options.saas_api_cart,
-                    beforeSend: function(xhr) {
-                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                    },
-                    data: JSON.stringify(item),
-                    datatype: "json",
-                    contentType: "application/json; charset=utf-8",
-                    success: function(data, textStatus, jqXHR) {
-                        if( jqXHR.status === 201 ) {
-                            self.insertLine(data);
-                        } else {
-                            self.updateLine(data);
-                        }
-                    },
-                    error: function(resp) {
-                        showErrorMessages(resp);
+                djApi.post(self.el, self.options.saas_api_cart, item,
+                function(data, textStatus, jqXHR) {
+                    if( jqXHR.status === 201 ) {
+                        self.insertLine(data);
+                    } else {
+                        self.updateLine(data);
                     }
                 });
                 return false;
             });
 
-            self.element.find(".seat-upload-file").click(function(event) {
+            self.$el.find(".seat-upload-file").click(function(event) {
                 var file = $(this).parents("td").find(".seat-file");
                 var plan = $(this).parents("tbody").attr("data-plan");
                 if (file.get(0).files.length > 0) {
                     var formData = new FormData();
                     formData.append("file", file.get(0).files[0]);
-                    $.ajax({
-                        type: "POST",
-                        url:self.options.saas_api_cart + "/" + plan + "/upload",
-                        beforeSend: function(xhr) {
-                            xhr.setRequestHeader(
-                                "X-CSRFToken", self._getCSRFToken());
-                        },
-                        data: formData,
-                        processData: false,
-                        contentType: false,
-                        success: function(data) {
-                            for (var i in data.created) {
-                                self.insertLine(data.created[i]);
-                            }
-                            for (var i in data.updated) {
-                                self.updateLine(data.updated[i]);
-                            }
-                            file.val("").change();
-                        },
-                        error: function(resp) {
-                            showErrorMessages(resp);
+                    djApi.postBlob(self.el,
+                        self.options.saas_api_cart + "/" + plan + "/upload",
+                        formData,
+                    function(data) {
+                        for (var i in data.created) {
+                            self.insertLine(data.created[i]);
                         }
+                        for (var i in data.updated) {
+                            self.updateLine(data.updated[i]);
+                        }
+                        file.val("").change();
                     });
                 }
             });
 
-            self.element.find(".seat-file").change(function(event) {
+            self.$el.find(".seat-file").change(function(event) {
                 self.updateUploadButtonVisibility($(this));
             }).each(function() {
                 self.updateUploadButtonVisibility($(this));
             });
 
             if(window.FormData === undefined) {
-                self.element.find(".seat-file").hide();
+                self.$el.find(".seat-file").hide();
             }
 
             self.updateTotalAmount();
-        },
-
-        _getCSRFToken: function() {
-            var self = this;
-            if( self.options.csrfToken ) {
-                return self.options.csrfToken;
-            }
-            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( crsfNode.length > 0 ) {
-                return crsfNode.val();
-            }
-            return getMetaCSRFToken();
         },
 
         /** Update total amount charged on card based on selected subscription
             charges. */
         updateTotalAmount: function() {
             var self = this;
-            var candidates = self.element.find("input:radio");
-            var totalAmountNode = self.element.find(".total-amount");
+            var candidates = self.$el.find("input:radio");
+            var totalAmountNode = self.$el.find(".total-amount");
             var totalAmount = 0;
             for( var i = 0; i < candidates.length; ++i ) {
                 var radio = $(candidates[i]);
@@ -517,7 +416,7 @@
                     totalAmount += parseInt(radio.attr('data-amount'));
                 }
             }
-            candidates = self.element.find(".invoice-item .line-amount");
+            candidates = self.$el.find(".invoice-item .line-amount");
             for( i = 0; i < candidates.length; ++i ) {
                 var lineAmountText = $(candidates[i]).text().replace(',','');
                 var first = lineAmountText.search("[0-9]");
@@ -546,7 +445,7 @@
                 grouped = grouped + " CAD";
             }
             totalAmountNode.text(grouped);
-            var cardUse = self.element.parents("form").find("#card-use");
+            var cardUse = self.$el.parents("form").find("#card-use");
             if( totalAmount > 0 ) {
                 if( !cardUse.is(":visible") ) { cardUse.slideDown(); }
             } else {
@@ -566,7 +465,7 @@
         insertLine: function(data) {
             var msg = data.detail;
             var planSlug = data.plan.slug;
-            var prevLine = this.element.find(
+            var prevLine = this.$el.find(
                 "tbody[data-plan='" + planSlug + "'] .invoice-item").last();
             var newLine = prevLine.clone();
             var clonedNode = newLine.children("td.line-descr");
@@ -582,7 +481,7 @@
         updateLine: function(data) {
             var msg =  data.detail;
             var planSlug = data.plan.slug;
-            var prevLine = this.element.find(
+            var prevLine = this.$el.find(
                 "tbody[data-plan='" + planSlug + "'] .invoice-item");
             var dup = null;
             prevLine.each(function(i){
@@ -606,13 +505,16 @@
     };
 
     $.fn.invoice = function(options) {
-        var opts = $.extend( {}, $.fn.invoice.defaults, options );
-        return new Invoice($(this), opts);
+        var opts = $.extend({}, $.fn.invoice.defaults, options);
+        return this.each(function() {
+            if (!$.data(this, "Invoice")) {
+                $.data(this, "Invoice", new Invoice(this, opts));
+            }
+        });
     };
 
     $.fn.invoice.defaults = {
         saas_api_cart: "/api/cart",
-        csrfToken: null,
         currency_unit: "usd",
     };
 
@@ -626,69 +528,53 @@
         </form>
     */
    function Redeem(el, options){
-      this.element = $(el);
-      this.options = options;
-      this.init();
+       this.el = el;
+       this.$el = $(el);
+       this.options = options;
+       this.init();
    }
 
    Redeem.prototype = {
       init: function () {
           var self = this;
-          self.element.find(".submit-code").click(function(event) {
+          self.$el.find(".submit-code").click(function(event) {
               event.preventDefault();
-              var code = self.element.find("[name='code']").val();
+              var code = self.$el.find("[name='code']").val();
               self.redeemCode(code);
               // prevent the form from submitting with the default action
               return false;
           });
       },
 
-      _getCSRFToken: function() {
-          var self = this;
-          if( self.options.csrfToken ) {
-              return self.options.csrfToken;
-          }
-          var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-          if( crsfNode.length > 0 ) {
-              return crsfNode.val();
-          }
-          return getMetaCSRFToken();
-      },
-
       redeemCode: function(code) {
           var self = this;
-          $.ajax({ type: "POST",
-                   url: self.options.saas_api_redeem_coupon,
-                   beforeSend: function(xhr) {
-                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                   },
-                   data: JSON.stringify({"code": code}),
-                   dataType: "json",
-                   contentType: "application/json; charset=utf-8",
-                   success: function(data) {
-                     // XXX does not show messages since we reload...
-                     showMessages([data.detail], "success");
-                     location.reload();
-                   },
-                   error: function(resp) {
-                       showErrorMessages(resp);
-                   }});
+          console.log("XXX [redeemCode] self.el=", self.el);
+          djApi.post(self.el, self.options.saas_api_redeem_coupon, {
+              "code": code},
+          function(data) {
+              // XXX does not show messages since we reload...
+              showMessages([data.detail], "success");
+              location.reload();
+          });
           return false;
       }
    };
 
    $.fn.redeem = function(options) {
-      var opts = $.extend( {}, $.fn.redeem.defaults, options );
-      return new Redeem($(this), opts);
+       var opts = $.extend( {}, $.fn.redeem.defaults, options );
+       return this.each(function() {
+           if (!$.data(this, "Redeem")) {
+               $.data(this, "Redeem", new Redeem(this, opts));
+           }
+       });
    };
 
    $.fn.redeem.defaults = {
        saas_api_redeem_coupon: "/api/cart/redeem/",
-       csrfToken: null
    };
 
 
-   /** Decorate an HTML controller to trigger AJAX requests to create,
+   /** Decorate an HTML controller to trigger HTTP requests to create,
        activate and delete ``Plan``s.
 
        HTML requirements:
@@ -699,21 +585,22 @@
        </div>
     */
    function Plan(el, options){
-      this.element = $(el);
-      this.options = options;
-      this.init();
+       this.el = el;
+       this.$el = $(el);
+       this.options = options;
+       this.init();
    }
 
    Plan.prototype = {
       init: function () {
           var self = this;
-          self.id = self.element.attr("data-plan");
-          self.element.find(".activate").click(function() {
+          self.id = self.$el.attr("data-plan");
+          self.$el.find(".activate").click(function() {
               self.toggleActivatePlan();
               // prevent the form from submitting with the default action
               return false;
           });
-          var deleteBtn = self.element.find(".delete");
+          var deleteBtn = self.$el.find(".delete");
           if( deleteBtn ) {
               var target = deleteBtn.data("target");
               if( target !== undefined ) {
@@ -725,125 +612,77 @@
           });
       },
 
-      _getCSRFToken: function() {
-          var self = this;
-          if( self.options.csrfToken ) {
-              return self.options.csrfToken;
-          }
-          var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-          if( crsfNode.length > 0 ) {
-              return crsfNode.val();
-          }
-          return getMetaCSRFToken();
-      },
-
       create: function(reload) {
         "use strict";
         var self = this;
-        $.ajax({ type: "POST",
-                 url: self.options.saas_api_plan,
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                 },
-                 data: JSON.stringify(self.options.template_new),
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: function(data) {
-                     showMessages([self.options.message_created], "success");
-                     if( reload ) { location.reload(true); }
-                 },
-                 error: function(resp) {
-                     showErrorMessages(resp);
-                 }
-               });
+        djApi.post(self.el,
+            self.options.saas_api_plan, self.options.template_new,
+        function(data) {
+            showMessages([self.options.message_created], "success");
+            if( reload ) { location.reload(true); }
+        });
       },
 
-      /** Update fields in a ``Plan`` by executing an AJAX request
+      /** Update fields in a ``Plan`` by executing an HTTP request
           to the service. */
       update: function(data, successFunction) {
         "use strict";
         var self = this;
-        $.ajax({ type: "PUT",
-                 url: self.options.saas_api_plan + "/" + self.id,
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                 },
-                 async: false,
-                 data: JSON.stringify(data),
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: successFunction
-               });
+        djApi.put(self.el, self.options.saas_api_plan + "/" + self.id, data,
+            successFunction
+        );
       },
 
       destroy: function() {
         "use strict";
         var self = this;
-        $.ajax({ type: "DELETE",
-                 url: self.options.saas_api_plan + "/" + self.id,
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                 },
-                 async: false,
-                 success: function(data) {
-                     window.location.href = self.options.saas_metrics_plans;
-                     showMessages([self.options.message_deleted], "success");
-                 },
-                 error: function(resp) {
-                     showErrorMessages(resp);
-                 }
-               });
+        djApi.delete(self.el, self.options.saas_api_plan + "/" + self.id,
+        function(data) {
+            window.location.href = self.options.saas_metrics_plans;
+            showMessages([self.options.message_deleted], "success");
+        });
       },
 
       get: function(successFunction) {
         "use strict";
         var self = this;
-        $.ajax({ type: "GET",
-                 url: self.options.saas_api_plan + "/" + self.id,
-                 success: successFunction
-               });
+        djApi.get(self.el, self.options.saas_api_plan + "/" + self.id,
+            successFunction
+        );
       },
 
       /** Toggle a ``Plan`` from active to inactive and vise-versa
-          by executing an AJAX request to the service. */
+          by executing an HTTP request to the service. */
       toggleActivatePlan: function() {
           "use strict";
           var self = this;
-          var button = self.element.find(".activate");
-          $.ajax({type: "PUT",
-                 url: self.options.saas_api_plan + "/" + self.id,
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
-                 },
-                 data: JSON.stringify({
-                     "is_active": !button.hasClass("activated")}),
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: function(data) {
-                     if( data.is_active ) {
-                         button.addClass("activated");
-                         button.text("Deactivate");
-                     } else {
-                         button.removeClass("activated");
-                         button.text("Activate");
-                     }
-                 },
-                 error: function(resp) {
-                     showErrorMessages(resp);
-                 },
+          var button = self.$el.find(".activate");
+          djApi.put(self.el, self.options.saas_api_plan + "/" + self.id, {
+              "is_active": !button.hasClass("activated")},
+          function(data) {
+              if( data.is_active ) {
+                  button.addClass("activated");
+                  button.text("Deactivate");
+              } else {
+                  button.removeClass("activated");
+                  button.text("Activate");
+              }
           });
       }
    };
 
    $.fn.plan = function(options) {
-      var opts = $.extend( {}, $.fn.plan.defaults, options );
-      return new Plan($(this), opts);
+       var opts = $.extend({}, $.fn.plan.defaults, options);
+       return this.each(function() {
+           if (!$.data(this, "Plan")) {
+               $.data(this, "Plan", new Plan(this, opts));
+           }
+       });
    };
 
    $.fn.plan.defaults = {
        saas_api_plan: "/api/plan",
        saas_metrics_plans: "/plan",
-       csrfToken: null,
        message_created: "Plan was created successfully.",
        message_deleted: "Plan was successfully deleted.",
        template_new: {
