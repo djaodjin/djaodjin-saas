@@ -29,8 +29,7 @@ Redirects that need to appear before `urls.views.provider` and
 
 from ...compat import path
 from ...views import UserRedirectView
-from ...views.redirects import (OrganizationCreateView,
-    OrganizationRedirectView, ProviderRedirectView)
+from ...views.redirects import OrganizationRedirectView, ProviderRedirectView
 
 
 urlpatterns = [
@@ -49,9 +48,6 @@ urlpatterns = [
     path('billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),
-    # XXX deprecate when OrganizationCreateView is deprecated
-    path('profile/new/', OrganizationCreateView.as_view(),
-        name='saas_organization_create'),
     path('profile/roles/<slug:role>/',
         ProviderRedirectView.as_view(pattern_name='saas_role_detail'),
         name='saas_provider_role_list'),

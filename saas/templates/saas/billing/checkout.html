@@ -131,27 +131,4 @@
 {% else %}
 <script type="text/javascript" src="https://js.stripe.com/v3/"></script>
 {% endif %}
-<script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
-<script type="text/javascript">
-Vue.prototype.$itemsPerPage =
-    {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %};
-//Vue.prototype.$sortDirection = ;
-//Vue.prototype.$sortByField = ;
-Vue.prototype.$dateRange = {
-    start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
-    ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
-};
-Vue.prototype.$urls = {% if urls %}{{urls|to_json}}{% else %}{}{% endif %};
-Vue.prototype.$tables = {% if tables %}{{tables|safe}}{% else %}{}{% endif %};
-</script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/vue-croppa.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources-vue.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-vue.js"></script>
-<script type="text/javascript">
-Vue.use(Croppa);
-var app = new Vue({
-  el: '#app',
-  delimiters: ["[[","]]"],
-});
-</script>
 {% endblock %}

@@ -1,13 +1,5 @@
 {% extends "saas/base_dashboard.html" %}
 
-{% block localheader %}
-{% if USE_STRIPE_V2 %}
-<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
-{% else %}
-<script type="text/javascript" src="https://js.stripe.com/v3/"></script>
-{% endif %}
-{% endblock %}
-
 {% block saas_content %}
 <card-update inline-template id="update-card-container"
     data-processor-pub-key="{{STRIPE_PUB_KEY}}"
@@ -35,4 +27,13 @@
     </form>
   </div>
 </card-update>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+{% if FEATURES_REVERT_STRIPE_V2 %}
+{# We cannot use `if STRIPE_INTENT_SECRET` since it is loaded through the API.#}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% else %}
+<script type="text/javascript" src="https://js.stripe.com/v3/"></script>
+{% endif %}
 {% endblock %}

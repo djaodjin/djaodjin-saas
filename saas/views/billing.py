@@ -807,7 +807,7 @@ class CheckoutView(CardFormMixin, FormView):
             'update_card': reverse('saas_update_card',
                 args=(self.organization,))
         }}
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
 

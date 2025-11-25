@@ -77,7 +77,6 @@ class OrganizationMixinBase(object):
         urls = {
             'api_cart': reverse('saas_api_cart'),
             'api_redeem': reverse('saas_api_redeem_coupon'),
-            'organization_create': reverse('saas_organization_create')
         }
 
         # URLs for both sides (subscriber and provider).

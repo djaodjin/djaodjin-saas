@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ from django.conf.urls.static import static
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
 from django.views.generic import TemplateView
 from rules.urldecorators import include, re_path # because we want to use
                                                 # `fail_` decorators redirects.
@@ -73,6 +74,8 @@ urlpatterns += \
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
+    url_prefixed(r'login/', LoginView.as_view(
+        template_name='accounts/login.html'), name="login"),
 
     url_prefixed(r'', include('saas.urls.views.request'),
         redirects=[fail_authenticated]),
@@ -85,7 +88,6 @@ urlpatterns += \
         UserRedirectView.as_view(), name='accounts_profile',
         redirects=[fail_authenticated]),
     url_prefixed(r'api/auth', LoginAPIView.as_view(), name='api_login'),
-    url_prefixed(r'', include('django.contrib.auth.urls')),
     url_prefixed(r'saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',
         redirects=[fail_authenticated]),

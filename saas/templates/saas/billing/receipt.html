@@ -111,3 +111,30 @@
 </form>
 <!-- end of modal dialog for Refunds -->
 {% endblock %}
+
+{% block dashboard_bodyscripts %}
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas.js"></script>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    $(".charge-refund").click(function () {
+        var self = $(this);
+        $("#charge-refund").refund({
+            availableAmount: self.attr("data-available-amount"),
+            linenum: self.attr("data-linenum"),
+            saas_api_charge_refund: "{{ urls.charge.api_refund }}",
+            refundButton: self
+        });
+    });
+    $("#email-charge-receipt").chargeEmailReceipt({
+        initialState: "{{charge.state_string}}",
+        saas_api_email_charge_receipt:
+            "{{ urls.charge.api_email_receipt }}"
+    });
+
+    $("#{{charge}}").chargeMonitor({
+       saas_api_charge: "{{ urls.charge.api_base }}",
+       initialState: "{{charge.state_string}}",
+    });
+});
+</script>
+{% endblock %}

@@ -258,36 +258,6 @@ class RoleImplicitGrantAcceptView(OrganizationRedirectView):
     # with the refactoring.
 
 
-class OrganizationCreateView(OrganizationRedirectView):
-    """
-    This page helps ``User`` create a new ``Organization``. By default,
-    the request user becomes a manager of the newly created entity.
-
-    ``User`` and ``Organization`` are separate concepts links together
-    by manager and other custom ``RoleDescription`` relationships.
-
-    The complete ``User``, ``Organization`` and relationship might be exposed
-    right away to the person registering to the site. This is very usual
-    in Enterprise software.
-
-    On the hand, a site might decide to keep the complexity hidden by
-    enforcing a one-to-one manager relationship between a ``User`` (login)
-    and an ``Organization`` (payment profile).
-
-    Template:
-
-    To edit the layout of this page, create a local \
-    ``saas/profile/new.html`` (`example <https://github.com/djaodjin\
-/djaodjin-saas/tree/master/saas/templates/saas/profile/new.html>`__).
-
-    Template context:
-      - ``request`` The HTTP request object
-    """
-    pattern_name = 'saas_organization_cart'
-    template_name = 'saas/profile_redirects.html'
-#    template_name = "saas/profile/new.html"
-
-
 class ProviderRedirectView(OrganizationRedirectView):
     """
     If the request user passes the direct relationship test
