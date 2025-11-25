@@ -120,8 +120,6 @@ $(libDir)/.npm/djaodjin-saas-packages: $(srcDir)/testsite/package.json
 	$(NPM) install --loglevel verbose --cache $(libDir)/.npm --prefix $(libDir)
 	$(installDirs) -d $(ASSETS_DIR)/vendor
 	$(installFiles) $(libDir)/node_modules/jquery/dist/jquery.js $(ASSETS_DIR)/vendor
-	$(installFiles) $(libDir)/node_modules/moment/moment.js $(ASSETS_DIR)/vendor
-	$(installFiles) $(libDir)/node_modules/moment-timezone/builds/moment-timezone-with-data.js $(ASSETS_DIR)/vendor
 	$(installFiles) $(libDir)/node_modules/vue/dist/vue.js $(ASSETS_DIR)/vendor
 	$(installFiles) $(libDir)/node_modules/vue-croppa/dist/vue-croppa.js $(ASSETS_DIR)/vendor
 	touch $@

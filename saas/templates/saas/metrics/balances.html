@@ -40,16 +40,19 @@
             <tr v-for="(row, index) in items.results">
                 <td>Move</td>
                 <td>
-                    <button @click="remove(row.key)">
+                    <button @click="remove(row.slug)">
                         Delete</button>
                 </td>
-                <td>[[row.key]]</td>
+                <td>[[row.slug]]</td>
                 <td style="text-align:right;"
-                    v-for="col in row.values">
-                    <a target="_blank"
-                      v-bind:href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] ">
+                    v-for="(col, colIdx) in row.values">
+                  <a v-bind:href="selectorURL(row.selector, row.values[colIdx - 1][0], col[0])"
+                     v-if="colIdx > 0">
                     [[col[1] ]]
-                    </a>
+                  </a>
+                  <span v-if="colIdx == 0">
+                    [[col[1] ]]
+                  </span>
                 </td>
             </tr>
         </tbody>

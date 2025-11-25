@@ -65,12 +65,15 @@ var paramsMixin = {
     },
     methods: {
         asDateInputField: function(dateISOString) {
-            const dateValue = moment(dateISOString);
-            return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+            const dateValue = new Date(dateISOString);
+            // The `<input type="date">` element will accept dates
+            // formatted as "YYYY-MM-DD".
+            return !isNaN(dateValue) ?
+                dateValue.toISOString().split('T')[0] : null;
         },
         asDateISOString: function(dateInputField) {
-            const dateValue = moment(dateInputField, "YYYY-MM-DD");
-            return dateValue.isValid() ? dateValue.toISOString() : null;
+            const dateValue = new Date(dateInputField);
+            return !isNaN(dateValue) ? dateValue.toISOString() : null;
         },
         autoReload: function() {
         },

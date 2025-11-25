@@ -1,4 +1,4 @@
-Copyright (c) 2019, DjaoDjin inc.
+Copyright (c) 2025, DjaoDjin inc.
 All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -28,19 +28,8 @@ in the repo purely for convienience:
 - From http://jquery.com/
   - testsite/static/vendor/jquery.js
 
-- From http://momentjs.com/
-  - testsite/static/vendor/moment.js
-
-- From https://angular-ui.github.io/bootstrap/
-  - testsite/static/vendor/ui-bootstrap-tpls.js
-
-- From https://angularjs.org/
-  - testsite/static/vendor/angular-animate.js
-  - testsite/static/vendor/angular-resource.js
-  - testsite/static/vendor/angular-route.js
-  - testsite/static/vendor/angular-touch.js
-  - testsite/static/vendor/angular.js
-
 - From https://vuejs.org/
   - testsite/static/vendor/vue.js
-  - testsite/static/vendor/vue2-filters.js
+
+- From https://zhanziyang.github.io/vue-croppa/
+  - testsite/static/vendor/vue-croppa.js

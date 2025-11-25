@@ -1,8 +1,8 @@
-// Copyright (c) 2023, DjaoDjin inc.
+// Copyright (c) 2025, DjaoDjin inc.
 // All rights reserved.
 // BSD 2-Clause license
 
-/*global Vue jQuery moment showMessages showErrorMessages Stripe updateBarChart updateChart getUrlParameter $ */
+/*global Vue jQuery showMessages showErrorMessages Stripe updateBarChart updateChart getUrlParameter $ */
 
 
 var countries = {
@@ -343,7 +343,8 @@ var regions = {
 var timezoneMixin = {
     data: function(){
         return {
-            timezone: moment.tz.guess(),
+            cutOff: this.datetimeOrNow(
+                this.$dateRange ? this.$dateRange.ends_at : null, 'endOfDay'),
         }
     },
     methods: {
@@ -428,27 +429,64 @@ var timezoneMixin = {
             }
             return datetime.toISOString();
         },
-        datetimeOrNow: function(dateISOString, offset) {
-            var dateTime = moment(dateISOString);
-            if( dateTime.isValid() ) {
-                return dateISOString;
-            }
-            if( offset === "startOfDay" ) {
-                return moment().startOf('day').toISOString();
-            } else if( offset === "endOfDay" ) {
-                return moment().endOf('day').toISOString();
-            }
-            return moment().toISOString();
-        },
-        // Same as itemListMixin
+        // Same as paramsMixin
         asDateInputField: function(dateISOString) {
-            const dateValue = moment(dateISOString);
-            return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+            const dateValue = new Date(dateISOString);
+            // The `<input type="date">` element will accept dates
+            // formatted as "YYYY-MM-DD".
+            return !isNaN(dateValue) ?
+                dateValue.toISOString().split('T')[0] : null;
         },
         asDateISOString: function(dateInputField) {
-            const dateValue = moment(dateInputField, "YYYY-MM-DD");
-            return dateValue.isValid() ? dateValue.toISOString() : null;
-        }
+            const dateValue = new Date(dateInputField);
+            return !isNaN(dateValue) ? dateValue.toISOString() : null;
+        },
+        // --
+        datetimeOrNow: function(dateISOString, offset) {
+            var dateTime = new Date(dateISOString);
+            if( !isNaN(dateTime) ) {
+                return dateISOString;
+            }
+            var dateTime = new Date();
+            if( offset === "startOfDay" ) {
+                dateTime.setHours(0, 0, 0, 0);
+            } else if( offset === "endOfDay" ) {
+                dateTime.setHours(23, 59, 59, 999);
+            }
+            return dateTime.toISOString();
+        },
+        endsSoon: function(item) {
+            var vm = this;
+            var cutOff = new Date(vm.cutOff);
+            cutOff.setUTCDate(cutOff.getUTCDate() + 5); // +5 days
+            const subEndsAt = new Date(item.ends_at);
+            if( subEndsAt < cutOff ) {
+                return "bg-warning";
+            }
+            return "";
+        },
+        toggleEndsAt: function (item, event) {
+            var vm = this;
+            if( event.type == 'click' ) {
+                if( item._editEndsAt ) {
+                    item.ends_at = vm.asDateISOString(event.target.value);
+                    vm.update(item, function() {
+                        vm.$set(item, '_editEndsAt', !item._editEndsAt);
+                    });
+                } else {
+                    vm.$set(item, '_editEndsAt', !item._editEndsAt);
+                    vm.$nextTick(function(){
+                        vm.$refs['editEndsAt_' + (item.slug ? item.slug : item.code)][0].focus();
+                    });
+                }
+            } else {
+                // input `Event`.
+                item.ends_at = vm.asDateISOString(event.target.value);
+                vm.update(item, function() {
+                    vm.$set(item, '_editEndsAt', false);
+                });
+            }
+        },
     },
 }
 
@@ -1129,8 +1167,6 @@ var subscriptionDetailMixin = {
     data: function(){
         return {
             api_profile_url: this.$urls.organization.api_profile_base,
-            ends_at: this.datetimeOrNow(
-                this.$dateRange ? this.$dateRange.ends_at : null, 'endOfDay'),
         }
     },
     methods: {
@@ -1150,15 +1186,6 @@ var subscriptionDetailMixin = {
                 vm.$refs[ref][0].focus();
             });
         },
-        endsSoon: function(subscription) {
-            var vm = this;
-            var cutOff = moment(vm.ends_at).add(5, 'days');
-            var subEndsAt = moment(subscription.ends_at);
-            if( subEndsAt < cutOff ) {
-                return "bg-warning";
-            }
-            return "";
-        },
         refId: function(item, id){
             var ids = [item.profile.slug,
                 item.plan.slug, id];
@@ -1175,26 +1202,16 @@ var subscriptionDetailMixin = {
             delete item.edit_description;
             this.update(item);
         },
-        toggleEndsAt: function (item, event) {
-            var vm = this;
-            vm.$set(item, '_editEndsAt', !item._editEndsAt);
-            if( item._editEndsAt ) {
-                vm.$nextTick(function(){
-                    vm.$refs['editEndsAt_' + item.code][0].focus();
-                });
-            } else {
-                item.ends_at = vm.asDateISOString(event.target.value);
-                vm.update(item);
-            }
-        },
-        update: function(item) {
+        update: function(item, cb) {
             var vm = this;
             var url = vm.subscriptionURL(item.profile.slug, item.plan.slug);
             var data = {
                 description: item.description,
                 ends_at: item.ends_at
             };
-            vm.reqPatch(url, data);
+            vm.reqPatch(url, data, function(){
+                if(cb) cb();
+            });
         },
         acceptGrantURL: function(profile, grant_key) {
            var vm = this;
@@ -1392,10 +1409,17 @@ Vue.component('user-typeahead', {
 
 
 var couponDetailMixin = {
+    mixins: [
+        timezoneMixin
+    ],
     methods: {
+        couponURL: function(coupon) {
+           var vm = this;
+            return vm._safeUrl(vm.url, coupon.code);
+        },
         update: function(coupon, cb) {
             var vm = this;
-            vm.reqPut(vm.url + '/' + coupon.code, coupon,
+            vm.reqPut(vm.couponURL(coupon), coupon,
             function(){
                 if(cb) cb(); else vm.get();
             });
@@ -1431,20 +1455,6 @@ var couponDetailMixin = {
             if (event.which === 13 || event.type === "blur" ){
                 this.$set(this.edit_description, idx, false)
                 this.update(this.items.results[idx])
-            }
-        },
-        toggleEndsAt: function (item, event) {
-            var vm = this;
-            if( item._editEndsAt ) {
-                item.ends_at = vm.asDateISOString(event.target.value);
-                vm.update(item, function() {
-                    vm.$set(item, '_editEndsAt', !item._editEndsAt);
-                });
-            } else {
-                vm.$set(item, '_editEndsAt', !item._editEndsAt);
-                vm.$nextTick(function(){
-                    vm.$refs['editEndsAt_' + item.code][0].focus();
-                });
             }
         },
         editPlan: function(item){
@@ -1665,15 +1675,15 @@ Vue.component('metrics-charts', {
         return data;
     },
     methods: {
+        autoReload: function() {
+            this.get();
+        },
         fetchTableData: function(table, cb){
             var vm = this;
             var params = {
                 ends_at: vm.params.ends_at,
                 period_type: vm.params.period_type,
             };
-            if( vm.timezone ) {
-                params["timezone"] = vm.timezone;
-            }
             vm.reqGet(table.location, params, function(resp){
                 var unit = resp.unit;
                 var scale = resp.scale;
@@ -1774,31 +1784,17 @@ Vue.component('metrics-charts', {
             }
             return res;
         },
-        // Same as in `itemListMixin`.
-        _ends_at: {
+        periodType: {
             get: function() {
-                // form field input="date" will expect ends_at as a String
-                // but will literally cut the hour part regardless of timezone.
-                // We don't want an empty list as a result.
-                // If we use moment `endOfDay` we get 23:59:59 so we
-                // add a full day instead.
-                const dateValue = moment(this.params.ends_at).add(1,'days');
-                return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+                return this.params.period_type;
             },
             set: function(newVal) {
-                this.$set(this.params, 'ends_at', this.asDateISOString(newVal));
-                this.get();
+                if( newVal ) {
+                    this.$set(this.params, 'period_type', newVal);
+                    if( this.outdated ) this.debouncedAutoReload();
+                }
             }
         },
-        periodType: {
-        get: function() {
-          return this.params.period_type;
-        },
-        set: function(newVal) {
-          this.$set(this.params, 'period_type', newVal);
-          this.get();
-        }
-      },
     },
     mounted: function(){
         var vm = this;
@@ -2468,7 +2464,7 @@ Vue.component('balance-list', {
         return {
             url: this.$urls.api_broker_balances,
             balanceLineUrl : this.$urls.api_balance_lines,
-            startPeriod: moment().subtract(1, 'months').toISOString(),
+            transactionsUrl: this.$urls.broker_transactions,
             balanceLine: {
                 title: '',
                 selector: '',
@@ -2503,6 +2499,12 @@ Vue.component('balance-list', {
                 vm.get()
             });
         },
+        selectorURL: function(selector, startAt, endsAt) {
+            var vm = this;
+            return vm._safeUrl(vm.transactionsUrl, selector)
+                + '?start_at=' + encodeURIComponent(startAt)
+                + '&ends_at=' + encodeURIComponent(endsAt);
+        }
     },
     mounted: function(){
         this.get();
