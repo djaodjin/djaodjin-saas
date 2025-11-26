@@ -269,8 +269,8 @@ def privacy_settings(request):
     do_not_track = bool(request.META.get('HTTP_DNT') == '1')
     gpc = bool(request.META.get('HTTP_SEC_GPC') == '1')
     if do_not_track or gpc:
-        privacy_settings = {
+        result = {
             key:False for key in settings.PRIVACY_COOKIES_ENABLED}
     else:
-        privacy_settings = request.session.get('privacy', {}) if request else {}
-    return privacy_settings
+        result = request.session.get('privacy', {}) if request else {}
+    return result

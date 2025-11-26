@@ -30,7 +30,6 @@ from django import forms
 from django.forms.widgets import CheckboxInput
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
-from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, DetailView, ListView
 
 from .. import settings
