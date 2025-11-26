@@ -30,7 +30,7 @@
 {% endblock %}
 
 {% block saas_bodyscripts %}
-{% if FEATURES_REVERT_STRIPE_V2 %}
+{% if USE_STRIPE_V2 %}
 {# We cannot use `if STRIPE_INTENT_SECRET` since it is loaded through the API.#}
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 {% else %}
