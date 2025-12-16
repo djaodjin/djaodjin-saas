@@ -27,9 +27,11 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
+from django.template.defaultfilters import slugify
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
@@ -43,7 +45,7 @@ from ..compat import force_str, gettext_lazy as _
 from ..docs import extend_schema, OpenApiResponse
 from ..decorators import _has_valid_access
 from ..filters import OrderingFilter, SearchFilter
-from ..helpers import full_name_natural_split
+from ..helpers import full_name_natural_parts
 from ..mixins import (OrganizationMixin, OrganizationCreateMixin,
     OrganizationSmartListMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
@@ -70,52 +72,53 @@ def create_user_from_email(email, password=None, **kwargs):
     # `signup.models.ActivatedUserManager.create_user_from_email`.
     # Its purpose here instead of calling the above is to have
     # djaodjin-saas works as a stand-alone project (no dependency on signup).
+    request = kwargs.pop('request', None)
     user = None
     user_model = get_user_model()
-    first_name = kwargs.get('first_name', "")
-    last_name = kwargs.get('last_name', "")
-    if not (first_name or last_name):
-        first_name, last_name = full_name_natural_split(
-            kwargs.get('full_name', ''))
-    first_name = _clean_field(
-        user_model, 'first_name', first_name, prefix='user_')
-    last_name = _clean_field(
-        user_model, 'last_name', last_name, prefix='user_')
     # The e-mail address was already validated by the Serializer.
     err = IntegrityError()
-    if hasattr(user_model.objects, 'create_user_from_email'):
-        # Implementation Note:
-        # calling `signup.models.ActivatedUserManager.create_user_from_email`
-        # directly bypasses sending a `user_registered` signal.
-        user = user_model.objects.create_user_from_email(
-            email, password=password,
-            first_name=first_name, last_name=last_name)
-    else:
-        username = _clean_field(
-            user_model, 'username', email.split('@')[0], prefix='user_')
-        #pylint:disable=protected-access
-        field = user_model._meta.get_field('username')
-        max_length = field.max_length
-        trials = 0
-        username_base = username
-        while trials < 10:
+    user_kwargs = {}
+    user_kwargs.update(kwargs)
+    username = _clean_field(
+        user_model, 'username', slugify(email.split('@')[0]), prefix='user_')
+    if ('first_name' not in user_kwargs or
+        'last_name' not in user_kwargs):
+        first_name, _mid, last_name = \
+            full_name_natural_parts(kwargs.get('full_name'))
+        if 'first_name' not in user_kwargs:
+            user_kwargs.update({'first_name': first_name})
+        if 'last_name' not in user_kwargs:
+            user_kwargs.update({'last_name': last_name})
+    if not hasattr(user_model.objects, 'create_user_from_email'):
+        # When djaodjin-saas is used in conjunction with djaodjin-signup,
+        # we are able to set a full_name, phone number, etc.
+        for field_name in kwargs:
             try:
-                user = user_model.objects.create_user(username,
-                    email=email, first_name=first_name, last_name=last_name)
-                break
-            except IntegrityError as exp:
-                err = exp
-                suffix = '-%s' % generate_random_slug(3)
-                if len(username_base) + len(suffix) > max_length:
-                    username = '%s%s' % (
-                        username_base[:(max_length - len(suffix))],
-                        suffix)
-                else:
-                    username = '%s%s' % (username_base, suffix)
-                trials = trials + 1
+                _field = user_model._meta.get_field(field_name)
+            except (FieldDoesNotExist, KeyError):
+                del user_kwargs[field_name]
+    #pylint:disable=protected-access
+    field = user_model._meta.get_field('username')
+    max_length = field.max_length
+    trials = 0
+    username_base = username
+    while trials < 10:
+        try:
+            user = user_model.objects.create_user(username,
+                email=email, password=password, **user_kwargs)
+            break
+        except IntegrityError as exp:
+            err = exp
+            suffix = '-%s' % generate_random_slug(3)
+            if len(username_base) + len(suffix) > max_length:
+                username = '%s%s' % (
+                    username_base[:(max_length - len(suffix))],
+                    suffix)
+            else:
+                username = '%s%s' % (username_base, suffix)
+            trials = trials + 1
     if not user:
         raise err
-    request = kwargs.get('request', None)
     invited_by = request.user if request else None
     LOGGER.info("'%s %s <%s>' invited by '%s'",
         user.first_name, user.last_name, user.email, invited_by,

@@ -29,6 +29,7 @@ import logging, re
 
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models, transaction, IntegrityError
 from django.http import Http404
 from django.template.defaultfilters import slugify
@@ -41,7 +42,7 @@ from .compat import (NoReverseMatch, gettext_lazy as _, import_string,
     is_authenticated, reverse, six)
 from .decorators import _valid_manager
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
-from .helpers import (datetime_or_now, full_name_natural_split,
+from .helpers import (datetime_or_now, full_name_natural_parts,
     update_context_urls)
 from .models import (CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, sum_orig_amount)
@@ -515,9 +516,10 @@ class OrganizationCreateMixin(object):
 
     def create_organization(self, validated_data):
         organization_model = get_organization_model()
+        full_name = validated_data.get('full_name')
         organization = organization_model(
             slug=validated_data.get('slug', None),
-            full_name=validated_data.get('full_name'),
+            full_name=full_name,
             email=validated_data.get('email'),
             default_timezone=validated_data.get(
                 'default_timezone', settings.TIME_ZONE),
@@ -549,13 +551,34 @@ class OrganizationCreateMixin(object):
                         # does not exist so we have a chance to create
                         # a slug/username.
                         organization.save()
-                        first_name, last_name = full_name_natural_split(
-                            organization.full_name)
+                        user_kwargs = {}
+                        user_kwargs.update(validated_data)
+                        if 'email' in user_kwargs:
+                            del user_kwargs['email']
+                        if ('first_name' not in user_kwargs or
+                            'last_name' not in user_kwargs):
+                            first_name, _mid, last_name = \
+                                full_name_natural_parts(full_name)
+                            if 'first_name' not in user_kwargs:
+                                user_kwargs.update({'first_name': first_name})
+                            if 'last_name' not in user_kwargs:
+                                user_kwargs.update({'last_name': last_name})
+                            if not hasattr(self.user_model.objects,
+                                           'create_user_from_email'):
+                                # When djaodjin-saas is used in conjunction
+                                # with djaodjin-signup, we are able to set
+                                # a full_name, phone number, etc.
+                                for field_name in validated_data:
+                                    try:
+                                        _field = \
+                                            self.user_model._meta.get_field(
+                                                field_name)
+                                    except (FieldDoesNotExist, KeyError):
+                                        del user_kwargs[field_name]
                         user = self.user_model.objects.create_user(
-                            username=organization.slug,
+                            organization.slug,
                             email=organization.email,
-                            first_name=first_name,
-                            last_name=last_name)
+                            **user_kwargs)
                     organization.add_manager(user)
                 else:
                     # When `slug` is not present, `save` would try to create
