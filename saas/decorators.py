@@ -44,8 +44,9 @@ from . import settings
 from .cart import cart_insert_item
 from .compat import (available_attrs, gettext_lazy as _, is_authenticated,
     reverse, six)
+from .helpers import datetime_or_now
 from .models import Plan, Signature, Subscription, get_broker
-from .utils import datetime_or_now, get_organization_model, get_role_model
+from .utils import get_organization_model, get_role_model
 
 
 LOGGER = logging.getLogger(__name__)

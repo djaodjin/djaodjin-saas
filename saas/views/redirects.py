@@ -44,11 +44,12 @@ from ..compat import is_authenticated, reverse
 from ..cart import session_cart_to_database
 from ..decorators import fail_direct, _valid_manager
 from ..filters import SearchFilter
+from ..helpers import datetime_or_now, update_context_urls
 from ..forms import OrganizationCreateForm
 from ..mixins import product_url
 from ..models import CartItem, get_broker
-from ..utils import (datetime_or_now, get_organization_model, get_role_model,
-    get_force_personal_profile, update_context_urls,
+from ..utils import (get_organization_model, get_role_model,
+    get_force_personal_profile,
     validate_redirect_url as validate_redirect_url_base)
 
 LOGGER = logging.getLogger(__name__)

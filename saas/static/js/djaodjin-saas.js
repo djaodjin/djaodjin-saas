@@ -548,7 +548,6 @@
 
       redeemCode: function(code) {
           var self = this;
-          console.log("XXX [redeemCode] self.el=", self.el);
           djApi.post(self.el, self.options.saas_api_redeem_coupon, {
               "code": code},
           function(data) {

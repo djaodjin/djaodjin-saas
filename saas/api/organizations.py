@@ -27,7 +27,7 @@ import hashlib, logging, os, re
 from dateutil.relativedelta import relativedelta
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
-from django.db import transaction, IntegrityError
+from django.db import transaction
 from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
@@ -36,18 +36,17 @@ from rest_framework.response import Response
 from .serializers import (EngagedSubscriberSerializer, OrganizationSerializer,
     OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
     UploadBlobSerializer)
-from .. import settings, signals
-from ..compat import (force_str, gettext_lazy as _, is_authenticated, urlparse,
+from .. import settings
+from ..compat import (force_str, gettext_lazy as _, urlparse,
     urlunparse)
-from ..decorators import _valid_manager
 from ..filters import OrderingFilter, SearchFilter
+from ..helpers import datetime_or_now
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSearchOrderListMixin, OrganizationSmartListMixin,
     ProviderMixin, OrganizationDecorateMixin)
-from ..models import get_broker, Subscription
-from ..utils import (datetime_or_now,
-    get_organization_model, get_role_model, get_picture_storage,
-    handle_uniq_error)
+from ..models import Subscription
+from ..utils import (get_organization_model, get_role_model,
+    get_picture_storage)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -191,27 +190,9 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             self).get_queryset().prefetch_related('subscriptions')
 
     def perform_update(self, serializer):
-        is_provider = serializer.instance.is_provider
-        if _valid_manager(
-                self.request.user if is_authenticated(self.request) else None,
-                [get_broker()]):
-            is_provider = serializer.validated_data.get(
-                'is_provider', is_provider)
-        changes = serializer.instance.get_changes(serializer.validated_data)
-        user = serializer.instance.attached_user()
-        if user:
-            user.username = serializer.validated_data.get(
-                'slug', user.username)
-        serializer.instance.slug = serializer.validated_data.get(
-            'slug', serializer.instance.slug)
-        try:
-            serializer.save(is_provider=is_provider)
-            serializer.instance.detail = _("Profile was updated.")
-            signals.profile_updated.send(sender=__name__,
-                organization=serializer.instance, changes=changes,
-                user=self.request.user, request=self.request)
-        except IntegrityError as err:
-            handle_uniq_error(err)
+        self.update_profile_fields(
+            serializer.instance, serializer.validated_data)
+        serializer.instance.detail = _("Profile was updated.")
 
     def delete_records(self, user):
         pass
@@ -225,8 +206,12 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         obj = self.get_object()
         user = obj.attached_user()
         domain = None
-        if django_settings.DEFAULT_FROM_EMAIL:
-            look = re.match(r'.*@(\S+)', django_settings.DEFAULT_FROM_EMAIL)
+        # We force `django_settings.DEFAULT_FROM_EMAIL` to `str`
+        # as it is not done implicitely in the `re.match` statement,
+        # leading to 500 errors  when using a `settings_lazy`.
+        default_from_email = str(django_settings.DEFAULT_FROM_EMAIL)
+        if default_from_email:
+            look = re.match(r'.*@(\S+)', default_from_email)
             if look:
                 domain = look.group(1)
         if not domain:

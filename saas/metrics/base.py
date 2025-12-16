@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,9 @@ from django.db.models.sql.query import RawQuery
 
 from .. import humanize
 from ..compat import six
+from ..helpers import datetime_or_now
 from ..models import Plan, Transaction
-from ..utils import datetime_or_now, parse_tz
+from ..utils import parse_tz
 
 LOGGER = logging.getLogger(__name__)
 

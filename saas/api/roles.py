@@ -43,12 +43,13 @@ from ..compat import force_str, gettext_lazy as _
 from ..docs import extend_schema, OpenApiResponse
 from ..decorators import _has_valid_access
 from ..filters import OrderingFilter, SearchFilter
+from ..helpers import full_name_natural_split
 from ..mixins import (OrganizationMixin, OrganizationCreateMixin,
     OrganizationSmartListMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import _clean_field, get_broker, CartItem
 from ..pagination import RoleListPagination
-from ..utils import (full_name_natural_split, get_force_personal_profile,
+from ..utils import (get_force_personal_profile,
     get_organization_model, get_role_model, get_role_serializer,
     generate_random_slug)
 from .organizations import OrganizationDecorateMixin
@@ -74,7 +75,7 @@ def create_user_from_email(email, password=None, **kwargs):
     first_name = kwargs.get('first_name', "")
     last_name = kwargs.get('last_name', "")
     if not (first_name or last_name):
-        first_name, middle, last_name = full_name_natural_split(
+        first_name, last_name = full_name_natural_split(
             kwargs.get('full_name', ''))
     first_name = _clean_field(
         user_model, 'first_name', first_name, prefix='user_')

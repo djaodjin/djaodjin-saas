@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,8 @@ from django.shortcuts import get_object_or_404
 # pylint:disable=import-outside-toplevel
 # saas.settings cannot be imported at this point because this file (extras.py)
 # will be imported before ``django.conf.settings`` is fully initialized.
-from .compat import NoReverseMatch, is_authenticated, reverse, six
+from .compat import NoReverseMatch, is_authenticated, reverse
+from .helpers import update_context_urls
 from .utils import get_organization_model
 
 
@@ -184,13 +185,13 @@ class OrganizationMixinBase(object):
                 for account in get_organization_model().objects.accessible_by(
                         self.request.user)]})
 
-        self.update_context_urls(context, urls)
-        self.update_context_urls(context, {
+        update_context_urls(context, urls)
+        update_context_urls(context, {
             'profile_redirect': reverse('accounts_profile')})
 
         if not organization.is_broker:
             # A broker does not have subscriptions.
-            self.update_context_urls(context, {
+            update_context_urls(context, {
                 'organization': {
                     'billing': reverse(
                         'saas_billing_info', args=(organization,)),
@@ -200,19 +201,6 @@ class OrganizationMixinBase(object):
 
         return context
 
-    @staticmethod
-    def update_context_urls(context, urls):
-        if 'urls' in context:
-            for key, val in six.iteritems(urls):
-                if key in context['urls']:
-                    if isinstance(val, dict):
-                        context['urls'][key].update(val)
-                    else:
-                        # Because organization_create url is added in this mixin
-                        # and in ``OrganizationRedirectView``.
-                        context['urls'][key] = val
-                else:
-                    context['urls'].update({key: val})
-        else:
-            context.update({'urls': urls})
-        return context
+    def update_attached_user(self, user, validated_data):
+        #pylint:disable=unused-argument
+        return user

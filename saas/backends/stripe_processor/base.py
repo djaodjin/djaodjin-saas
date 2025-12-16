@@ -115,8 +115,8 @@ import stripe
 from .. import CardError, ProcessorError, ProcessorSetupError
 from ... import settings, signals
 from ...compat import (import_string, gettext_lazy as _, reverse, six)
-from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
-    datetime_or_now)
+from ...helpers import datetime_or_now
+from ...utils import datetime_to_utctimestamp, utctimestamp_to_datetime
 
 
 LOGGER = logging.getLogger(__name__)

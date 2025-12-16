@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,11 +32,12 @@ from django.template.defaultfilters import slugify
 
 from ... import humanize, settings, signals
 from ...compat import six
+from ...helpers import datetime_or_now
 from ...metrics.base import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period, generate_periods,
     get_different_units)
 from ...models import Transaction, Plan
-from ...utils import datetime_or_now, get_organization_model, parse_tz
+from ...utils import get_organization_model, parse_tz
 
 
 LOGGER = logging.getLogger(__name__)

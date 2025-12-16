@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,12 +33,12 @@ from rest_framework.response import Response
 from .. import settings
 from ..compat import gettext_lazy as _
 from ..docs import OpenApiResponse, extend_schema
+from ..helpers import datetime_or_now
 from ..mixins import CartMixin, DateRangeContextMixin, PlanMixin, ProviderMixin
 from ..filters import (ActiveFilter, DateRangeFilter, OrderingFilter,
     SearchFilter)
 from ..models import Coupon, Plan, Subscription
 from .serializers import PlanDetailSerializer, PlanCreateSerializer
-from ..utils import datetime_or_now
 
 
 class PlanSmartListMixin(DateRangeContextMixin, ProviderMixin):

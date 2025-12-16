@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -50,11 +50,11 @@ import logging, time
 
 from django.core.management.base import BaseCommand
 
+from ... import settings
+from ...helpers import datetime_or_now
 from ...models import get_broker
 from ...renewals import (create_charges_for_balance, complete_charges,
     extend_subscriptions, recognize_income, trigger_expiration_notices)
-from ...utils import datetime_or_now
-from ... import settings
 
 
 LOGGER = logging.getLogger(__name__)

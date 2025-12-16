@@ -30,7 +30,6 @@ from django.conf import settings as django_settings
 from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
 from django.template.defaultfilters import slugify
-from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import get_current_timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
@@ -39,6 +38,7 @@ from pytz.tzinfo import BaseTzInfo
 
 from .compat import (get_model_class, gettext_lazy as _, import_string, six,
     timezone_or_utc)
+from .helpers import datetime_or_now
 
 
 class SlugTitleMixin(object):
@@ -90,37 +90,6 @@ def convert_dates_to_utc(dates):
     return [date.astimezone(timezone_or_utc()) for date in dates]
 
 
-def as_timestamp(dtime_at=None):
-    if not dtime_at:
-        dtime_at = datetime_or_now()
-    return int((
-        dtime_at - datetime.datetime(1970, 1, 1,
-            tzinfo=timezone_or_utc())).total_seconds())
-
-
-def datetime_or_now(dtime_at=None, tzinfo=None):
-    if not tzinfo:
-        tzinfo = timezone_or_utc()
-    as_datetime = dtime_at
-    if isinstance(dtime_at, six.string_types):
-        as_datetime = parse_datetime(dtime_at)
-        if not as_datetime:
-            as_date = parse_date(dtime_at)
-            if as_date:
-                as_datetime = datetime.datetime.combine(
-                    as_date, datetime.time.min)
-    elif (not isinstance(dtime_at, datetime.datetime) and
-          isinstance(dtime_at, datetime.date)):
-        as_datetime = datetime.datetime.combine(
-            dtime_at, datetime.time.min)
-    if not as_datetime:
-        as_datetime = datetime.datetime.now(tz=tzinfo)
-    if (as_datetime.tzinfo is None or
-        as_datetime.tzinfo.utcoffset(as_datetime) is None):
-        as_datetime = as_datetime.replace(tzinfo=tzinfo)
-    return as_datetime
-
-
 def datetime_to_utctimestamp(dtime_at, epoch=None):
     if epoch is None:
         epoch = datetime.datetime(1970, 1, 1).replace(tzinfo=timezone_or_utc())
@@ -143,33 +112,6 @@ def extract_full_exception_stack(err):
             message += ' ' + line.lstrip()
     message += '%s: %s' % (err.__class__, err)
     return message
-
-
-def full_name_natural_split(full_name, middle_initials=True):
-    """
-    This function splits a full name into a natural first name, last name
-    and middle initials.
-    """
-    parts = full_name.strip().split(' ')
-    first_name = ""
-    if parts:
-        first_name = parts.pop(0)
-    if first_name.lower() == "el" and parts:
-        first_name += " " + parts.pop(0)
-    last_name = ""
-    if parts:
-        last_name = parts.pop()
-    if (last_name.lower() == 'i' or last_name.lower() == 'ii'
-        or last_name.lower() == 'iii' and parts):
-        last_name = parts.pop() + " " + last_name
-    if middle_initials:
-        mid_name = ""
-        for middle_name in parts:
-            if middle_name:
-                mid_name += middle_name[0]
-    else:
-        mid_name = " ".join(parts)
-    return first_name, mid_name, last_name
 
 
 def generate_random_slug(length=40, prefix=None):
@@ -249,23 +191,6 @@ def start_of_day(dtime_at=None):
     if tz_ob:
         start = tz_ob.localize(start)
     return start
-
-
-def update_context_urls(context, urls):
-    if 'urls' in context:
-        for key, val in six.iteritems(urls):
-            if key in context['urls']:
-                if isinstance(val, dict):
-                    context['urls'][key].update(val)
-                else:
-                    # Because organization_create url is added in this mixin
-                    # and in ``OrganizationRedirectView``.
-                    context['urls'][key] = val
-            else:
-                context['urls'].update({key: val})
-    else:
-        context.update({'urls': urls})
-    return context
 
 
 def utctimestamp_to_datetime(timestamp):

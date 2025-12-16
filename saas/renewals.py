@@ -36,10 +36,11 @@ from django.db import transaction
 from . import humanize, settings, signals
 from .backends import CardError, ProcessorError
 from .compat import gettext_lazy as _, six
+from .helpers import datetime_or_now
 from .humanize import describe_period_name
 from .models import (Charge, Plan, Price, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
-from .utils import datetime_or_now, get_organization_model
+from .utils import get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 

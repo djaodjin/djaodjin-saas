@@ -32,7 +32,8 @@ import logging
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from ...utils import datetime_or_now, get_organization_model
+from ...helpers import datetime_or_now
+from ...utils import get_organization_model
 from ...backends import ProcessorError
 
 

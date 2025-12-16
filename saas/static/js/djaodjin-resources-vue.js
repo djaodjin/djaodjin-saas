@@ -262,7 +262,7 @@ var httpRequestMixin = {
         */
         reqPostBlob: function(url, form, arg2, arg3) {
             var vm = this;
-            return djApi.postBlob(vm.$el, url, arg, arg2, arg3);
+            return djApi.postBlob(vm.$el, url, form, arg2, arg3);
         },
 
         /** This method generates a PUT HTTP request to `url` with
@@ -784,8 +784,12 @@ var typeAheadMixin = {
             vm.query = '';
             vm.$nextTick(function() {
                 var inputs = vm.$refs.input;
-                if( inputs.length > 0 ) {
-                    inputs[0].focus();
+                if( typeof inputs.length != 'undefined' ) {
+                    if( inputs.length > 0 ) {
+                        inputs[0].focus();
+                    }
+                } else {
+                    inputs.focus();
                 }
             });
             vm.$emit('typeaheadreset');

@@ -35,16 +35,18 @@ from django.template.defaultfilters import slugify
 from django.template.loader import render_to_string
 from rest_framework.generics import get_object_or_404
 
-from . import humanize, settings
+from . import humanize, settings, signals
 from .cart import cart_insert_item
 from .compat import (NoReverseMatch, gettext_lazy as _, import_string,
     is_authenticated, reverse, six)
+from .decorators import _valid_manager
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
+from .helpers import (datetime_or_now, full_name_natural_split,
+    update_context_urls)
 from .models import (CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, sum_orig_amount)
-from .utils import (build_absolute_uri, datetime_or_now,
-    full_name_natural_split, get_organization_model, get_role_model,
-    handle_uniq_error, parse_tz, update_context_urls, validate_redirect_url)
+from .utils import (build_absolute_uri, get_organization_model, get_role_model,
+    handle_uniq_error, parse_tz, validate_redirect_url)
 from .extras import OrganizationMixinBase
 from .metrics.transactions import get_balances_due
 
@@ -482,7 +484,29 @@ class UserMixin(object):
 
 class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
 
-    pass
+    def update_profile_fields(self, profile, validated_data):
+        changes = profile.get_changes(validated_data)
+        for field_name, field_value in six.iteritems(validated_data):
+            if hasattr(profile, field_name):
+                setattr(profile, field_name, field_value)
+        is_provider = profile.is_provider
+        if _valid_manager(
+                self.request.user if is_authenticated(self.request) else None,
+                [get_broker()]):
+            is_provider = validated_data.get('is_provider', is_provider)
+        try:
+            with transaction.atomic():
+                user = profile.attached_user()
+                if user:
+                    self.update_attached_user(user, validated_data)
+                # `Organization.save` will sync-up the user fields: username,
+                # email, first_name, and last_name.
+                profile.save()
+            signals.profile_updated.send(sender=__name__,
+                    organization=profile, changes=changes,
+                    user=self.request.user, request=self.request)
+        except IntegrityError as err:
+            handle_uniq_error(err)
 
 
 class OrganizationCreateMixin(object):
@@ -521,12 +545,11 @@ class OrganizationCreateMixin(object):
                         # if case they were not provided in the API call.
                         organization.save()
                     except self.user_model.DoesNotExist:
-                        #pylint:disable=unused-variable
                         # We are saving the `Organization` when the `User`
                         # does not exist so we have a chance to create
                         # a slug/username.
                         organization.save()
-                        first_name, mid, last_name = full_name_natural_split(
+                        first_name, last_name = full_name_natural_split(
                             organization.full_name)
                         user = self.user_model.objects.create_user(
                             username=organization.slug,

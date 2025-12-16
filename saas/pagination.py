@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,9 +32,9 @@ from rest_framework.settings import api_settings
 from . import settings
 from .compat import gettext_lazy as _
 from .filters import search_terms_as_list
+from .helpers import datetime_or_now
 from .models import (sum_dest_amount, sum_orig_amount, sum_balance_amount,
     Transaction)
-from .utils import datetime_or_now
 
 
 class PageNumberPagination(PageNumberPaginationBase):

@@ -3222,7 +3222,8 @@ Vue.component('user-active-cart', {
         },
         removeItem: function(cartItem) {
             var vm = this;
-            vm.reqDelete(vm._safeUrl(vm.crudUrl, cartItem.id), vm.get);
+            vm.reqDelete(vm._safeUrl(vm.crudUrl, cartItem.id.toString()),
+                vm.get);
         },
         fetchPlans: function() {
             var vm = this;

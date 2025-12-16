@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,8 +37,9 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from saas.compat import urlparse
+from saas.helpers import as_timestamp, datetime_or_now
 from saas.models import Signature
-from saas.utils import as_timestamp, datetime_or_now, get_organization_model
+from saas.utils import get_organization_model
 
 
 class CredentialsSerializer(serializers.Serializer):

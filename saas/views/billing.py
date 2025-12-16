@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -56,13 +56,13 @@ from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, WithdrawForm)
+from ..helpers import update_context_urls
 from ..mixins import (BalanceDueMixin, BalanceAndCartMixin, ChargeMixin,
     DateRangeContextMixin, InvoicablesMixin, OrganizationMixin,
     ProviderMixin, product_url, UserMixin)
 from ..models import (CartItem, Coupon, Plan, Subscription, Transaction,
     UseCharge, get_broker)
-from ..utils import (get_organization_model, update_context_urls,
-    validate_redirect_url)
+from ..utils import get_organization_model, validate_redirect_url
 
 
 LOGGER = logging.getLogger(__name__)

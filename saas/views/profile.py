@@ -29,18 +29,17 @@ import logging
 from django import http
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView
 
-from .. import settings, signals
+from .. import settings
 from ..compat import gettext_lazy as _, is_authenticated, reverse
 from ..decorators import _valid_manager
 from ..forms import OrganizationForm, ManagerAndOrganizationForm
+from ..helpers import update_context_urls
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker
-from ..utils import (get_organization_model, update_context_urls,
-    update_db_row)
+from ..utils import fill_form_errors, get_organization_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -290,49 +289,13 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
     slug_url_kwarg = settings.PROFILE_URL_KWARG
     template_name = "saas/profile/index.html"
 
-    def update_attached_user(self, form):
-        validated_data = form.cleaned_data
-        user = self.object.attached_user()
-        if user:
-            user.username = validated_data.get('slug', user.username)
-            user.email = validated_data.get('email', user.email)
-            if update_db_row(user, form):
-                raise ValidationError("update_attached_user")
-        return user
-
     def form_valid(self, form):
         validated_data = form.cleaned_data
-        # Calls `get_object()` such that we get the actual values present
-        # in the database. `self.object` will contain the updated values
-        # at this point.
-        changes = self.get_object().get_changes(validated_data)
-        self.object.slug = validated_data.get('slug', self.object.slug)
-        self.object.full_name = validated_data['full_name']
-        self.object.email = validated_data['email']
-        if 'is_bulk_buyer' in validated_data:
-            self.object.is_bulk_buyer = validated_data['is_bulk_buyer']
-        else:
-            self.object.is_bulk_buyer = False
-        if 'extra' in validated_data:
-            self.object.extra = validated_data['extra']
-        is_provider = self.object.is_provider
-        if _valid_manager(
-                self.request.user if is_authenticated(self.request) else None,
-                [get_broker()]):
-            self.object.is_provider = validated_data.get(
-                'is_provider', is_provider)
-
         try:
-            with transaction.atomic():
-                self.update_attached_user(form)
-                if update_db_row(self.object, form):
-                    raise ValidationError("form_valid")
-        except ValidationError:
+            self.update_profile_fields(self.get_object(), validated_data)
+        except ValidationError as err:
+            fill_form_errors(form, err)
             return self.form_invalid(form)
-
-        signals.profile_updated.send(sender=__name__,
-                organization=self.object, changes=changes,
-                user=self.request.user, request=self.request)
         return http.HttpResponseRedirect(self.get_success_url())
 
     def get_form_class(self):

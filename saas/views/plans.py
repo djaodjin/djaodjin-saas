@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,9 +36,10 @@ from .. import settings
 from ..compat import (gettext_lazy as _, is_authenticated, reverse,
     reverse_lazy)
 from ..forms import PlanForm
+from ..helpers import datetime_or_now, update_context_urls
 from ..mixins import CartMixin, OrganizationMixin
 from ..models import CartItem, Coupon, Plan
-from ..utils import datetime_or_now, get_role_model, update_context_urls
+from ..utils import get_role_model
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):

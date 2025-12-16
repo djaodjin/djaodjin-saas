@@ -29,9 +29,10 @@ from django.db import transaction
 
 from ... import settings as saas_settings
 from ...compat import timezone_or_utc
+from ...helpers import datetime_or_now
 from ...ledger import export
 from ...models import Transaction
-from ...utils import datetime_or_now, get_organization_model
+from ...utils import get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 

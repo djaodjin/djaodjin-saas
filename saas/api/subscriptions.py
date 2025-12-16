@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,12 +37,13 @@ from ..decorators import _valid_manager
 from ..docs import OpenApiResponse, extend_schema
 from ..filters import (ActiveInPeriodFilter, ChurnedInPeriodFilter,
     IntersectPeriodFilter)
+from ..helpers import datetime_or_now
 from ..mixins import (PlanProvidedSubscriptionsMixin,
     ProvidedSubscriptionsMixin, SubscribedSubscriptionsMixin,
     SubscriptionSmartListMixin)
 from .. import settings, signals
 from ..models import Subscription
-from ..utils import generate_random_slug, datetime_or_now
+from ..utils import generate_random_slug
 from .roles import ListOptinAPIView
 from .serializers import (QueryParamForceSerializer,
     ProvidedSubscriptionSerializer, ProvidedSubscriptionCreateSerializer,

@@ -35,6 +35,24 @@
 {
   "fields": {
     "plan": 170,
+    "discount_type": 2,
+    "discount_value": 1000,
+    "length": 12
+  },
+  "model": "saas.AdvanceDiscount", "pk": 171
+},
+{
+  "fields": {
+    "plan": 170,
+    "discount_type": 3,
+    "discount_value": 2,
+    "length": 12
+  },
+  "model": "saas.AdvanceDiscount", "pk": 172
+},
+{
+  "fields": {
+    "plan": 170,
     "slug": "club170-requests",
     "title": "Requests",
     "created_at": "2025-01-01T00:00:00+00:00",
@@ -85,6 +103,16 @@
     "use_amount": 400
   },
   "model": "saas.UseCharge", "pk": 172
+},
+{
+    "fields":{
+        "code": "PROMO50",
+        "created_at":"2025-01-01T00:00:00+00:00",
+        "discount_type": 1,
+        "discount_value": 5000,
+        "organization": 170
+    },
+    "model" : "saas.Coupon", "pk": 170
 },
 {
     "fields": {
@@ -275,4 +303,52 @@
       "user": 174
     },
     "model": "saas.Role", "pk": 174
+},
+
+{
+    "fields": {
+      "username": "xia175",
+      "date_joined": "2025-01-01T00:00:00+00:00",
+      "last_login": "2025-01-01T00:00:00+00:00",
+      "email": "xia+175@localhost.localdomain",
+      "first_name": "Xia175",
+      "last_name": "Subscriber",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "is_active": true
+    },
+    "model": "auth.User", "pk": 175
+},
+{
+    "fields": {
+      "last_signed": "2025-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 175
+    },
+    "model": "saas.signature", "pk": 175
+},
+{
+    "fields": {
+      "slug": "xia175",
+      "full_name": "Xia175 Subscriber",
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "email": "xia+175@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 175
+},
+{
+    "fields":{
+      "created_at": "2025-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 175,
+      "user": 175
+    },
+    "model": "saas.Role", "pk": 175
 }]

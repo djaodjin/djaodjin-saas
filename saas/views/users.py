@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,8 @@
 from django.views.generic import TemplateView
 
 from ..compat import reverse
+from ..helpers import update_context_urls
 from ..mixins import UserMixin
-from ..utils import update_context_urls
 
 
 class ProductListView(UserMixin, TemplateView):

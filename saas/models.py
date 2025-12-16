@@ -83,8 +83,8 @@ from .backends import (get_processor_backend, CardError, ProcessorError,
     ProcessorSetupError)
 from .compat import (import_string, gettext_lazy as _,
     python_2_unicode_compatible, six, urlquote)
-from .utils import (SlugTitleMixin, datetime_or_now, full_name_natural_split,
-    generate_random_slug, handle_uniq_error)
+from .helpers import  datetime_or_now, full_name_natural_split
+from .utils import SlugTitleMixin, generate_random_slug, handle_uniq_error
 from .utils import (get_organization_model, get_role_model,
     is_mail_provider_domain)
 
@@ -418,7 +418,7 @@ class AbstractOrganization(models.Model):
                     # When dealing with a personal profile, keep the login
                     # user in sync with the billing profile.
                     save_user = False
-                    first_name, _, last_name \
+                    first_name, last_name \
                         = full_name_natural_split(self.full_name)
                     if user.first_name != first_name:
                         user.first_name = first_name

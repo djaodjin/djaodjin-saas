@@ -25,7 +25,8 @@
 from django.views.generic import TemplateView
 from saas import settings as saas_settings
 from saas.compat import reverse
-from saas.utils import get_organization_model, update_context_urls
+from saas.helpers import update_context_urls
+from saas.utils import get_organization_model
 
 
 class AppView(TemplateView):

@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,9 +32,9 @@ from .download import CSVDownloadView
 from .. import settings
 from ..api.metrics import LifetimeValueMetricMixin
 from ..compat import reverse
+from ..helpers import datetime_or_now, update_context_urls
 from ..mixins import CouponMixin, DateRangeContextMixin, ProviderMixin
 from ..models import CartItem, Plan
-from ..utils import datetime_or_now, update_context_urls
 
 
 class SubscribersActivityView(ProviderMixin, TemplateView):

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2025, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,8 @@ from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
 
 from . import settings
 from .compat import force_str, six
-from .utils import datetime_or_now, is_mail_provider_domain, parse_tz
+from .helpers import datetime_or_now
+from .utils import is_mail_provider_domain, parse_tz
 
 LOGGER = logging.getLogger(__name__)
 

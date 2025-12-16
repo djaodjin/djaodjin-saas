@@ -53,12 +53,13 @@ from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
 from ..compat import force_str, six, gettext_lazy as _
+from ..helpers import datetime_or_now
 from ..metrics.base import month_periods
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
     UserSmartListMixin, as_html_description, BalancesDueMixin,
     MetricsDownloadMixin)
 from ..models import BalanceLine, CartItem, Coupon
-from ..utils import datetime_or_now, convert_dates_to_utc
+from ..utils import convert_dates_to_utc
 
 
 class CSVDownloadView(View):
