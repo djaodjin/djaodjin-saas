@@ -29,7 +29,6 @@ import logging, re
 
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
-from django.core.exceptions import FieldDoesNotExist
 from django.db import models, transaction, IntegrityError
 from django.http import Http404
 from django.template.defaultfilters import slugify
@@ -552,7 +551,16 @@ class OrganizationCreateMixin(object):
                         # a slug/username.
                         organization.save()
                         user_kwargs = {}
-                        user_kwargs.update(validated_data)
+                        # When djaodjin-saas is used in conjunction
+                        # with djaodjin-signup, we are able to set
+                        # a full_name, phone number, etc.
+                        for field_name in (
+                                self.user_model._meta.get_fields() +
+                                getattr(self.user_model.objects,
+                                    'extra_fields', [])):
+                            val = validated_data.get(field_name)
+                            if val:
+                                user_kwargs.update({field_name: val})
                         if 'email' in user_kwargs:
                             del user_kwargs['email']
                         if ('first_name' not in user_kwargs or
@@ -563,18 +571,6 @@ class OrganizationCreateMixin(object):
                                 user_kwargs.update({'first_name': first_name})
                             if 'last_name' not in user_kwargs:
                                 user_kwargs.update({'last_name': last_name})
-                            if not hasattr(self.user_model.objects,
-                                           'create_user_from_email'):
-                                # When djaodjin-saas is used in conjunction
-                                # with djaodjin-signup, we are able to set
-                                # a full_name, phone number, etc.
-                                for field_name in validated_data:
-                                    try:
-                                        _field = \
-                                            self.user_model._meta.get_field(
-                                                field_name)
-                                    except (FieldDoesNotExist, KeyError):
-                                        del user_kwargs[field_name]
                         user = self.user_model.objects.create_user(
                             organization.slug,
                             email=organization.email,

@@ -27,7 +27,6 @@
 import logging
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
@@ -77,10 +76,21 @@ def create_user_from_email(email, password=None, **kwargs):
     user_model = get_user_model()
     # The e-mail address was already validated by the Serializer.
     err = IntegrityError()
-    user_kwargs = {}
-    user_kwargs.update(kwargs)
     username = _clean_field(
         user_model, 'username', slugify(email.split('@')[0]), prefix='user_')
+
+    user_kwargs = {}
+    # When djaodjin-saas is used in conjunction
+    # with djaodjin-signup, we are able to set
+    # a full_name, phone number, etc.
+    for field_name in (
+            user_model._meta.get_fields() +
+            getattr(user_model.objects, 'extra_fields', [])):
+        val = kwargs.get(field_name)
+        if val:
+            user_kwargs.update({field_name: val})
+    if 'email' in user_kwargs:
+        del user_kwargs['email']
     if ('first_name' not in user_kwargs or
         'last_name' not in user_kwargs):
         first_name, _mid, last_name = \
@@ -89,14 +99,6 @@ def create_user_from_email(email, password=None, **kwargs):
             user_kwargs.update({'first_name': first_name})
         if 'last_name' not in user_kwargs:
             user_kwargs.update({'last_name': last_name})
-    if not hasattr(user_model.objects, 'create_user_from_email'):
-        # When djaodjin-saas is used in conjunction with djaodjin-signup,
-        # we are able to set a full_name, phone number, etc.
-        for field_name in kwargs:
-            try:
-                _field = user_model._meta.get_field(field_name)
-            except (FieldDoesNotExist, KeyError):
-                del user_kwargs[field_name]
     #pylint:disable=protected-access
     field = user_model._meta.get_field('username')
     max_length = field.max_length

@@ -310,7 +310,9 @@ const djApi = {
 
     _safeUrl: function(base, path) {
         if( !path ) return base;
-        if( typeof path === 'string' && path.startsWith('http') ) return path;
+        if( typeof path === 'string' && (
+            path.startsWith('http') || (
+                base.length > 0 && path.startsWith(base))) ) return path;
 
         const parts = base ? [base].concat(
             ( typeof path === 'string' ) ? [path] : path) :
