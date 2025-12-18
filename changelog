@@ -8,6 +8,13 @@ Roadmap
 Released versions
 =================
 
+1.1.6
+
+  * facilitates integration with other projects to keep invitee's middle names
+  * makes all API calls through djApi
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 18 Dec 2025 6:40:00 -0700
+
 1.1.5
 
   * fixes profile to `fail_subscription` not matching {profile} in URL path

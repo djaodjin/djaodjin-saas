@@ -103,10 +103,11 @@ Tested with
 
 - **Python:** 3.10, **Django:** 4.2 ([LTS](https://www.djangoproject.com/download/))
 - **Python:** 3.12, **Django:** 5.2 (next)
-- **Python:** 3.7, **Django:** 3.2 (legacy)
+- **Python:** 3.9, **Django:** 3.2 (legacy)
 
-1.1.5
+1.1.6
 
-  * fixes profile to `fail_subscription` not matching {profile} in URL path
+  * facilitates integration with other projects to keep invitee's middle names
+  * makes all API calls through djApi
 
 [previous release notes](changelog)
