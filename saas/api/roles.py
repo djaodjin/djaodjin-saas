@@ -85,7 +85,7 @@ def create_user_from_email(email, password=None, **kwargs):
     # a full_name, phone number, etc.
     for field_name in (
             user_model._meta.get_fields() +
-            getattr(user_model.objects, 'extra_fields', [])):
+            getattr(user_model.objects, 'extra_fields', tuple([]))):
         val = kwargs.get(field_name)
         if val:
             user_kwargs.update({field_name: val})

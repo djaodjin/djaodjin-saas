@@ -557,7 +557,7 @@ class OrganizationCreateMixin(object):
                         for field_name in (
                                 self.user_model._meta.get_fields() +
                                 getattr(self.user_model.objects,
-                                    'extra_fields', [])):
+                                    'extra_fields', tuple([]))):
                             val = validated_data.get(field_name)
                             if val:
                                 user_kwargs.update({field_name: val})
