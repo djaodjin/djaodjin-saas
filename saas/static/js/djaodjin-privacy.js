@@ -52,7 +52,7 @@ function updatePrivacySettings(key, value) {
     let data = {};
     data[key] = value;
     djApi.post('/api/legal/privacy', data);
-    if( value && PRIVACY_COOKIES_ENABLED[elemId] ) {
+    if( value && PRIVACY_COOKIES_ENABLED[key] ) {
         PRIVACY_COOKIES_ENABLED[key]();
     }
 }
