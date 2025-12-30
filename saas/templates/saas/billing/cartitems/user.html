@@ -24,10 +24,10 @@
     <div v-show="!itemsLoaded">
         Loading ...
     </div>
-    <div v-show="itemsLoaded && items.results.length == 0">
+    <div id="has-no-results" v-show="itemsLoaded && items.results.length == 0">
         <p>The cart is empty.</p>
     </div>
-    <div v-show="itemsLoaded && items.results.length > 0">
+    <div id="has-results" v-show="itemsLoaded && items.results.length > 0">
       <table>
         <thead>
           <tr>

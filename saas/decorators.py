@@ -327,17 +327,15 @@ def fail_paid_subscription(request, profile=None, plan=None, brokers=None):
     subscribed_at = datetime_or_now()
     accessible_providers, subscriptions = _valid_subscriptions(
         request, organization=profile, plan=plan)
-
     if accessible_providers.exists():
         # The request.user has a role on the plan provider.
         return False
 
-    subscriptions = subscriptions.filter(ends_at__gte=subscribed_at)
+    subscriptions = list(subscriptions.filter(ends_at__gte=subscribed_at))
     # ``order_by("ends_at")`` will get the subscription that ends the earliest,
     # yet is greater than Today (``subscribed_at``).
 
-    active_subscription = subscriptions.first()
-    if active_subscription is None:
+    if not subscriptions:
         if plan and not isinstance(plan, (list, tuple)):
             if not isinstance(plan, Plan):
                 plan = get_object_or_404(Plan, slug=plan)
@@ -347,9 +345,18 @@ def fail_paid_subscription(request, profile=None, plan=None, brokers=None):
             return reverse('saas_cart')
         return reverse('saas_cart_plan_list')
 
-    if active_subscription.is_locked:
+    is_locked = True
+    locked_subscription = None
+    for sub in subscriptions:
+        if sub.is_locked:
+            locked_subscription = sub
+        else:
+            is_locked = False
+            break
+
+    if is_locked:
         return reverse('saas_subscription_balance', args=(
-            active_subscription.organization, active_subscription.plan))
+            locked_subscription.organization, locked_subscription.plan))
 
     return False
 

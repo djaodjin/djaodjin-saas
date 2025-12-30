@@ -2163,9 +2163,9 @@ class Charge(models.Model):
             # that needs to be investigated by the broker hosting platform.
             LOGGER.info('error: ProcessorSetupError "%s" processing charge'\
                 ' of %d %s to %s',
-                err.processor_details(), self.amount, self.unit, self.customer,
+                err, self.amount, self.unit, self.customer,
                 extra={'event': 'processor-setup-error',
-                    'detail': err.processor_details(),
+                    'detail': err,
                     'provider': str(err.provider),
                     'organization': self.customer.slug,
                     'amount': self.amount, 'unit': self.unit})
