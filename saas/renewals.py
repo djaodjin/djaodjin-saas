@@ -236,12 +236,15 @@ def extend_subscription(subscription, at_time=None, dry_run=False):
         if not dry_run:
             try:
                 with transaction.atomic():
-                    subscription.extends()
-                    for use in subscription.uses.all():
-                        use.extends()
+                    # We need to create the order before extending
+                    # the `Subscription` otherwise, the order will show
+                    # an extra period in the `Transaction` description.
                     invoiced_item = Transaction.objects.new_subscription_order(
                             subscription, created_at=at_time)
                     invoiced_item.save()
+                    subscription.extends()
+                    for use in subscription.uses.all():
+                        use.extends()
             except Exception as err: #pylint:disable=broad-except
                 # logs any kind of errors
                 # and move on to the next subscription.
