@@ -97,7 +97,7 @@ urlpatterns += \
         login_required(
             OrganizationRedirectView.as_view(
                 pattern_name='saas_organization_cart'),
-            login_url=reverse_lazy('registration_register')),
+            login_url=reverse_lazy('login')),
         name='saas_cart'),
     # saas urls with provider key to implement marketplace.
     url_prefixed(r'api/', include('saas.backends.urls.api')),

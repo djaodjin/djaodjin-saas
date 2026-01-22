@@ -38,7 +38,7 @@ Python virtual environment.
     $ pip install djaodjin-saas
 
 
-Edit your project urls.py to add the djaojdin-saas urls
+Edit your project urls.py to add the djaodjin-saas urls
 
 .. code-block:: python
 
