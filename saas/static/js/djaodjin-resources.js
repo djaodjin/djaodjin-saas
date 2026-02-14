@@ -21,6 +21,11 @@
 function clearMessages() {
     "use strict";
     jQuery("#messages-content").empty();
+
+    // removes decoration on the fields.
+    jQuery(".form-group.has-error").removeClass("has-error");
+    jQuery(".is-invalid").removeClass("is-invalid");
+    jQuery(".invalid-feedback").text("");
 };
 
 function showMessages(messages, style) {
@@ -135,9 +140,14 @@ function _showErrorMessages(resp) {
             messages = [resp.detail];
         }
     }
-    if( messages.length === 0 && hasContextMessages ) {
-        if( _showErrorMessagesOnFields ) {
-            messages = [_showErrorMessagesOnFields];
+    if( messages.length === 0 ) {
+        if( hasContextMessages ) {
+            if( typeof _showErrorMessagesOnFields !== 'undefined' &&
+                _showErrorMessagesOnFields ) {
+                messages = [_showErrorMessagesOnFields];
+            }
+        } else {
+            messages = ["Err " + resp.status + ": " + resp.statusText];
         }
     }
     return messages;
@@ -145,19 +155,20 @@ function _showErrorMessages(resp) {
 
 
 function showErrorMessages(resp) {
+    var messages = [];
     if( resp.status >= 500 && resp.status < 600 ) {
         msg = "Err " + resp.status + ": " + resp.statusText;
-        if( _showErrorMessagesProviderNotified ) {
+        if( typeof _showErrorMessagesProviderNotified !== 'undefined' &&
+            _showErrorMessagesProviderNotified ) {
             msg += "<br />" + _showErrorMessagesProviderNotified;
         }
         messages = [msg];
     } else {
-        var messages = _showErrorMessages(resp);
-        if( messages.length === 0 ) {
-            messages = ["Err " + resp.status + ": " + resp.statusText];
-        }
+        messages = _showErrorMessages(resp);
     }
-    showMessages(messages, "error");
+    if( messages.length > 0 ) {
+        showMessages(messages, "error");
+    }
 };
 
 
@@ -301,7 +312,7 @@ const djApi = {
         // - http(elem, url, data, success)
         // - http(elem, url, data, success, fail)
         args['elem'] = elem;
-        if( typeof url != 'string' && !self._isArray(arg) ) {
+        if( typeof url != 'string' && !self._isArray(url) ) {
             throw '`url` should be a string or an array of ajax queries';
         }
         args['url'] = url;
@@ -452,7 +463,7 @@ const djApi = {
         fetch(self._safeUrl(self.apiBase, args.url), {
             method: "POST",
             headers: headers,
-            body: JSON.stringify(args.data),
+            body: args.data ? JSON.stringify(args.data) : null,
             credentials: 'include',
             traditional: true,
         }).then(async function(resp) {
@@ -571,7 +582,7 @@ const djApi = {
         fetch(self._safeUrl(self.apiBase, args.url), {
             method: "PUT",
             headers: headers,
-            body: JSON.stringify(args.data),
+            body: args.data ? JSON.stringify(args.data) : null,
             credentials: 'include',
             traditional: true,
         }).then(async function(resp) {
@@ -631,7 +642,7 @@ const djApi = {
         fetch(self._safeUrl(self.apiBase, args.url), {
             method: "PATCH",
             headers: headers,
-            body: JSON.stringify(args.data),
+            body: args.data ? JSON.stringify(args.data) : null,
             credentials: 'include',
             traditional: true,
         }).then(async function(resp) {
@@ -763,7 +774,7 @@ const djApi = {
             args.failureCallback);
     }
 
-}
+};
 
     // attach properties to the exports object to define
     // the exported module properties.

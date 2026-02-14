@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -168,7 +168,8 @@ class OrganizationManager(models.Manager):
     def find_candidates_by_domain(self, domain):
         if domain and domain[0] != '@':
             domain = '@' + domain
-        return self.filter(is_active=True, email__endswith=domain)
+        return self.filter(is_active=True, email__endswith=domain).exclude(
+            no_implicit_role=True)
 
     def find_candidates(self, full_name, user=None):
         """
@@ -285,6 +286,9 @@ class AbstractOrganization(models.Model):
     is_provider = models.BooleanField(default=False,
         help_text=_("The profile can fulfill the provider side"\
         " of a subscription."))
+    no_implicit_role = models.BooleanField(default=False,
+        help_text=_("The profile does not allow implicit roles"))
+
     default_timezone = models.CharField(
         max_length=100, default=settings.TIME_ZONE,
         help_text=_("Timezone to use when reporting metrics"))

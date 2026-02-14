@@ -571,7 +571,7 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
         .. code-block:: json
 
             {
-                "plan": "basic",
+                "plan": "premium",
                 "use": "requests"
             }
 

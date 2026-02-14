@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -430,6 +430,17 @@ class MetricsSerializer(NoModelSerializer):
         help_text=_("Data series"))
 
 
+class PrivacyCookiesSerializer(NoModelSerializer):
+    # matches `settings.PRIVACY_COOKIES_ENABLED`
+
+    analytics = serializers.BooleanField(required=False,
+        help_text=_("True when analytics cookies are enabled"))
+    social_media = serializers.BooleanField(required=False,
+        help_text=_("True when social_media cookies are enabled"))
+    advertising = serializers.BooleanField(required=False,
+        help_text=_("True when advertising cookies are enabled"))
+
+
 class RefundChargeItemSerializer(NoModelSerializer):
     """
     One item to refund on a `Charge`.
@@ -535,6 +546,8 @@ class OrganizationDetailSerializer(OrganizationSerializer):
         help_text=_("Zip/Postal code"))
     country = CountryField(required=False, allow_blank=True,
         help_text=_("Country as 2-letter code (ISO 3166-1)"))
+    no_implicit_role = serializers.BooleanField(required=False, default=False,
+        help_text=_("When `True`, the profile does not allow implicit roles"))
     is_bulk_buyer = serializers.BooleanField(required=False, default=False,
         help_text=_("Enable GroupBuy"))
     extra = ExtraField(required=False, allow_null=True,
@@ -548,8 +561,8 @@ class OrganizationDetailSerializer(OrganizationSerializer):
         fields = OrganizationSerializer.Meta.fields + (
             'full_name', 'created_at', 'email', 'phone',
             'street_address', 'locality', 'region', 'postal_code', 'country',
-            'default_timezone', 'is_provider', 'is_bulk_buyer', 'extra',
-            'detail')
+            'default_timezone', 'no_implicit_role', 'is_provider',
+            'is_bulk_buyer', 'extra', 'detail')
         read_only_fields = ('created_at', 'detail')
 
 

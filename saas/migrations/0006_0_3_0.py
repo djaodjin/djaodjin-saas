@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True,
                     help_text='Date/time of creation (in ISO format)')),
                 ('use_amount', models.PositiveIntegerField(default=0,
-                  help_text='Amount of the use charge in plan currency unit')),
+                  help_text='Amount per unit defined by the provider of the use charge in plan currency unit (ex: $0.01/request)')),
                 ('extra', models.TextField(null=True)),
             ],
             bases=(saas.utils.SlugTitleMixin, models.Model),

@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,8 @@ from rest_framework.mixins import (CreateModelMixin, DestroyModelMixin,
 from rest_framework.response import Response
 
 from .serializers import (AgreementSerializer, AgreementCreateSerializer,
-    AgreementDetailSerializer, AgreementUpdateSerializer)
+    AgreementDetailSerializer, AgreementUpdateSerializer,
+    PrivacyCookiesSerializer)
 from .. import settings
 from ..docs import extend_schema, OpenApiResponse
 from ..filters import OrderingFilter, SearchFilter
@@ -181,7 +182,7 @@ class AgreementListCreateAPIView(CreateModelMixin, AgreementListAPIView):
             headers=headers)
 
 
-class AgreementDetailAPIView(generics.RetrieveAPIView):
+class AgreementDetailAPIView(CreateModelMixin, generics.RetrieveAPIView):
     """
     Retrieves a legal agreement
 
@@ -214,6 +215,13 @@ class AgreementDetailAPIView(generics.RetrieveAPIView):
     lookup_field = 'slug'
     lookup_url_kwarg = 'agreement'
 
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('post',):
+            return PrivacyCookiesSerializer
+        return super(AgreementDetailAPIView, self).get_serializer_class()
+
+    @extend_schema(responses={
+        200: OpenApiResponse(AgreementDetailSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Update privacy settings
@@ -255,8 +263,7 @@ class AgreementDetailAPIView(generics.RetrieveAPIView):
         return self.get(request, *args, **kwargs)
 
 
-class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
-                             AgreementDetailAPIView):
+class AgreementUpdateAPIView(generics.RetrieveUpdateDestroyAPIView):
     """
     Retrieves a legal agreement (broker)
 
@@ -285,6 +292,8 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
             }
     """
     serializer_class = AgreementDetailSerializer
+    queryset = Agreement.objects.all()
+    lookup_field = 'slug'
     lookup_url_kwarg = 'document'
 
     def get_serializer_class(self):

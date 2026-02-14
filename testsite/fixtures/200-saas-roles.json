@@ -1290,4 +1290,34 @@
       "created_at": "2026-01-01T00:00:00+00:00",
       "role_description": 1,
       "organization": 250, "user": 251}, "model": "saas.Role", "pk": 251
-}]
+},
+
+{
+    "fields": {
+      "full_name": "NoImplicitRole",
+      "created_at": "2026-01-01T00:00:00+00:00",
+      "email": "no-implicit-role-252@@noimplicitrole252.localdomain",
+      "is_active": 1,
+      "no_implicit_role": true,
+      "slug": "no-implicit-role-252"}, "model": "saas.Organization", "pk": 252
+},
+{
+    "fields": {
+      "date_joined": "2026-01-01T00:00:00-09:00",
+      "last_login": "2026-01-01T00:00:00-09:00",
+      "email": "xia+252@noimplicitrole252.localdomain",
+      "first_name": "Xia",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_name": "NoImplicitRole",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "xia252"}, "model": "auth.User", "pk": 252
+},
+{
+    "fields": {
+      "last_signed": "2026-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 252}, "model": "saas.signature", "pk": 252
+}
+]
