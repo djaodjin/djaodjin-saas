@@ -105,9 +105,11 @@ Tested with
 - **Python:** 3.12, **Django:** 5.2 (next)
 - **Python:** 3.9, **Django:** 3.2 (legacy)
 
-1.1.6
+1.2.0
 
-  * facilitates integration with other projects to keep invitee's middle names
-  * makes all API calls through djApi
+  * applies coupon after advance discount (i.e. inverse order)
+  * adds `no_implicit_role` to always force a profile manager to accept requests
+  * matches semantic of at-least one paid subscription
+  * fixes description of transaction on renewals
 
 [previous release notes](changelog)

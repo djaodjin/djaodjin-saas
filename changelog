@@ -8,6 +8,15 @@ Roadmap
 Released versions
 =================
 
+1.2.0
+
+  * applies coupon after advance discount (i.e. inverse order)
+  * adds `no_implicit_role` to always force a profile manager to accept requests
+  * matches semantic of at-least one paid subscription
+  * fixes description of transaction on renewals
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Mon, 16 Feb 2026 10:20:00 -0700
+
 1.1.6
 
   * facilitates integration with other projects to keep invitee's middle names
