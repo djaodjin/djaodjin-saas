@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -179,8 +179,7 @@ class CartMixin(object):
         coupon_discount_amount = 0
         if coupon:
             coupon_discount_amount = coupon.get_discount_amount(
-                prorated_amount=prorated_amount,
-                period_amount=plan.period_amount)
+                amount=full_amount, period_amount=plan.period_amount)
             discount_by_types[coupon.discount_type] = coupon.discount_value
         amount = max(full_amount - coupon_discount_amount, 0)
 
@@ -220,24 +219,24 @@ class CartMixin(object):
                     prorated_amount + advance_discount.full_periods_amount)
                 advance_discount_amount = advance_discount.get_discount_amount(
                     prorated_amount=prorated_amount)
+                amount = full_amount - advance_discount_amount
                 discount_by_types = {}
                 discount_by_types[advance_discount.discount_type] = \
                     advance_discount.discount_value
-                coupon_discount_amount = 0
                 if coupon:
                     coupon_discount_amount = coupon.get_discount_amount(
-                        prorated_amount=prorated_amount,
-                        period_amount=plan.period_amount,
-                        advance_amount=(advance_discount.full_periods_amount
-                            - plan.period_amount))
+                        amount=amount, period_amount=plan.period_amount)
+                    amount = max(amount - coupon_discount_amount, 0)
                     if coupon.discount_type in discount_by_types:
-                        discount_by_types[coupon.discount_type] += \
-                            coupon.discount_value
+                        if coupon.discount_type == Coupon.PERCENTAGE:
+                            discount_by_types[coupon.discount_type] = (
+                                full_amount - amount) * 10000 // full_amount
+                        else:
+                            discount_by_types[coupon.discount_type] += \
+                                coupon.discount_value
                     else:
                         discount_by_types[coupon.discount_type] = \
                             coupon.discount_value
-                amount = (full_amount - advance_discount_amount
-                    - coupon_discount_amount)
                 if amount <= 0:
                     continue # never allow to be completely free here.
                 nb_periods = (

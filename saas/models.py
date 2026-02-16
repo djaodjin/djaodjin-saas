@@ -3130,7 +3130,7 @@ class Plan(SlugTitleMixin, models.Model):
 
     def get_discounted_period_amount(self, coupon):
         return self.period_amount - coupon.get_discount_amount(
-            period_amount=self.period_amount)
+            amount=self.period_amount, period_amount=self.period_amount)
 
     def get_discounted_period_price(self, coupon):
         return Price(self.get_discounted_period_amount(coupon), self.unit)
@@ -3390,12 +3390,14 @@ class Coupon(models.Model):
     def provider(self):
         return self.organization
 
-    def get_discount_amount(self, prorated_amount=0, period_amount=0,
-                            advance_amount=0, rounding=Plan.PRICE_ROUND_NONE):
+    def get_discount_amount(self, amount=0, period_amount=0,
+                            rounding=Plan.PRICE_ROUND_NONE):
         if self.discount_type == self.CURRENCY:
             return self.discount_value
+        if self.discount_type == self.PERIOD:
+            return self.discount_value * period_amount
         # discount percentage
-        full_amount = prorated_amount + period_amount + advance_amount
+        full_amount = amount
         discount_percent = self.discount_value
         discount_amount = (full_amount * discount_percent) // 10000
         if rounding == Plan.PRICE_ROUND_WHOLE:
