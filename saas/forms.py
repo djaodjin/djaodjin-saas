@@ -185,6 +185,8 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
             " digits and -/_ characters. Spaces are not allowed.")})
     street_address = forms.CharField(label=_("Street address"), required=False)
     phone = PhoneField(label=_("Phone number"), required=False)
+    no_implicit_role = forms.BooleanField(required=False,
+    label=mark_safe(_("Disable implicit role based on primary e-mail domain")))
 
     class Meta:
         model = get_organization_model()

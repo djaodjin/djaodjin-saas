@@ -204,7 +204,19 @@ class OrganizationRedirectView(RedirectFormMixin, TemplateView):
 
         context = self.get_context_data(**kwargs)
         context.update({'redirects': {'results': redirects}})
+        if not redirects:
+            if request.user.email:
+                email_parts = request.user.email.lower().split('@')
+                domain = email_parts[-1]
+                candidate = \
+                    self.organization_model.objects.find_candidates_by_domain(
+                        domain).first()
+                if candidate:
+                    context.update({
+                        'candidate_query': candidate.printable_name})
+
         return self.render_to_response(context)
+
 
     def get_context_data(self, **kwargs):
         context = super(OrganizationRedirectView, self).get_context_data(

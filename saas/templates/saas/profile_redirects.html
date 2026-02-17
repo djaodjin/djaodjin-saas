@@ -6,7 +6,8 @@
     <h1>To continue, please select a profile ...</h1>
     <role-profile-list inline-template id="accessible-list-container"
         :request-user="'{{request.user.email}}'"
-        data-items='{{redirects|to_json}}'>
+        data-items='{{redirects|to_json}}'
+        data-candidatequery='{% if candidate_query %}{{candidate_query}}{% endif %}'>
       <div>
         <div v-show="!itemsLoaded">
           <h3>loading ...</h3>

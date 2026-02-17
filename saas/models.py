@@ -168,8 +168,7 @@ class OrganizationManager(models.Manager):
     def find_candidates_by_domain(self, domain):
         if domain and domain[0] != '@':
             domain = '@' + domain
-        return self.filter(is_active=True, email__endswith=domain).exclude(
-            no_implicit_role=True)
+        return self.filter(is_active=True, email__endswith=domain)
 
     def find_candidates(self, full_name, user=None):
         """
@@ -1540,8 +1539,9 @@ class RoleManager(models.Manager):
                         role_descr = RoleDescription.objects.filter(
                             organization=profile,
                             implicit_create_on_none=True).get()
-                        profile.add_role_grant(
-                            user, role_descr, at_time=at_time)
+                        if not profile.no_implicit_role:
+                            profile.add_role_grant(user, role_descr,
+                                at_time=at_time)
                         continue
                     except RoleDescription.DoesNotExist:
                         LOGGER.debug(
@@ -1559,8 +1559,9 @@ class RoleManager(models.Manager):
                         role_descr = RoleDescription.objects.filter(
                             organization__isnull=True,
                             implicit_create_on_none=True).get()
-                        profile.add_role_grant(
-                            user, role_descr, at_time=at_time)
+                        if not profile.no_implicit_role:
+                            profile.add_role_grant(user, role_descr,
+                                at_time=at_time)
                         continue
                     except RoleDescription.DoesNotExist:
                         LOGGER.debug(

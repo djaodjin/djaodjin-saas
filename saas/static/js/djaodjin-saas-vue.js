@@ -1617,6 +1617,7 @@ Vue.component('role-profile-list', {
                 role_status: "",
                 include_personal_profile: true,
             },
+            candidatequery: null
         }
     },
     methods: {
@@ -1626,6 +1627,17 @@ Vue.component('role-profile-list', {
             vm.get();
         },
     },
+    mounted: function(){
+        var vm = this;
+        if( vm.$el.dataset.candidatequery &&
+            typeof vm.$refs.typeahead != 'undefined' ) {
+            vm.$refs.typeahead.query = vm.$el.dataset.candidatequery;
+            vm.$refs.typeahead.search();
+            vm.$nextTick(function(){
+                vm.$refs.typeahead.$refs.input.focus();
+            });
+        }
+    }
 });
 
 
@@ -3064,7 +3076,7 @@ Vue.component('search-profile', {
     ],
     data: function() {
         return {
-            url: this.$urls.provider.api_accounts,
+            url: this.$urls.provider ? this.$urls.provider.api_accounts : null,
         }
     }
 });

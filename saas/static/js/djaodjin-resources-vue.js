@@ -756,6 +756,15 @@ var typeAheadMixin = {
             return newText;
         },
 
+        isExactMatch: function(key) {
+            var vm = this;
+            if( vm.isEmpty ) return true;
+            for( let idx = 0; idx < vm.items.length; ++idx ) {
+                if( vm.items[idx][key] === vm.query ) return true;
+            }
+            return false;
+        },
+
         cancel: function() {},
 
         clear: function() {

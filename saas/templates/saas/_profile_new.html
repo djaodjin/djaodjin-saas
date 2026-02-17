@@ -5,15 +5,51 @@ Request access to an existing profile or create a new profile
   <div>
     <form id="add-profile" @submit.prevent="submit">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+      <search-profile inline-template ref="typeahead"
+                 v-bind:dataset="items.results"
+                 v-on:selectitem="updateItemSelected"
+                 v-show="!inNewProfileFlow"
+                 data-url="{{urls.api_candidates}}">
+        <div>
+          <input type="text"
+                 name="profile"
+                 placeholder="Start typing a profile name ..."
+                 autocomplete="off"
+                 autofocus
+                 ref="input"
+                 v-model="query"
+                 @input="update" />
+          <div v-show="!hasItems && query">
+            <p>
+We couldn't find a profile matching your search criteria, or there are too many profiles matching your search criteria. Please keep typing to narrow the search, or create a new profile.
+            </p>
+          </div>
+          <!-- the list -->
+          {# Implementation note: If we use `d-block` instead of    #}
+          {# `style="display: block;"` the dropdown shows even when #}
+          {# `hasItems` is `False`.                                 #}
+          <div style="display: block;"
+               v-for="(item, $item) in items"
+               v-show="hasItems">
+            <div :id="'request-' + (item.slug ? item.slug : item)">
+              <div>
+                [[item.printable_name ? item.printable_name : '@' + item]]
+              </div>
+              <button @click.prevent="onHit(item)">Request access</button>
+            </div>
+          </div>
+          <div v-show="!isExactMatch('printable_name')">
+            <div id="newProfile">
+              <div>
+                [[query]]
+              </div>
+              <button @click.prevent="onHit()">Create profile</button>
+            </div>
+          </div>
+        </div>
+      </search-profile>
       <!-- Workflow to create a new profile  -->
-      <input type="text"
-             name="profile"
-             placeholder="Start typing a profile name ..."
-             autocomplete="off"
-             ref="input"
-             v-model="query"
-             @input="update" />
-      <div>
+      <div v-show="inNewProfileFlow">
         <div>
           <p>
 You are about to create a new profile with the following information. Is it correct?
