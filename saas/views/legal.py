@@ -96,6 +96,7 @@ templates/saas/legal/index.html>`__).
     """
 
     model = Agreement
+    ordering = 'title'
     slug_url_kwarg = 'agreement'
     template_name = 'saas/legal/index.html'
 
