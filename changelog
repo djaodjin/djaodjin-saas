@@ -8,6 +8,13 @@ Roadmap
 Released versions
 =================
 
+1.2.1
+
+  * pre-populates search field with candidate profile when no implicit role
+  * orders agreements by title on legal page
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Tue, 17 Feb 2026 14:00:00 -0700
+
 1.2.0
 
   * applies coupon after advance discount (i.e. inverse order)

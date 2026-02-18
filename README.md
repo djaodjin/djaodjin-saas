@@ -105,11 +105,9 @@ Tested with
 - **Python:** 3.12, **Django:** 5.2 (next)
 - **Python:** 3.9, **Django:** 3.2 (legacy)
 
-1.2.0
+1.2.1
 
-  * applies coupon after advance discount (i.e. inverse order)
-  * adds `no_implicit_role` to always force a profile manager to accept requests
-  * matches semantic of at-least one paid subscription
-  * fixes description of transaction on renewals
+  * pre-populates search field with candidate profile when no implicit role
+  * orders agreements by title on legal page
 
 [previous release notes](changelog)
