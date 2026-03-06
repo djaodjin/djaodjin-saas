@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,8 @@ from functools import WRAPPER_ASSIGNMENTS
 import six
 
 #pylint:disable=import-error
-from six.moves.urllib.parse import urlparse, urlunparse, quote as urlquote
+from six.moves.urllib.parse import (urlparse, urlunparse, urljoin,
+    quote as urlquote)
 from six import StringIO
 
 #pylint:disable=ungrouped-imports

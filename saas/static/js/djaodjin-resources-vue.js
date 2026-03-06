@@ -844,8 +844,12 @@ var typeAheadMixin = {
                 vm.loading = false;
                 vm.$nextTick(function() {
                     var inputs = vm.$refs.input;
-                    if( inputs.length > 0 ) {
-                        inputs[0].focus();
+                    if( typeof inputs.length != 'undefined' ) {
+                        if( inputs.length > 0 ) {
+                            inputs[0].focus();
+                        }
+                    } else {
+                        inputs.focus();
                     }
                     if (vm.selectFirst) {
                         vm.down();

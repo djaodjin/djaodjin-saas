@@ -268,6 +268,8 @@ def fill_form_errors(form, err):
                 form.add_error(NON_FIELD_ERRORS,
                     _("No field '%(field)s': %(msg)s" % {
                     'field': field, 'msg': msg}))
+    else:
+        form.add_error(NON_FIELD_ERRORS, err.detail)
 
 
 def handle_uniq_error(err, renames=None):

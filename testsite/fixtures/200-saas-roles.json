@@ -1319,5 +1319,12 @@
       "last_signed": "2026-01-01T00:00:00+00:00",
       "agreement": 1,
       "user": 252}, "model": "saas.signature", "pk": 252
-}
-]
+},
+{
+    "fields": {
+      "full_name": "_archive_253",
+      "created_at": "2026-01-01T00:00:00+00:00",
+      "email": "_archive+253@localhost.localdomain",
+      "is_active": false,
+      "slug": "_archive_253"}, "model": "saas.Organization", "pk": 253
+}]

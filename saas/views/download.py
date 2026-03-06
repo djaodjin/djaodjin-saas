@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -532,7 +532,8 @@ class RevenueMetricsDownloadView(MetricsDownloadMixin, RevenueMetricsMixin,
     def metrics(self):
         if not hasattr(self, '_metrics'):
             #pylint:disable=attribute-defined-outside-init
-            self._metrics, _ = self.get_data()
+            metrics = self.retrieve_metrics()
+            self._metrics, _ = metrics.get('results', [])
         return self._metrics
 
     def get_headings(self):

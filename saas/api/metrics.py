@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,11 +34,10 @@ from ..compat import gettext_lazy as _, reverse, six
 from ..docs import extend_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..metrics.base import (abs_balances_by_period,
-    aggregate_transactions_by_period, aggregate_transactions_change_by_period,
-    generate_periods, get_different_units)
+    aggregate_transactions_change_by_period, generate_periods)
 from ..metrics.subscriptions import (active_subscribers_by_period,
     churn_subscribers_by_period, subscribers_age)
-from ..metrics.transactions import lifetime_value
+from ..metrics.transactions import lifetime_value, revenue_metrics
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin, BalancesDueMixin)
 from ..models import CartItem, Plan, Transaction
@@ -121,58 +120,9 @@ class BalancesMetricsMixin(MetricsMixin):
 
 class RevenueMetricsMixin(MetricsMixin):
 
-    def get_data(self):
-        unit = settings.DEFAULT_UNIT
-
-        date_periods = self.calculate_date_periods()
-
-        account_table, _, _, table_unit = \
-            aggregate_transactions_change_by_period(self.provider,
-                Transaction.RECEIVABLE, account_title='Sales',
-                orig='orig', dest='dest',
-                date_periods=date_periods)
-
-        _, payment_amounts, payments_unit = aggregate_transactions_by_period(
-            self.provider, Transaction.RECEIVABLE,
-            orig='dest', dest='dest',
-            orig_account=Transaction.BACKLOG,
-            orig_organization=self.provider,
-            date_periods=date_periods)
-
-        _, refund_amounts, refund_unit = aggregate_transactions_by_period(
-            self.provider, Transaction.REFUND,
-            orig='dest', dest='dest',
-            date_periods=date_periods)
-
-        units = get_different_units(table_unit, payments_unit, refund_unit)
-
-        if len(units) > 1:
-            LOGGER.error("different units in RevenueMetricAPIView.get: %s",
-                units)
-
-        if units:
-            unit = units[0]
-
-        account_table += [{
-            'slug': "payments",
-            'title': "Payments",
-            'values': payment_amounts
-        }, {
-            'slug': "refunds",
-            'title': "Refunds",
-            'values': refund_amounts
-        }]
-
-        return account_table, unit
-
     def retrieve_metrics(self):
-        account_table, unit = self.get_data()
-        resp = {
-            'title': "Amount",
-            'unit': unit,
-            'scale': 0.01,
-            'results': account_table
-        }
+        resp = revenue_metrics(self.provider, self.calculate_date_periods())
+
         if not self.provider.has_bank_account:
             resp.update({'processor_hint': 'connect_provider'})
 

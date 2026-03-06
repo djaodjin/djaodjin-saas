@@ -135,28 +135,34 @@ www.djaodjin.com/docs/reference/djaoapp/latest/api/#listChurnedSubscribers>`__
     def get_context_data(self, **kwargs):
         context = super(SubscriberListView, self).get_context_data(**kwargs)
         provider = self.provider
-        tabs = [{
+        tabs = []
+        if provider.is_broker:
+            tabs = [{
+                "slug": "registered",
+                "title": _("Registered"),
+                "urls": {"download": reverse(
+                    'saas_subscriber_pipeline_download_registered')}
+            }]
+            update_context_urls(context, {'broker': {
+                'api_users_registered': reverse('saas_api_registered')}})
+
+        tabs += [{
             "is_active": True,
             "slug": "subscribed",
             "title": _("Active"),
             "urls": {"download": reverse(
-              'saas_subscriber_pipeline_download_subscribed', args=(provider,))
-            }},
-                {
+              'saas_subscriber_pipeline_download_subscribed', args=(provider,))}
+        }, {
             "slug": "churned",
             "title": _("Churned"),
             "urls": {"download": reverse(
-              'saas_subscriber_pipeline_download_churned', args=(provider,))
-            }}]
+              'saas_subscriber_pipeline_download_churned', args=(provider,))}
+        }]
         context.update({'tabs': tabs})
         update_context_urls(context, {
             'subscribers_activity': reverse('saas_subscribers_activity',
             args=(provider,))
         })
-        if provider.is_broker:
-            context.update({
-                'registered': {'urls': {'download': reverse(
-                'saas_subscriber_pipeline_download_registered')}}})
         return context
 
 

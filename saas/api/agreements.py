@@ -25,8 +25,7 @@
 from django.db import IntegrityError
 from django.template.defaultfilters import slugify
 from rest_framework import generics, status
-from rest_framework.mixins import (CreateModelMixin, DestroyModelMixin,
-    UpdateModelMixin)
+from rest_framework.mixins import CreateModelMixin
 from rest_framework.response import Response
 
 from .serializers import (AgreementSerializer, AgreementCreateSerializer,

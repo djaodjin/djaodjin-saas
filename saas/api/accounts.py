@@ -1,4 +1,4 @@
-# Copyright (c) 2023, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -399,12 +399,12 @@ class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
 
 class UserQuerysetMixin(object):
     """
-    All ``User``.
+    All ``User`` that haven't been de-activated
     """
 
     @staticmethod
     def get_queryset():
-        return get_user_model().objects.all()
+        return get_user_model().objects.filter(is_active=True)
 
 
 class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,

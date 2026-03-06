@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,7 @@ from datetime import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
+from django.contrib.auth import get_user_model
 from django.db import router
 from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
@@ -34,7 +35,8 @@ from .. import humanize
 from ..compat import six
 from ..helpers import datetime_or_now
 from ..models import Plan, Transaction
-from ..utils import parse_tz
+from ..utils import get_organization_model, parse_tz
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -460,3 +462,39 @@ def get_different_units(*args):
     # removing None and duplicate values
     units = {_unit for _unit in args if _unit is not None}
     return list(units)
+
+
+def usage_metrics(date_periods):
+    """
+    Users and profiles created.
+    """
+    created_users = []
+    created_profiles = []
+    period_start = date_periods[0]
+    for period_end in date_periods[1:]:
+        created_users += [(period_end,
+            get_user_model().objects.filter(
+                date_joined__gte=period_start,
+                date_joined__lt=period_end).count())]
+        created_profiles += [(period_end,
+            get_organization_model().objects.find_created_between(
+                period_start, period_end).count())]
+        period_start = period_end
+
+    usage_table = [{
+        'slug': "new-users",
+        'title': "New users",
+        'values': created_users
+    }, {
+        'slug': "new-profiles",
+        'title': "New profiles",
+        'values': created_profiles
+    }]
+
+    resp = {
+        'title': "Usage",
+        'unit': 'profile',
+        'scale': 1,
+        'results': usage_table
+    }
+    return resp

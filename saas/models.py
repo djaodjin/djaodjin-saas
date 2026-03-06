@@ -192,6 +192,14 @@ class OrganizationManager(models.Manager):
             return self.filter(pk__in=candidates_from_email)
         return self.none()
 
+
+    def find_created_between(self, start_at, ends_at):
+        """
+        Returns profiles created in the date range [start_at, ends_at[
+        """
+        return self.filter(created_at__gte=start_at, created_at__lt=ends_at)
+
+
     def providers(self, subscriptions):
         """
         Set of ``Organization`` which provides the plans referenced

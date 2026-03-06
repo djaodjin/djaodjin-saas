@@ -1,4 +1,4 @@
-# Copyright (c) 2024, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,8 @@ from django.db.models.sql.query import RawQuery
 from .. import settings
 from ..compat import six
 from ..models import Transaction, is_sqlite3
+from .base import (aggregate_transactions_by_period,
+    aggregate_transactions_change_by_period, get_different_units)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -283,3 +285,156 @@ GROUP BY saas_organization.slug, matched_transfers_payments.dest_unit""" % {
                     else:
                         results[slug][unit].update(val)
     return results
+
+
+def revenue_metrics(provider, date_periods):
+    """
+    Returns Total Sales, New Sales, Churned Sales, Payments and Refunds,
+    formatted as a JSON response.
+
+    .. code-block:: json
+
+    {
+        "title": "Amount",
+        "scale": 0.01,
+        "unit": "usd",
+        "results": [
+            {
+                "slug": "total-sales",
+                "title": "Total Sales",
+                "values": [
+                    ["2014-10-01T00:00:00Z", 1985716],
+                    ["2014-11-01T00:00:00Z", 3516430],
+                    ["2014-12-01T00:00:00Z", 3279451],
+                    ["2015-01-01T00:00:00Z", 3787749],
+                    ["2015-02-01T00:00:00Z", 4480875],
+                    ["2015-03-01T00:00:00Z", 5495920],
+                    ["2015-04-01T00:00:00Z", 7678976],
+                    ["2015-05-01T00:00:00Z", 11064660],
+                    ["2015-06-01T00:00:00Z", 10329043],
+                    ["2015-07-01T00:00:00Z", 11444177],
+                    ["2015-08-01T00:00:00Z", 10274412],
+                    ["2015-08-06T04:59:14.721Z", 14106288]
+                ]
+            },
+            {
+                "slug": "new-sales",
+                "title": "New Sales",
+                "values": [
+                    ["2014-10-01T00:00:00Z", 0],
+                    ["2014-11-01T00:00:00Z", 0],
+                    ["2014-12-01T00:00:00Z", 0],
+                    ["2015-01-01T00:00:00Z", 0],
+                    ["2015-02-01T00:00:00Z", 0],
+                    ["2015-03-01T00:00:00Z", 0],
+                    ["2015-04-01T00:00:00Z", 0],
+                    ["2015-05-01T00:00:00Z", 0],
+                    ["2015-06-01T00:00:00Z", 0],
+                    ["2015-07-01T00:00:00Z", 0],
+                    ["2015-08-01T00:00:00Z", 0],
+                    ["2015-08-06T04:59:14.721Z", 0]
+                ]
+            },
+            {
+                "slug": "churned-sales",
+                "title": "Churned Sales",
+                "values": [
+                    ["2014-10-01T00:00:00Z", 0],
+                    ["2014-11-01T00:00:00Z", 0],
+                    ["2014-12-01T00:00:00Z", 0],
+                    ["2015-01-01T00:00:00Z", 0],
+                    ["2015-02-01T00:00:00Z", 0],
+                    ["2015-03-01T00:00:00Z", 0],
+                    ["2015-04-01T00:00:00Z", 0],
+                    ["2015-05-01T00:00:00Z", 0],
+                    ["2015-06-01T00:00:00Z", 0],
+                    ["2015-07-01T00:00:00Z", 0],
+                    ["2015-08-01T00:00:00Z", 0],
+                    ["2015-08-06T04:59:14.721Z", 0]
+                ]
+            },
+            {
+                "slug": "payments",
+                "title": "Payments",
+                "values": [
+                    ["2014-10-01T00:00:00Z", 1787144],
+                    ["2014-11-01T00:00:00Z", 3164787],
+                    ["2014-12-01T00:00:00Z", 2951505],
+                    ["2015-01-01T00:00:00Z", 3408974],
+                    ["2015-02-01T00:00:00Z", 4032787],
+                    ["2015-03-01T00:00:00Z", 4946328],
+                    ["2015-04-01T00:00:00Z", 6911079],
+                    ["2015-05-01T00:00:00Z", 9958194],
+                    ["2015-06-01T00:00:00Z", 9296138],
+                    ["2015-07-01T00:00:00Z", 10299759],
+                    ["2015-08-01T00:00:00Z", 9246970],
+                    ["2015-08-06T04:59:14.721Z", 12695659]
+                ]
+            },
+            {
+                "slug": "refunds",
+                "title": "Refunds",
+                "values": [
+                    ["2014-10-01T00:00:00Z", 0],
+                    ["2014-11-01T00:00:00Z", 0],
+                    ["2014-12-01T00:00:00Z", 0],
+                    ["2015-01-01T00:00:00Z", 0],
+                    ["2015-02-01T00:00:00Z", 0],
+                    ["2015-03-01T00:00:00Z", 0],
+                    ["2015-04-01T00:00:00Z", 0],
+                    ["2015-05-01T00:00:00Z", 0],
+                    ["2015-06-01T00:00:00Z", 0],
+                    ["2015-07-01T00:00:00Z", 0],
+                    ["2015-08-01T00:00:00Z", 0],
+                    ["2015-08-06T04:59:14.721Z", 0]
+                ]
+            }
+        ]
+    }
+    """
+    unit = settings.DEFAULT_UNIT
+
+    account_table, _, _, table_unit = \
+        aggregate_transactions_change_by_period(provider,
+            Transaction.RECEIVABLE, account_title='Sales',
+            orig='orig', dest='dest',
+            date_periods=date_periods)
+
+    _, payment_amounts, payments_unit = aggregate_transactions_by_period(
+        provider, Transaction.RECEIVABLE,
+        orig='dest', dest='dest',
+        orig_account=Transaction.BACKLOG,
+        orig_organization=provider,
+        date_periods=date_periods)
+
+    _, refund_amounts, refund_unit = aggregate_transactions_by_period(
+        provider, Transaction.REFUND,
+        orig='dest', dest='dest',
+        date_periods=date_periods)
+
+    units = get_different_units(table_unit, payments_unit, refund_unit)
+
+    if len(units) > 1:
+        LOGGER.error("different units in revenue_metrics: %s", units)
+
+    if units:
+        unit = units[0]
+
+    account_table += [{
+        'slug': "payments",
+        'title': "Payments",
+        'values': payment_amounts
+    }, {
+        'slug': "refunds",
+        'title': "Refunds",
+        'values': refund_amounts
+    }]
+
+    resp = {
+        'title': "Amount",
+        'unit': unit,
+        'scale': 0.01,
+        'results': account_table
+    }
+
+    return resp
