@@ -272,5 +272,6 @@ def privacy_settings(request):
         result = {
             key:False for key in settings.PRIVACY_COOKIES_ENABLED}
     else:
-        result = request.session.get('privacy', {}) if request else {}
+        session = getattr(request, 'session', None)
+        result = session.get('privacy', {}) if session else {}
     return result
