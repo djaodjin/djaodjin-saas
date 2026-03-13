@@ -32,7 +32,7 @@ from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
 
 from .. import humanize
-from ..compat import six
+from ..compat import gettext_lazy as _, six
 from ..helpers import datetime_or_now
 from ..models import Plan, Transaction
 from ..utils import get_organization_model, parse_tz
@@ -395,38 +395,38 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
             cust_churn_percent += [(period, 0)]
         last_nb_total_custs = nb_total_custs
     account_table = [{
-        'slug': "Total %s" % account_title,
-        'title': "Total %s" % account_title,
+        'slug': "total-transactions",
+        'title': _("Total %(title)s") % {'title': account_title},
         'values': total_account
     }, {
-        'slug': "New %s" % account_title,
-        'title': "New %s" % account_title,
+        'slug': "new-transactions",
+        'title': _("New %(title)s") % {'title': account_title},
         'values': new_account
     }, {
-        'slug': "Churned %s" % account_title,
-        'title': "Churned %s" % account_title,
+        'slug': "churned-transactions",
+        'title': _("Churned %(title)s") % {'title': account_title},
         'values': churned_account
     }]
     customer_table = [{
         'slug': "total-customers",
-        'title': "Total # of Customers",
+        'title': _("Total # of Customers"),
         'values': total_custs
     }, {
         'slug': "new-customers",
-        'title': "# of new Customers",
+        'title': _("# of new Customers"),
         'values': new_custs
     }, {
         'slug': "churned-customers",
-        'title': "# of churned Customers",
+        'title': _("# of churned Customers"),
         'values': churned_custs
     }, {
         'slug': "net-new-customers",
-        'title': "Net New Customers",
+        'title': _("Net New Customers"),
         'values': net_new_custs
     }]
     customer_extra = [{
         'slug': "percent-customer-churn",
-        'title': "% Customer Churn",
+        'title': _("% Customer Churn"),
         'values': cust_churn_percent
     }]
     return account_table, customer_table, customer_extra, unit

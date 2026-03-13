@@ -33,10 +33,12 @@ from django.template.defaultfilters import slugify
 from rest_framework.settings import api_settings
 
 from ... import humanize, settings, signals
-from ...compat import six
+from ...compat import force_str, six
 from ...helpers import datetime_or_now
 from ...metrics.base import generate_periods, usage_metrics
 from ...metrics.transactions import revenue_metrics
+from ...metrics.subscriptions import subscribers_metrics
+
 from ...models import Plan
 from ...utils import get_organization_model, parse_tz
 
@@ -171,10 +173,39 @@ class Command(BaseCommand):
 
 
     @staticmethod
-    def get_usage_metrics(prev_periods, prev_year_periods):
+    def get_subscribers_metrics(provider, prev_periods, prev_year_periods):
+        """
+        Returns subscribers metrics
+        """
+        metrics = subscribers_metrics(provider, prev_periods)
+        mirror_metrics = subscribers_metrics(provider, prev_year_periods)
+        unit = metrics.get('unit')
+
+        table = []
+        mirror_results = mirror_metrics.get('results')
+        for idx, entry in enumerate(metrics.get('results')):
+            table += [{
+                'slug': entry.get('slug'),
+                'title': entry.get('title'),
+                'values': [
+                    ['last', entry['values'][1][1]],
+                    ['prev', entry['values'][0][1]],
+                    ['prev_year', mirror_results[idx]['values'][0][1]]
+                ]}]
+
+        return (table, unit)
+
+
+    @staticmethod
+    def get_usage_metrics(provider, prev_periods, prev_year_periods):
         """
         Returns usage metrics
         """
+        if not provider.is_broker:
+            # We report registered users and created profiles only
+            # for the broker account.
+            return ([], None)
+
         metrics = usage_metrics(prev_periods)
         mirror_metrics = usage_metrics(prev_year_periods)
         unit = metrics.get('unit')
@@ -260,16 +291,22 @@ class Command(BaseCommand):
         data, unit = self.get_revenue_metrics(provider, prev_period, prev_year)
         table = self.construct_table(data, unit)
 
-        data, unit = self.get_usage_metrics(prev_period, prev_year)
+        data, unit = self.get_subscribers_metrics(
+            provider, prev_period, prev_year)
         table += self.construct_table(data, unit)
 
-        self.stdout.write("  {0:<15s} | {1:>12s} | {2:>8s} | {3:>8s}".format(
+        data, unit = self.get_usage_metrics(provider, prev_period, prev_year)
+        table += self.construct_table(data, unit)
+
+        self.stdout.write("{0:<21s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
             str(provider), curr_title, prev_title, mirror_title))
         for row in table:
             self.stdout.write(
-                "  {0:<15s} | {1:>12s} | {2:>8s} | {3:>8s}".format(
-                row['title'], row['values'][0][1],
-                row['values'][1][1], row['values'][2][1]))
+                "  {0:<19s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                force_str(row['title']),  # It could be a translation object.
+                row['values'][0][1],
+                row['values'][1][1],
+                row['values'][2][1]))
 
         # XXX details new users and profiles
         period_start = prev_period[1]
@@ -283,9 +320,11 @@ class Command(BaseCommand):
             new_users_sampled = queryset.order_by(
                     'date_joined')[:api_settings.PAGE_SIZE]
             for user in new_users_sampled :
-                self.stdout.write("%(created_at)s %(full_name)s (%(email)s)" % {
+                self.stdout.write(
+                    "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
                     'created_at': user.date_joined.isoformat(),
-                    'full_name': user.get_full_name(), 'email': user.email})
+                    'full_name': user.get_full_name(),
+                    'email': user.email if user.email else ""})
             if count > api_settings.PAGE_SIZE:
                 nb_additional_new_users = (
                     count - api_settings.PAGE_SIZE)
@@ -299,9 +338,11 @@ class Command(BaseCommand):
             new_profiles_sampled = queryset.order_by(
                     'created_at')[:api_settings.PAGE_SIZE]
             for profile in new_profiles_sampled:
-                self.stdout.write("%(created_at)s %(full_name)s (%(email)s)" % {
+                self.stdout.write(
+                    "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
                     'created_at': profile.created_at.isoformat(),
-                    'full_name': profile.full_name, 'email': profile.email})
+                    'full_name': profile.full_name,
+                    'email': profile.email if profile.email else ""})
             if count > api_settings.PAGE_SIZE:
                 nb_additional_new_profiles = (
                     count - api_settings.PAGE_SIZE)

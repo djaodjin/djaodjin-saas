@@ -160,7 +160,7 @@ class PlanMetricsMixin(MetricsMixin):
         for plan in Plan.objects.filter(
                 organization=self.provider).order_by('title'):
             values = active_subscribers_by_period(
-                plan, date_periods=date_periods)
+                plans=[plan], date_periods=date_periods)
             table.append({
                 'slug': plan.slug,
                 'title': plan.title,

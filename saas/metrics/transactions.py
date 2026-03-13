@@ -29,7 +29,7 @@ from django.db.models import F, Sum
 from django.db.models.sql.query import RawQuery
 
 from .. import settings
-from ..compat import six
+from ..compat import gettext_lazy as _, six
 from ..models import Transaction, is_sqlite3
 from .base import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period, get_different_units)
@@ -394,20 +394,20 @@ def revenue_metrics(provider, date_periods):
     """
     unit = settings.DEFAULT_UNIT
 
-    account_table, _, _, table_unit = \
+    account_table, _customer_table, _customer_extra, table_unit = \
         aggregate_transactions_change_by_period(provider,
-            Transaction.RECEIVABLE, account_title='Sales',
+            Transaction.RECEIVABLE, account_title=_("Sales"),
             orig='orig', dest='dest',
             date_periods=date_periods)
 
-    _, payment_amounts, payments_unit = aggregate_transactions_by_period(
+    _unused, payment_amounts, payments_unit = aggregate_transactions_by_period(
         provider, Transaction.RECEIVABLE,
         orig='dest', dest='dest',
         orig_account=Transaction.BACKLOG,
         orig_organization=provider,
         date_periods=date_periods)
 
-    _, refund_amounts, refund_unit = aggregate_transactions_by_period(
+    _unused, refund_amounts, refund_unit = aggregate_transactions_by_period(
         provider, Transaction.REFUND,
         orig='dest', dest='dest',
         date_periods=date_periods)
@@ -422,16 +422,16 @@ def revenue_metrics(provider, date_periods):
 
     account_table += [{
         'slug': "payments",
-        'title': "Payments",
+        'title': _("Payments"),
         'values': payment_amounts
     }, {
         'slug': "refunds",
-        'title': "Refunds",
+        'title': _("Refunds"),
         'values': refund_amounts
     }]
 
     resp = {
-        'title': "Amount",
+        'title': _("Amount"),
         'unit': unit,
         'scale': 0.01,
         'results': account_table

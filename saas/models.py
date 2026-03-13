@@ -3696,6 +3696,10 @@ class SubscriptionManager(models.Manager):
             provider, ends_at=ends_at, **kwargs)
 
     def churn_in_period(self, start_period, end_period, **kwargs):
+        """
+        Returns subscriptions which end in the [`start_period`, `end_period`[
+        timeframe.
+        """
         return self.valid_for(
             ends_at__gte=start_period, ends_at__lt=end_period, **kwargs)
 
@@ -3736,6 +3740,14 @@ class SubscriptionManager(models.Manager):
         except Subscription.DoesNotExist:
             pass
         return None
+
+    def new_in_period(self, start_period, end_period, **kwargs):
+        """
+        Returns subscriptions which start in the [`start_period`, `end_period`[
+        timeframe.
+        """
+        return self.valid_for(
+            created_at__gte=start_period, created_at__lt=end_period, **kwargs)
 
     def new_instance(self, organization, plan, ends_at=None):
         """

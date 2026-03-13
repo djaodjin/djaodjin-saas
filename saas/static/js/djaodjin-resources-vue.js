@@ -799,12 +799,14 @@ var typeAheadMixin = {
             vm.query = '';
             vm.$nextTick(function() {
                 var inputs = vm.$refs.input;
-                if( typeof inputs.length != 'undefined' ) {
-                    if( inputs.length > 0 ) {
-                        inputs[0].focus();
+                if( inputs ) {
+                    if( typeof inputs.length != 'undefined' ) {
+                        if( inputs.length > 0 ) {
+                            inputs[0].focus();
+                        }
+                    } else {
+                        inputs.focus();
                     }
-                } else {
-                    inputs.focus();
                 }
             });
             vm.$emit('typeaheadreset');
@@ -844,12 +846,14 @@ var typeAheadMixin = {
                 vm.loading = false;
                 vm.$nextTick(function() {
                     var inputs = vm.$refs.input;
-                    if( typeof inputs.length != 'undefined' ) {
-                        if( inputs.length > 0 ) {
-                            inputs[0].focus();
+                    if( inputs ) {
+                        if( typeof inputs.length != 'undefined' ) {
+                            if( inputs.length > 0 ) {
+                                inputs[0].focus();
+                            }
+                        } else {
+                            inputs.focus();
                         }
-                    } else {
-                        inputs.focus();
                     }
                     if (vm.selectFirst) {
                         vm.down();
@@ -953,8 +957,11 @@ var accountDetailMixin = {
             const accounts = new Set();
             for( let idx = 0; idx < elements.length; ++idx ) {
                 const item = elements[idx];
-                accounts.add((fieldName && item[fieldName]) ?
-                    item[fieldName] : item);
+                const slug = (fieldName && item[fieldName]) ?
+                      item[fieldName] : item;
+                if( !vm.accountsBySlug[slug] ) {
+                    accounts.add(slug);
+                }
             }
             if( accounts.size ) {
                 let queryParams = "?q_f==slug&q=";

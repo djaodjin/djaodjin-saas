@@ -398,19 +398,23 @@ const djApi = {
             headers['Authorization'] = "Bearer " + authToken;
         }
 
-        const qualifiedUrl = self._safeUrl(self.apiBase, args.url) + (
-            args.data ? '?' + (new URLSearchParams(args.data)).toString() : '');
+        const baseUrl = self._safeUrl(self.apiBase, args.url);
+        const qualifiedUrl = baseUrl +
+            (args.data ? ((baseUrl.lastIndexOf('?') > 0 ? '&' : '?') +
+                (new URLSearchParams(args.data)).toString()) : '');
         fetch(qualifiedUrl, {
             method: "GET",
             headers: headers,
             credentials: 'include',
             traditional: true,
         }).then(async function(resp) {
+            const clonedResp = resp.clone();
             try {
                 resp.data = await resp.json();
             } catch(err) {
                 // In case of error, we are not dealing with a nice
                 // JSON-formatted `ValidationError` here.
+                resp.data = await clonedResp.text();
             }
             if( !resp.ok ) {
                 args.failureCallback(resp)
