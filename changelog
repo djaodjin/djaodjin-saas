@@ -8,6 +8,13 @@ Roadmap
 Released versions
 =================
 
+1.2.2
+
+  * fixes `GET /api/legal/privacy` when 404 before reaching session middleware
+  * replaces `report_weekly_revenue` with more generic `saas_reports` command
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 13 Mar 2026 20:54:00 -0700
+
 1.2.1
 
   * pre-populates search field with candidate profile when no implicit role

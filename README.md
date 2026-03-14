@@ -105,9 +105,9 @@ Tested with
 - **Python:** 3.12, **Django:** 5.2 (next)
 - **Python:** 3.9, **Django:** 3.2 (legacy)
 
-1.2.1
+1.2.2
 
-  * pre-populates search field with candidate profile when no implicit role
-  * orders agreements by title on legal page
+  * fixes `GET /api/legal/privacy` when 404 before reaching session middleware
+  * replaces `report_weekly_revenue` with more generic `saas_reports` command
 
 [previous release notes](changelog)
