@@ -312,41 +312,47 @@ class Command(BaseCommand):
         period_start = prev_period[1]
         period_end = prev_period[2]
 
-        queryset = get_user_model().objects.filter(
-            date_joined__gte=period_start, date_joined__lt=period_end)
-        count = queryset.count()
-        if count:
-            self.stdout.write("New users %s" % curr_title)
-            new_users_sampled = queryset.order_by(
-                    'date_joined')[:api_settings.PAGE_SIZE]
-            for user in new_users_sampled :
-                self.stdout.write(
-                    "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
-                    'created_at': user.date_joined.isoformat(),
-                    'full_name': user.get_full_name(),
-                    'email': user.email if user.email else ""})
-            if count > api_settings.PAGE_SIZE:
-                nb_additional_new_users = (
-                    count - api_settings.PAGE_SIZE)
-                self.stdout.write("... (%d more)" % nb_additional_new_users)
+        new_users_sampled = None
+        nb_additional_new_users = 0
+        new_profiles_sampled = None
+        nb_additional_new_profiles = 0
+        if provider.is_broker:
+            queryset = get_user_model().objects.filter(
+                date_joined__gte=period_start, date_joined__lt=period_end)
+            count = queryset.count()
+            if count:
+                self.stdout.write("New users %s" % curr_title)
+                new_users_sampled = queryset.order_by(
+                        'date_joined')[:api_settings.PAGE_SIZE]
+                for user in new_users_sampled :
+                    self.stdout.write(
+                        "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
+                        'created_at': user.date_joined.isoformat(),
+                        'full_name': user.get_full_name(),
+                        'email': user.email if user.email else ""})
+                if count > api_settings.PAGE_SIZE:
+                    nb_additional_new_users = (
+                        count - api_settings.PAGE_SIZE)
+                    self.stdout.write("... (%d more)" % nb_additional_new_users)
 
-        queryset = get_organization_model().objects.find_created_between(
-            period_start, period_end)
-        count = queryset.count()
-        if count:
-            self.stdout.write("New profiles %s" % curr_title)
-            new_profiles_sampled = queryset.order_by(
-                    'created_at')[:api_settings.PAGE_SIZE]
-            for profile in new_profiles_sampled:
-                self.stdout.write(
-                    "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
-                    'created_at': profile.created_at.isoformat(),
-                    'full_name': profile.full_name,
-                    'email': profile.email if profile.email else ""})
-            if count > api_settings.PAGE_SIZE:
-                nb_additional_new_profiles = (
-                    count - api_settings.PAGE_SIZE)
-                self.stdout.write("... (%d more)" % nb_additional_new_profiles)
+            queryset = get_organization_model().objects.find_created_between(
+                period_start, period_end)
+            count = queryset.count()
+            if count:
+                self.stdout.write("New profiles %s" % curr_title)
+                new_profiles_sampled = queryset.order_by(
+                        'created_at')[:api_settings.PAGE_SIZE]
+                for profile in new_profiles_sampled:
+                    self.stdout.write(
+                        "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
+                        'created_at': profile.created_at.isoformat(),
+                        'full_name': profile.full_name,
+                        'email': profile.email if profile.email else ""})
+                if count > api_settings.PAGE_SIZE:
+                    nb_additional_new_profiles = (
+                        count - api_settings.PAGE_SIZE)
+                    self.stdout.write(
+                        "... (%d more)" % nb_additional_new_profiles)
 
         if not dry_run:
             signals.period_sales_report_created.send(sender=__name__,
