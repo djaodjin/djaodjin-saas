@@ -38,7 +38,7 @@ from rest_framework.generics import get_object_or_404
 from . import humanize, settings, signals
 from .cart import cart_insert_item
 from .compat import (NoReverseMatch, gettext_lazy as _, import_string,
-    is_authenticated, reverse, six)
+    is_authenticated, reverse, six, timezone_or_utc)
 from .decorators import _valid_manager
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
 from .helpers import (datetime_or_now, full_name_natural_parts,
@@ -46,7 +46,7 @@ from .helpers import (datetime_or_now, full_name_natural_parts,
 from .models import (CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, sum_orig_amount)
 from .utils import (build_absolute_uri, get_organization_model, get_role_model,
-    handle_uniq_error, parse_tz, validate_redirect_url)
+    handle_uniq_error, validate_redirect_url)
 from .extras import OrganizationMixinBase
 from .metrics.transactions import get_balances_due
 
@@ -737,12 +737,15 @@ class DateRangeContextMixin(object):
     @property
     def timezone(self):
         if not hasattr(self, '_timezone'):
-            self._timezone = parse_tz(self.get_query_param(
-                self.timezone_param, None))
-            if not self._timezone:
+            tz_str = self.get_query_param(self.timezone_param, None)
+            self._timezone = None
+            if tz_str:
+                self._timezone = timezone_or_utc(tz_str)
+            else:
                 organization = getattr(self, 'organization', None)
                 if organization:
-                    self._timezone = parse_tz(organization.default_timezone)
+                    self._timezone = timezone_or_utc(
+                        organization.default_timezone)
         return self._timezone
 
     def get_context_data(self, **kwargs):

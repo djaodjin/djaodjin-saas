@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,6 @@ from django.template.defaultfilters import slugify
 from django.utils.timezone import get_current_timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
-from pytz import timezone, UnknownTimeZoneError
-from pytz.tzinfo import BaseTzInfo
 
 from .compat import (get_model_class, gettext_lazy as _, import_string, six,
     timezone_or_utc)
@@ -73,17 +71,6 @@ class SlugTitleMixin(object):
                     self.slug = slug_base + suffix
         raise ValidationError({'detail':
             "Unable to create a unique URL slug from title '%s'" % self.title})
-
-
-def parse_tz(tzone):
-    if issubclass(type(tzone), BaseTzInfo):
-        return tzone
-    if tzone:
-        try:
-            return timezone(tzone)
-        except UnknownTimeZoneError:
-            pass
-    return None
 
 
 def convert_dates_to_utc(dates):

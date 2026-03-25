@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,9 +32,9 @@ from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter, BaseFilterBackend)
 
 from . import settings
-from .compat import force_str, six
+from .compat import force_str, six, timezone_or_utc
 from .helpers import datetime_or_now
-from .utils import is_mail_provider_domain, parse_tz
+from .utils import is_mail_provider_domain
 
 LOGGER = logging.getLogger(__name__)
 
@@ -417,11 +417,13 @@ class DateRangeFilter(BaseFilterBackend):
     def get_params(self, request, view):
         tz_ob = None
         if self.timezone_param:
-            tz_ob = parse_tz(request.query_params.get(self.timezone_param))
+            tz_str = request.query_params.get(self.timezone_param)
+            if tz_str:
+                tz_ob = timezone_or_utc(tz_str)
         if not tz_ob:
             organization = getattr(view, 'organization', None)
             if organization:
-                tz_ob = parse_tz(organization.default_timezone)
+                tz_ob = timezone_or_utc(organization.default_timezone)
         ends_at = None
         if self.ends_at_param:
             ends_at = request.query_params.get(self.ends_at_param)

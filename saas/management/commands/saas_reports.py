@@ -40,7 +40,7 @@ from ...metrics.transactions import revenue_metrics
 from ...metrics.subscriptions import subscribers_metrics
 
 from ...models import Plan
-from ...utils import get_organization_model, parse_tz
+from ...utils import get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 

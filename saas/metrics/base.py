@@ -32,10 +32,10 @@ from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
 
 from .. import humanize
-from ..compat import gettext_lazy as _, six
+from ..compat import gettext_lazy as _, six, timezone_or_utc
 from ..helpers import datetime_or_now
 from ..models import Plan, Transaction
-from ..utils import get_organization_model, parse_tz
+from ..utils import get_organization_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
     dates = []
     from_date = datetime_or_now(from_date)
     orig_tz = from_date.tzinfo
-    tz_ob = parse_tz(tzinfo)
+    tz_ob = timezone_or_utc(tzinfo)
     if tz_ob:
         from_date = from_date.astimezone(tz_ob)
     dates.append(from_date)
@@ -138,7 +138,7 @@ def _generate_periods(time_unit, num_units, start_date, step_units,
     start_date = datetime_or_now(start_date)
     original_timezone = start_date.tzinfo
 
-    target_timezone = parse_tz(timezone_str)
+    target_timezone = timezone_or_utc(timezone_str)
     if target_timezone:
         start_date = start_date.astimezone(target_timezone)
 
