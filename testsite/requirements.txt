@@ -2,8 +2,9 @@
 # py312-django5.2.
 
 Django==3.2.25 ; python_version < "3.9"
-Django==4.2.28 ; python_version >= "3.9" and python_version < "3.12"
-Django==5.2.11 ; python_version >= "3.12"
+Django==4.2.29 ; python_version >= "3.9" and python_version < "3.12"
+Django==5.2.12 ; python_version >= "3.12" and python_version < "3.14"
+Django==6.0.3  ; python_version >= "3.14"
 djangorestframework==3.14.0 ; python_version < "3.9"
                                       # 3.12.4 not compatible with Django4.2
 djangorestframework==3.15.2 ; python_version >= "3.9" # Breaking
@@ -16,7 +17,7 @@ Markdown==3.4.4                       # To htmlize legal agreements
 phonenumbers==8.13.7
 python-dateutil==2.8.2
 PyJWT==2.8.0                ; python_version < "3.9"
-PyJWT==2.10.1               ; python_version >= "3.9"
+PyJWT==2.12.0               ; python_version >= "3.9"
 rave_python==1.4.0
 razorpay==0.2.0
 stripe==5.0.0

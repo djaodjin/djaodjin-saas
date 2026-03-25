@@ -33,7 +33,7 @@ from django.template.defaultfilters import slugify
 from rest_framework.settings import api_settings
 
 from ... import humanize, settings, signals
-from ...compat import force_str, six
+from ...compat import force_str, six, timezone_or_utc
 from ...helpers import datetime_or_now
 from ...metrics.base import generate_periods, usage_metrics
 from ...metrics.transactions import revenue_metrics
@@ -78,23 +78,20 @@ class Command(BaseCommand):
 
     @staticmethod
     def construct_date_periods(at_time, period=humanize.WEEKLY, timezone=None):
-        # discarding time, keeping utc tzinfo (00:00:00 utc)
-        tzinfo = parse_tz(timezone)
+        tzinfo = timezone_or_utc(timezone)
 
         def localize_time(time):
             # we are interested in 00:00 local time, if we don't have
             # local time zone, fall back to 00:00 utc time
             # in case we have local timezone, replace utc with it
-            return (tzinfo.localize(time.replace(tzinfo=None))
-                if tzinfo else time)
+            if time.tzinfo is None:
+                time = time.replace(tzinfo=tzinfo)
+            return time.astimezone(tzinfo)
 
-        base_time = at_time.replace(
+        base_time = localize_time(at_time).replace(
             minute=0 if period != humanize.YEARLY else at_time.minute,
             second=0,
-            microsecond=0
-        )
-
-        base_time = localize_time(base_time)
+            microsecond=0)
 
         if not period:
             return None, None
@@ -234,7 +231,7 @@ class Command(BaseCommand):
         period_name = humanize.describe_period_name(period_type, 1)
 
         self.stdout.write(
-            "running report_weekly_revenue for %s %s period at %s" %
+            "running saas_reports for %s %s period at %s" %
             ('an' if period_type == humanize.HOURLY else 'a',
              period_name, at_time))
 
