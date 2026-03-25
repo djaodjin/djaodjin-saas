@@ -42,11 +42,9 @@ LOGGER = logging.getLogger(__name__)
 
 
 def localize_time(time_to_convert, target_timezone, original_timezone):
-    if target_timezone:
-        # adding timezone info
-        # + accounting for DST
-        return target_timezone.localize(time_to_convert)
-    return time_to_convert.replace(tzinfo=original_timezone)
+    if time_to_convert.tzinfo is None:
+        time_to_convert = time_to_convert.replace(tzinfo=original_timezone)
+    return time_to_convert.astimezone(target_timezone)
 
 
 def month_periods(nb_months=12, from_date=None, step_months=1,
