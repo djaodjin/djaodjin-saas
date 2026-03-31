@@ -25,6 +25,7 @@
 """Command for the cron job. Send revenue report for the last week"""
 
 import logging
+from collections import OrderedDict
 
 from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
@@ -53,6 +54,12 @@ class Command(BaseCommand):
         slugify(val): key for key, val in six.iteritems(
             dict(Plan.INTERVAL_CHOICES))}
 
+    curr_title = None
+    prev_title = None
+    mirror_title = None
+    tops = OrderedDict()
+    tops_cutoff = 5
+
     def add_arguments(self, parser):
         parser.add_argument(
             '--dry-run', action='store_true',
@@ -75,6 +82,10 @@ class Command(BaseCommand):
             choices=list(six.iterkeys(self.inverted_period_choices)),
             help='Specifies the period to generate reports for'
         )
+
+    @staticmethod
+    def as_printable_name(provider, extra=None):
+        return str(provider) + (" %s" % str(extra) if extra else "")
 
     @staticmethod
     def construct_date_periods(at_time, period=humanize.WEEKLY, timezone=None):
@@ -144,6 +155,20 @@ class Command(BaseCommand):
             else:
                 values[0][1] = str(values[0][1])
         return table
+
+    @staticmethod
+    def get_is_meaningful(data, includes=None):
+        is_meaningful = False
+        for row in data:
+            title = force_str(row['title']) # It could be a translation object.
+            row['title'] = title
+            if includes and title in includes:
+                value = row['values'][0][1]
+                if value > 0:
+                    is_meaningful = True
+                    break
+        return is_meaningful
+
 
     @staticmethod
     def get_revenue_metrics(provider, prev_periods, prev_year_periods):
@@ -241,15 +266,53 @@ class Command(BaseCommand):
             providers = providers.filter(slug__in=provider_slugs)
         for provider in providers:
             self.run_report(provider, at_time, period_type, dry_run=dry_run)
+        self.print_tops()
+
+    def insert_tops(self, provider, data, extra=None):
+        for row in data:
+            title = force_str(row['title']) # It could be a translation object.
+            row.update({
+                'title': title,
+                'provider': provider,
+                'extra': extra
+            })
+            value = row['values'][0][1]
+            if value:
+                tops = self.tops.get(title)
+                if tops:
+                    for tops_idx, tops_row in enumerate(tops):
+                        if tops_row['values'][0][1] < value:
+                            tops = (tops[:tops_idx] + [row] +
+                                tops[tops_idx + 1: max(tops_idx + 1,
+                                    self.tops_cutoff)])
+                            break
+                else:
+                    tops = [row]
+                self.tops.update({title: tops})
+
+
+    def print_tops(self):
+        for title, table in six.iteritems(self.tops):
+            self.stdout.write("{0:<30s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                "Top %d %s" % (self.tops_cutoff, title), self.curr_title,
+                self.prev_title, self.mirror_title))
+            for row in table:
+                self.stdout.write(
+                    "  {0:<28s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                    self.as_printable_name(row['provider'], row['extra']),
+                    row['values'][0][1],
+                    row['values'][1][1],
+                    row['values'][2][1]))
+            self.stdout.write("")
 
 
     def run_report(self, provider, at_time, period_type=humanize.WEEKLY,
-                   dry_run=False):
-        # pylint:disable=too-many-locals
-        period_name = humanize.describe_period_name(period_type, 1)
+                    extra=None, dry_run=False):
+        # pylint:disable=too-many-arguments,too-many-locals
         dates = self.construct_date_periods(
             at_time, period=period_type, timezone=provider.default_timezone)
         prev_period, prev_year = dates
+        period_name = humanize.describe_period_name(period_type, 1)
         LOGGER.debug(
             "Two last consecutive %ss\n: %s to %s and %s to %s",
             period_name,
@@ -257,53 +320,68 @@ class Command(BaseCommand):
             prev_period[1].isoformat(), prev_period[2].isoformat())
         mirror_period_name = humanize.describe_period_name(period_type + 1,
             1) if period_type < humanize.YEARLY else period_name
-        curr_title = 'Last %s' % period_name
-        prev_title = 'Prev %s' % period_name
+        self.curr_title = 'Last %s' % period_name
+        self.prev_title = 'Prev %s' % period_name
         if period_type == humanize.YEARLY:
-            curr_title = "YTD"
-            prev_title = str(prev_period[0].year)
-            mirror_title = str(prev_year[0].year)
+            self.curr_title = "YTD"
+            self.prev_title = str(prev_period[0].year)
+            self.mirror_title = str(prev_year[0].year)
             LOGGER.debug(
                 "Year before the corresponding yearly period\n: %s to %s",
                 prev_year[0].isoformat(), prev_year[1].isoformat())
         elif period_type == humanize.HOURLY:
-            mirror_title = "Same %s yesterday" % period_name
+            self.mirror_title = "Same %s yesterday" % period_name
             LOGGER.debug(
                 "Same %s from the previous %s\n: %s to %s",
                 period_name, mirror_period_name,
                 prev_year[0].isoformat(), prev_year[1].isoformat())
         elif period_type == humanize.DAILY:
-            mirror_title = "Same %s last %s" % (period_name, mirror_period_name)
+            self.mirror_title = "Same %s last %s" % (
+                period_name, mirror_period_name)
             LOGGER.debug(
                 "Same %s from the previous %s\n: %s to %s",
                 period_name, mirror_period_name,
                 prev_year[0].isoformat(), prev_year[1].isoformat())
         else:
-            mirror_title = "Same %s last year" % period_name
+            self.mirror_title = "Same %s last year" % period_name
             LOGGER.debug(
                 "Same %s from the previous year\n: %s to %s",
                 period_name,
                 prev_year[0].isoformat(), prev_year[1].isoformat())
 
+        is_meaningful = False
         data, unit = self.get_revenue_metrics(provider, prev_period, prev_year)
+        self.insert_tops(provider, data, extra=extra)
+        is_meaningful |= self.get_is_meaningful(data, includes=('Total Sales',))
         table = self.construct_table(data, unit)
 
         data, unit = self.get_subscribers_metrics(
             provider, prev_period, prev_year)
+        self.insert_tops(provider, data, extra=extra)
+        is_meaningful |= self.get_is_meaningful(data,
+            includes=('New Subscribers',))
         table += self.construct_table(data, unit)
 
         data, unit = self.get_usage_metrics(provider, prev_period, prev_year)
+        self.insert_tops(provider, data, extra=extra)
+        is_meaningful |= self.get_is_meaningful(data,
+            includes=('New users', 'New profiles',))
         table += self.construct_table(data, unit)
 
-        self.stdout.write("{0:<21s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
-            str(provider), curr_title, prev_title, mirror_title))
-        for row in table:
-            self.stdout.write(
-                "  {0:<19s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
-                force_str(row['title']),  # It could be a translation object.
-                row['values'][0][1],
-                row['values'][1][1],
-                row['values'][2][1]))
+        if is_meaningful:
+            self.stdout.write("{0:<23s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                str(provider), self.curr_title, self.prev_title,
+                self.mirror_title))
+            for row in table:
+                self.stdout.write(
+                    "  {0:<21s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                    force_str(row['title']), # It could be a translation object.
+                    row['values'][0][1],
+                    row['values'][1][1],
+                    row['values'][2][1]))
+        else:
+            self.stdout.write("{0:<21s} | no meaningful activity".format(
+                str(provider)))
 
         # XXX details new users and profiles
         period_start = prev_period[1]
@@ -318,7 +396,7 @@ class Command(BaseCommand):
                 date_joined__gte=period_start, date_joined__lt=period_end)
             count = queryset.count()
             if count:
-                self.stdout.write("New users %s" % curr_title)
+                self.stdout.write("New users %s" % self.curr_title)
                 new_users_sampled = queryset.order_by(
                         'date_joined')[:api_settings.PAGE_SIZE]
                 for user in new_users_sampled :
@@ -336,7 +414,7 @@ class Command(BaseCommand):
                 period_start, period_end)
             count = queryset.count()
             if count:
-                self.stdout.write("New profiles %s" % curr_title)
+                self.stdout.write("New profiles %s" % self.curr_title)
                 new_profiles_sampled = queryset.order_by(
                         'created_at')[:api_settings.PAGE_SIZE]
                 for profile in new_profiles_sampled:
