@@ -134,7 +134,7 @@ class Command(BaseCommand):
         return prev_period, prev_mirror
 
     @staticmethod
-    def construct_table(table, unit=None):
+    def construct_table(data, unit=None):
         def calculate_percentage_change(current, previous):
             try:
                 amount = (current - previous) * 100 / previous
@@ -145,15 +145,30 @@ class Command(BaseCommand):
             except ZeroDivisionError:
                 return 'N/A'
 
-        for row in table:
+        table = []
+        for row in data:
             values = row['values']
-            for idx in range(1, len(values)):
-                values[idx][1] = calculate_percentage_change(
-                    values[0][1], values[idx][1])
+            table_values = []
             if unit in (settings.DEFAULT_UNIT,):
-                values[0][1] = humanize.as_money(values[0][1], unit)
+                table_values += [
+                    [values[0][0], humanize.as_money(values[0][1], unit)]
+                ]
             else:
-                values[0][1] = str(values[0][1])
+                table_values += [
+                    [values[0][0], str(values[0][1])]
+                ]
+            for idx in range(1, len(values)):
+                table_values += [
+                    [values[idx][0], calculate_percentage_change(
+                    values[0][1], values[idx][1])]]
+            table_row = {
+                'unit': unit,
+                'values': table_values
+            }
+            for key, value in six.iteritems(row):
+                if key not in table_row:
+                    table_row.update({key: value})
+            table += [table_row]
         return table
 
     @staticmethod
@@ -268,12 +283,13 @@ class Command(BaseCommand):
             self.run_report(provider, at_time, period_type, dry_run=dry_run)
         self.print_tops()
 
-    def insert_tops(self, provider, data, extra=None):
+    def insert_tops(self, provider, data, unit, extra=None):
         for row in data:
             title = force_str(row['title']) # It could be a translation object.
             row.update({
                 'title': title,
                 'provider': provider,
+                'unit': unit,
                 'extra': extra
             })
             value = row['values'][0][1]
@@ -292,17 +308,18 @@ class Command(BaseCommand):
 
 
     def print_tops(self):
-        for title, table in six.iteritems(self.tops):
+        for title, data in six.iteritems(self.tops):
             self.stdout.write("{0:<30s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
                 "Top %d %s" % (self.tops_cutoff, title), self.curr_title,
                 self.prev_title, self.mirror_title))
-            for row in table:
+            for row in data:
+                table_row = self.construct_table([row], row.get('unit'))[0]
                 self.stdout.write(
                     "  {0:<28s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
                     self.as_printable_name(row['provider'], row['extra']),
-                    row['values'][0][1],
-                    row['values'][1][1],
-                    row['values'][2][1]))
+                    table_row['values'][0][1],
+                    table_row['values'][1][1],
+                    table_row['values'][2][1]))
             self.stdout.write("")
 
 
@@ -351,19 +368,19 @@ class Command(BaseCommand):
 
         is_meaningful = False
         data, unit = self.get_revenue_metrics(provider, prev_period, prev_year)
-        self.insert_tops(provider, data, extra=extra)
+        self.insert_tops(provider, data, unit, extra=extra)
         is_meaningful |= self.get_is_meaningful(data, includes=('Total Sales',))
         table = self.construct_table(data, unit)
 
         data, unit = self.get_subscribers_metrics(
             provider, prev_period, prev_year)
-        self.insert_tops(provider, data, extra=extra)
+        self.insert_tops(provider, data, unit, extra=extra)
         is_meaningful |= self.get_is_meaningful(data,
             includes=('New Subscribers',))
         table += self.construct_table(data, unit)
 
         data, unit = self.get_usage_metrics(provider, prev_period, prev_year)
-        self.insert_tops(provider, data, extra=extra)
+        self.insert_tops(provider, data, unit, extra=extra)
         is_meaningful |= self.get_is_meaningful(data,
             includes=('New users', 'New profiles',))
         table += self.construct_table(data, unit)
