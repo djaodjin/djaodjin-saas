@@ -87,8 +87,8 @@ class Command(BaseCommand):
         # 2: writes top 5 and shortened by-provider reports to stdout
         # 3: writes top 5 and full by-provider reports to stdout
         parser.add_argument(
-            '--verbosity', action='store',
-            dest='verbosity', default=1,
+            '--log-level', action='store',
+            dest='log_level', default=1,
             choices=[0, 1, 2, 3],
             help='Specifies how much is printed to stdout'
         )
@@ -279,7 +279,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         period_type = self.inverted_period_choices[options.get('period')]
         period_name = humanize.describe_period_name(period_type, 1)
-        verbosity = options['verbosity']
+        verbosity = options['log_level']
         if verbosity > 0:
             self.stdout.write(
                 "running saas_reports for %s %s period at %s" %
