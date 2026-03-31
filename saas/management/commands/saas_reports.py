@@ -82,6 +82,16 @@ class Command(BaseCommand):
             choices=list(six.iterkeys(self.inverted_period_choices)),
             help='Specifies the period to generate reports for'
         )
+        # 0: no output written to stdout
+        # 1: writes top 5 to stdout
+        # 2: writes top 5 and shortened by-provider reports to stdout
+        # 3: writes top 5 and full by-provider reports to stdout
+        parser.add_argument(
+            '--verbosity', action='store',
+            dest='verbosity', default=1,
+            choices=[0, 1, 2, 3],
+            help='Specifies how much is printed to stdout'
+        )
 
     @staticmethod
     def as_printable_name(provider, extra=None):
@@ -269,19 +279,22 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         period_type = self.inverted_period_choices[options.get('period')]
         period_name = humanize.describe_period_name(period_type, 1)
-
-        self.stdout.write(
-            "running saas_reports for %s %s period at %s" %
-            ('an' if period_type == humanize.HOURLY else 'a',
-             period_name, at_time))
+        verbosity = options['verbosity']
+        if verbosity > 0:
+            self.stdout.write(
+                "running saas_reports for %s %s period at %s" %
+                ('an' if period_type == humanize.HOURLY else 'a',
+                 period_name, at_time))
 
         providers = get_organization_model().objects.filter(is_provider=True)
         provider_slugs = options.get('providers')
         if provider_slugs:
             providers = providers.filter(slug__in=provider_slugs)
         for provider in providers:
-            self.run_report(provider, at_time, period_type, dry_run=dry_run)
-        self.print_tops()
+            self.run_report(provider, at_time, period_type,
+                verbosity=verbosity, dry_run=dry_run)
+        if verbosity > 0:
+            self.print_tops()
 
     def insert_tops(self, provider, data, unit, extra=None):
         for row in data:
@@ -325,7 +338,7 @@ class Command(BaseCommand):
 
 
     def run_report(self, provider, at_time, period_type=humanize.WEEKLY,
-                    extra=None, dry_run=False):
+                    extra=None, verbosity=0, dry_run=False):
         # pylint:disable=too-many-arguments,too-many-locals
         dates = self.construct_date_periods(
             at_time, period=period_type, timezone=provider.default_timezone)
@@ -386,20 +399,22 @@ class Command(BaseCommand):
             includes=('New users', 'New profiles',))
         table += self.construct_table(data, unit)
 
-        if is_meaningful:
-            self.stdout.write("{0:<23s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
-                str(provider), self.curr_title, self.prev_title,
-                self.mirror_title))
-            for row in table:
+        if verbosity > 1:
+            if verbosity > 2 or is_meaningful:
                 self.stdout.write(
-                    "  {0:<21s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
-                    force_str(row['title']), # It could be a translation object.
-                    row['values'][0][1],
-                    row['values'][1][1],
-                    row['values'][2][1]))
-        else:
-            self.stdout.write("{0:<21s} | no meaningful activity".format(
-                str(provider)))
+                    "{0:<23s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                    str(provider), self.curr_title, self.prev_title,
+                    self.mirror_title))
+                for row in table:
+                    self.stdout.write(
+                        "  {0:<21s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                        force_str(row['title']),# could be a translation object.
+                        row['values'][0][1],
+                        row['values'][1][1],
+                        row['values'][2][1]))
+            else:
+                self.stdout.write("{0:<21s} | no meaningful activity".format(
+                    str(provider)))
 
         # XXX details new users and profiles
         period_start = prev_period[1]
@@ -414,36 +429,44 @@ class Command(BaseCommand):
                 date_joined__gte=period_start, date_joined__lt=period_end)
             count = queryset.count()
             if count:
-                self.stdout.write("New users %s" % self.curr_title)
                 new_users_sampled = queryset.order_by(
                         'date_joined')[:api_settings.PAGE_SIZE]
-                for user in new_users_sampled :
-                    self.stdout.write(
-                        "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
-                        'created_at': user.date_joined.isoformat(),
-                        'full_name': user.get_full_name(),
-                        'email': user.email if user.email else ""})
                 if count > api_settings.PAGE_SIZE:
                     nb_additional_new_users = (
                         count - api_settings.PAGE_SIZE)
-                    self.stdout.write("... (%d more)" % nb_additional_new_users)
 
             queryset = get_organization_model().objects.find_created_between(
                 period_start, period_end)
             count = queryset.count()
             if count:
-                self.stdout.write("New profiles %s" % self.curr_title)
                 new_profiles_sampled = queryset.order_by(
                         'created_at')[:api_settings.PAGE_SIZE]
-                for profile in new_profiles_sampled:
-                    self.stdout.write(
-                        "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
-                        'created_at': profile.created_at.isoformat(),
-                        'full_name': profile.full_name,
-                        'email': profile.email if profile.email else ""})
                 if count > api_settings.PAGE_SIZE:
                     nb_additional_new_profiles = (
                         count - api_settings.PAGE_SIZE)
+
+        if verbosity > 1:
+            if new_users_sampled:
+                self.stdout.write("New users %s" % self.curr_title)
+                for user in new_users_sampled:
+                    self.stdout.write(
+                    "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
+                        'created_at': user.date_joined.isoformat(),
+                        'full_name': user.get_full_name(),
+                        'email': user.email if user.email else ""})
+                if nb_additional_new_users:
+                    self.stdout.write(
+                        "... (%d more)" % nb_additional_new_users)
+
+            if new_profiles_sampled:
+                self.stdout.write("New profiles %s" % self.curr_title)
+                for profile in new_profiles_sampled:
+                    self.stdout.write(
+                    "  - %(created_at)s,\"%(full_name)s\",\"%(email)s\"" % {
+                        'created_at': profile.created_at.isoformat(),
+                        'full_name': profile.full_name,
+                        'email': profile.email if profile.email else ""})
+                if nb_additional_new_profiles:
                     self.stdout.write(
                         "... (%d more)" % nb_additional_new_profiles)
 
