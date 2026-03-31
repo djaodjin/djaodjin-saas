@@ -292,30 +292,31 @@ class Command(BaseCommand):
                 'unit': unit,
                 'extra': extra
             })
+            tops = self.tops.get(title, [])
             value = row['values'][0][1]
             if value:
-                tops = self.tops.get(title)
                 if tops:
                     for tops_idx, tops_row in enumerate(tops):
                         if tops_row['values'][0][1] < value:
                             tops = (tops[:tops_idx] + [row] +
-                                tops[tops_idx + 1: max(tops_idx + 1,
-                                    self.tops_cutoff)])
+                                tops[tops_idx:self.tops_cutoff - 1])
                             break
                 else:
                     tops = [row]
-                self.tops.update({title: tops})
+            self.tops.update({title: tops})
 
 
     def print_tops(self):
         for title, data in six.iteritems(self.tops):
-            self.stdout.write("{0:<30s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+            if not data:
+                continue
+            self.stdout.write("{0:<46s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
                 "Top %d %s" % (self.tops_cutoff, title), self.curr_title,
                 self.prev_title, self.mirror_title))
             for row in data:
                 table_row = self.construct_table([row], row.get('unit'))[0]
                 self.stdout.write(
-                    "  {0:<28s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
+                    "  {0:<44s} | {1:>12s} | {2:>9s} | {3:>9s}".format(
                     self.as_printable_name(row['provider'], row['extra']),
                     table_row['values'][0][1],
                     table_row['values'][1][1],
