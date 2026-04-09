@@ -1,8 +1,64 @@
-// Copyright (c) 2025, DjaoDjin inc.
+// Copyright (c) 2026, DjaoDjin inc.
 // All rights reserved.
 // BSD 2-Clause license
 
 /*global Vue jQuery showMessages showErrorMessages Stripe updateBarChart updateChart getUrlParameter $ */
+
+/*
+timezoneMixin
+cardMixin [httpRequestMixin]
+roleDetailMixin
+roleListMixin [itemListMixin, roleDetailMixin]
+subscriptionDetailMixin [timezoneMixin]
+var subscriptionListMixin [itemListMixin, subscriptionDetailMixin],
+Vue.component('user-typeahead', {
+var couponDetailMixin [timezoneMixin],
+Vue.component('coupon-list', [itemListMixin, couponDetailMixin],
+Vue.component('user-list', [itemListMixin, timezoneMixin],
+Vue.component('role-profile-list', [roleListMixin],
+Vue.component('role-user-list', [roleListMixin],
+Vue.component('metrics-charts', [httpRequestMixin, timezoneMixin],
+
+Vue.component('registered', [itemListMixin],
+Vue.component('subscribed', [subscriptionListMixin],
+Vue.component('churned' [subscriptionListMixin],
+
+Vue.component('lazy-load-tabs'
+
+Vue.component('lifetimevalue-list', [itemListMixin],
+Vue.component('balancesdue-list', [itemListMixin],
+Vue.component('plan-subscriber-list', [subscriptionListMixin],
+Vue.component('subscription-list', [subscriptionListMixin,],
+Vue.component('expired-subscription-list', [subscriptionListMixin]
+
+Vue.component('subscription-list-container', {
+Vue.component('coupon-user-list', [itemListMixin],
+Vue.component('charge-list', [itemListMixin],
+Vue.component('plan-list', [itemListMixin,],
+Vue.component('import-transaction', [httpRequestMixin, timezoneMixin],
+Vue.component('billing-statement', [cardMixin, itemListMixin],
+
+Vue.component('transfers-statement', [itemListMixin],
+Vue.component('transaction-list', [itemListMixin,],
+Vue.component('profile-update', [itemMixin,],
+
+Vue.component('roledescr-list', [itemListMixin],
+Vue.component('balance-list', [itemListMixin, timezoneMixin,],
+Vue.component('checkout', [cardMixin, itemListMixin],
+
+Vue.component('card-update', [cardMixin],
+
+Vue.component('plan-update', [        itemMixin]
+Vue.component('engaged-subscribers',  [itemListMixin],
+Vue.component('unengaged-subscribers', [itemListMixin]
+
+Vue.component('search-profile', [typeAheadMixin],
+Vue.component('subscription-typeahead',  [        typeAheadMixin]
+Vue.component('today-sales', [        itemListMixin,        timezoneMixin],
+Vue.component('monthly-revenue', [itemMixin    ],
+Vue.component('active-carts', [itemListMixin],
+Vue.component('user-active-cart', [itemListMixin],
+ */
 
 
 var countries = {
@@ -496,7 +552,7 @@ var cardMixin = {
         httpRequestMixin
     ],
     data: function() {
-        return $.extend({ // XXX jQuery
+        return {
             api_card_url: this.$urls.organization.api_card,
             api_profile_url: this.$urls.organization.api_base,
             processor_pub_key: null,
@@ -547,14 +603,14 @@ var cardMixin = {
                 fieldShoundNotBeEmptyError: (this.$labels && this.$labels.fieldShoundNotBeEmptyError) || "This field shouldn't be empty",
                 fieldsCannotBeEmptyError: (this.$labels && this.$labels.fieldsCannotBeEmptyError) || " field(s) cannot be empty."
             }
-        }, this.getCardFormData());
+        };
     },
     methods: {
         getCardFormData: function() {
             var vm = this;
             var data = {};
-            var cardForm = $("#card-use"); // XXX jQuery
-            if( cardForm.length > 0 ) {
+            var cardForm = document.getElementById("card-use");
+            if( cardForm ) {
                 data['card_name'] = vm.getInitValue(cardForm, 'card_name');
                 data['card_address_line1'] = vm.getInitValue(cardForm, 'card_address_line1');
                 data['card_city'] = vm.getInitValue(cardForm, 'card_city');
@@ -562,6 +618,7 @@ var cardMixin = {
                 data['country'] = vm.getInitValue(cardForm, 'country');
                 data['region'] = vm.getInitValue(cardForm, 'region');
             }
+            console.log("XXX [getCardFormData] cardForm=", cardForm, "data=", data);
             return data;
         },
         clearCardData: function() {
@@ -600,13 +657,14 @@ var cardMixin = {
             return cls;
         },
         getInitValue: function(form, fieldName) {
-            if( form.length > 0 ) {
-                var field = form.find("[name='" + fieldName + "']");
-                if( field.length > 0 ) {
-                    var val = field.attr('type') === 'checkbox' ?
-                        field.prop('checked') : (
-                            field.val() ? field.val() : field.data('init'));
-                    return val;
+            if( form ) {
+                const field = form.querySelector("[name='" + fieldName + "']");
+                if( field ) {
+                    const fieldValue =
+                          field.getAttribute('type') === 'checkbox' ?
+                          field.checked : (
+                              field.value ? field.value : field.dataset.init);
+                    return fieldValue;
                 }
             }
             return "";
@@ -782,7 +840,7 @@ var cardMixin = {
             var errorMessages = "";
             vm.validate.forEach(function(field){
                 if(vm[field] === ''){
-                    vm[field] = vm.getInitValue($(vm.$el), field);//XXX jQuery
+                    vm[field] = vm.getInitValue(vm.$el, field);
                 }
                 if( vm[field] === '') {
                     valid = false;
@@ -844,13 +902,19 @@ var cardMixin = {
     },
     mounted: function() {
         var vm = this;
-        var elements = vm.$el.querySelectorAll('[data-last4]');
-        if( elements.length > 0 ) {
-            vm.savedCard.last4 = elements[0].getAttribute('data-last4');
+        const data = vm.getCardFormData();
+        for( var fieldName in data ) {
+            if( data.hasOwnProperty(fieldName) ) {
+                vm[fieldName] = data[fieldName];
+            }
         }
-        elements = vm.$el.querySelectorAll('[data-exp-date]');
-        if( elements.length > 0 ) {
-            vm.savedCard.exp_date = elements[0].getAttribute('data-exp-date');
+        var element = vm.$el.querySelector('[data-last4]');
+        if( element ) {
+            vm.savedCard.last4 = element.getAttribute('data-last4');
+        }
+        element = vm.$el.querySelector('[data-exp-date]');
+        if( element ) {
+            vm.savedCard.exp_date = element.getAttribute('data-exp-date');
         }
         vm.processor_pub_key = vm.$el.getAttribute('data-processor-pub-key');
         vm.stripe_intent_secret = vm.$el.getAttribute(
@@ -934,7 +998,7 @@ var roleListMixin = {
     methods: {
         _addRole: function(item, force) {
             var vm = this;
-            if( jQuery.type(item) === "string" ) {
+            if( typeof item === "string" ) {
                 var stringVal = item;
                 item = {slug: "", email: "", full_name: ""};
                 var pattern = /@[a-zA-Z0-9\-]+\.([a-zA-Z\-]{2,3}|localdomain)/;
@@ -993,7 +1057,7 @@ var roleListMixin = {
                 vm.inNewProfileFlow = true;
                 vm.$emit('create');
             } else {
-                if( jQuery.type(vm.newProfile) === "string" ) {
+                if( typeof vm.newProfile === "string" ) {
                     var stringVal = vm.newProfile;
                     vm.newProfile = {slug: "", email: "", full_name: ""};
                     var pattern = /@[a-zA-Z\-]+\.[a-zA-Z\-]{2,3}/;
@@ -1118,9 +1182,6 @@ var roleListMixin = {
         requestedProfilePrintableName: function() {
             var vm = this;
             if( typeof vm.unregistered !== 'undefined' ) {
-                if( jQuery.type(vm.unregistered) === "string" ) {
-                    return vm.unregistered ? vm.unregistered : "The profile";
-                }
                 if( typeof vm.unregistered.full_name !== 'undefined' &&
                     vm.unregistered.full_name ) {
                     return vm.unregistered.full_name;
@@ -1128,6 +1189,9 @@ var roleListMixin = {
                 if( typeof vm.unregistered.email !== 'undefined' &&
                     vm.unregistered.email ) {
                     return vm.unregistered.email;
+                }
+                if( vm.unregistered ) {
+                    return vm.unregistered.toString();
                 }
             }
             return  "The profile";
@@ -1294,7 +1358,6 @@ var subscriptionListMixin = {
                             email: slug,
                             full_name: slug
                         }
-                        vm.modalShow();
                     }
                 }
             );
@@ -1913,7 +1976,7 @@ Vue.component('plan-subscriber-list', {
     methods: {
         _addItem: function(item, force) {
             var vm = this;
-            if( jQuery.type(item) === "string" ) {
+            if( typeof item === "string" ) {
                 var stringVal = item;
                 item = {slug: "", email: "", full_name: ""};
                 var pattern = /@[a-zA-Z0-9\-]+\.([a-zA-Z\-]{2,3}|localdomain)/;
@@ -1982,7 +2045,7 @@ Vue.component('plan-subscriber-list', {
         requestedProfilePrintableName: function() {
             var vm = this;
             if( typeof vm.newItem !== 'undefined' ) {
-                if( jQuery.type(vm.newItem) === "string" ) {
+                if( typeof vm.newItem === "string" ) {
                     return vm.newItem ? vm.newItem : "The profile";
                 }
                 if( typeof vm.newItem.full_name !== 'undefined' &&
@@ -2212,18 +2275,14 @@ Vue.component('billing-statement', {
         },
         modalHide: function() {
             var vm = this;
-            if( vm.dialog ) {
-                vm.dialog.modal("hide");
+            var dialog = vm.$el.querySelector('.modal');
+            if( dialog ) {
+                if( typeof bootstrap != 'undefined' ) {
+                    var modal = bootstrap.Modal.getOrCreateInstance(dialog);
+                    modal.hide();
+                }
             }
         }
-    },
-    computed: {
-        dialog: function(){ // XXX depends on jQuery / bootstrap.js
-            var dialog = $(this.$el).find('.modal');
-            if(dialog && jQuery().modal){
-                return dialog;
-            }
-        },
     },
     mounted: function(){
         this.getCard();
@@ -2714,17 +2773,17 @@ Vue.component('checkout', {
         // used in legacy checkout
         doCheckoutForm: function(token) {
             var vm = this;
-            var form = $(vm.$el).find('form'); // XXX jQuery
+            var form = vm.$el.querySelector('form');
             if(token){
-                form.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
+                form.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");  // XXX jQuery
             }
-            form.get(0).submit();
+            form.get(0).submit();  // XXX jQuery
         },
         // used in legacy checkout
         checkoutForm: function() {
             var vm = this;
-            var cardUse = $('#card-use'); // XXX jQuery
-            if( cardUse.length > 0 && cardUse.is(":visible") ) {
+            var cardUse = document.getElementById('card-use');
+            if( cardUse && cardUse.is(":visible") ) {// XXX jQuery
                 if(vm.haveCardData){
                     if(vm.updateCard){
                         vm.getCardToken(vm.doCheckoutForm);

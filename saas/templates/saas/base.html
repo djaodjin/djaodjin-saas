@@ -17,7 +17,7 @@
 {% endblock %}
 
 {% block bodyscripts %}
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djresources.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-postal.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
 <script type="text/javascript">
@@ -33,7 +33,7 @@ Vue.prototype.$urls = {% if urls %}{{urls|to_json}}{% else %}{}{% endif %};
 Vue.prototype.$tables = {% if tables %}{{tables|safe}}{% else %}{}{% endif %};
 </script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue-croppa.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources-vue.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djresourcesvue.js"></script>
 {# saas_bodyscripts here because we want to load Stripe before djaodjin-saas-vue.js #}
 {% block saas_bodyscripts %}{% endblock %}
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-vue.js"></script>

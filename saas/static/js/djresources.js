@@ -4,61 +4,93 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define('djaodjinResources', ['exports', 'jQuery'], factory);
+        define('djResources', ['exports'], factory);
     } else if (typeof exports === 'object' && typeof exports.nodeName !== 'string') {
         // CommonJS
-        factory(exports, require('jQuery'));
+        factory(exports);
     } else {
         // Browser true globals added to `window`.
-        factory(root, root.jQuery);
+        factory(root);
         // If we want to put the exports in a namespace, use the following line
         // instead.
-        // factory((root.djResources = {}), root.jQuery);
+        // factory((root.djResources = {}));
     }
-}(typeof self !== 'undefined' ? self : this, function (exports, jQuery) {
+}(typeof self !== 'undefined' ? self : this, function (exports) {
 
 
-function clearMessages() {
+function _isArray(obj) {
+    return obj instanceof Object && obj.constructor === Array;
+}
+
+
+function clearMessages(nodeId) {
     "use strict";
-    jQuery("#messages-content").empty();
+    if( nodeId ) {
+        let elm = document.getElementById(nodeId + '-messages');
+        elm.replaceChildren(); // Removes all children
 
-    // removes decoration on the fields.
-    jQuery(".form-group.has-error").removeClass("has-error");
-    jQuery(".is-invalid").removeClass("is-invalid");
-    jQuery(".invalid-feedback").text("");
+        // removes decoration on the fields.
+        elm = document.querySelector(nodeId + ' .has-error');
+        if( elm ) {
+            elm.classList.remove('has-error');
+        }
+        elm = document.querySelector(nodeId + ' .is-invalid');
+        if( elm ) {
+            elm = elm.classList.remove('is-invalid');
+        }
+        elm = document.querySelector(nodeId + ' .invalid-feedback');
+        if( elm ) {
+            elm.innerHTML = "";
+        }
+    } else {
+        let elm = document.getElementById('messages-content');
+        elm.replaceChildren(); // Removes all children
+
+        // removes decoration on the fields.
+        for( let elm of document.querySelectorAll('.has-error') ) {
+            elm.classList.remove('has-error');
+        }
+        for( let elm of document.querySelectorAll('.is-invalid') ) {
+            elm.classList.remove('is-invalid');
+        }
+        for( let elm of document.querySelectorAll('.invalid-feedback') ) {
+            elm.innerHTML = "";
+        }
+    }
 };
 
 function showMessages(messages, style) {
     "use strict";
     if( typeof toastr !== 'undefined'
-        && jQuery(toastr.options.containerId).length > 0 ) {
+        && document.getElementById(toastr.options.containerId) ) {
         for( var i = 0; i < messages.length; ++i ) {
             toastr[style](messages[i]);
         }
 
     } else {
-        var messagesElement = jQuery("#messages-content");
-        var blockStyle = "";
+        const messagesElement = document.getElementById('messages-content');
+        let blockStyle = "";
         if( style ) {
             if( style === "error" ) {
                 style = "danger";
             }
             blockStyle = " alert-" + style;
         }
-        var messageBlock = messagesElement.find(
+        let messageBlock = messagesElement.querySelector(
             ".alert" + blockStyle.replace(' ', '.'));
-        if( messageBlock.length === 0 ) {
+        if( !messageBlock ) {
             const blockText = "<div class=\"alert" + blockStyle
                   + " alert-dismissible fade show\">"
                   + "<button type=\"button\" class=\"btn-close\""
                   + " data-bs-dismiss=\"alert\" aria-label=\"Close\">"
                   + "</button></div>";
-            var div = document.createElement('div');
+            let div = document.createElement('div');
             div.innerHTML = blockText;
-            messageBlock = jQuery(div.firstChild);
+            messageBlock = div.firstChild;
         } else {
-            messageBlock = jQuery(messageBlock[0].cloneNode(true));
-            messageBlock.find('div').remove();
+            messageBlock = messageBlock.cloneNode(true);
+            messageBlock.querySelectorAll('div').forEach(child => {
+                child.remove();})
         }
 
         // insert the actual messages
@@ -66,19 +98,23 @@ function showMessages(messages, style) {
             messages = [messages];
         }
         for( var i = 0; i < messages.length; ++i ) {
-            messageBlock.append("<div>" + messages[i] + "</div>");
+            const msgElm = document.createElement('div');
+            msgElm.innerHTML = messages[i];
+            messageBlock.appendChild(msgElm);
         }
-        if( messageBlock.css('display') === 'none' ) {
-            messageBlock.css('display', 'block');
+        messagesElement.appendChild(messageBlock);
+        const messageBlockStyle = window.getComputedStyle(messageBlock);
+
+        if( messageBlockStyle.display === 'none' ) {
+            messageBlock.style.display = 'block';
         }
-        messagesElement.append(messageBlock);
     }
-    jQuery("#messages").removeClass("hidden");
-    jQuery("html, body").animate({
-        // scrollTop: jQuery("#messages").offset().top - 50
-        // avoid weird animation when messages at the top:
-        scrollTop: jQuery("body").offset().top
-    }, 500);
+    const messagesElm = document.getElementById('messages');
+    if( messagesElm ) messagesElm.classList.remove('hidden');
+    const bodyElm = document.querySelector('body'); // XXX 'html, body'
+    if( bodyElm ) {
+        bodyElm.scrollIntoView();
+    }
 };
 
 
@@ -86,7 +122,7 @@ function showMessages(messages, style) {
  Decorates elements when details exist, otherwise return messages to be shown
  globally.
 
- This method takes a `resp` argument as passed by jQuery ajax calls.
+ This method takes a `resp` argument as passed by `fetch` calls.
  */
 function _showErrorMessages(resp) {
     var messages = [];
@@ -96,7 +132,7 @@ function _showErrorMessages(resp) {
     } else {
         var data = resp.data || resp.responseJSON;
         if( data && typeof data === "object" ) {
-            if( jQuery.isArray(data) ) {
+            if( _isArray(data) ) {
                 for( var idx = 0; idx < data.length; ++idx ) {
                     messages = messages.concat(_showErrorMessages(data[idx]));
                 }
@@ -104,7 +140,7 @@ function _showErrorMessages(resp) {
                 for( var key in data ) {
                     if (data.hasOwnProperty(key)) {
                         var message = data[key];
-                        if( jQuery.isArray(data[key]) ) {
+                        if( _isArray(data[key]) ) {
                             message = "";
                             var sep = "";
                             for( var i = 0; i < data[key].length; ++i ) {
@@ -118,13 +154,20 @@ function _showErrorMessages(resp) {
                         } else if( data[key].hasOwnProperty('detail') ) {
                             message = data[key].detail;
                         }
-                        var inputField = jQuery("[name=\"" + key + "\"]");
-                        var parent = inputField.parents('.form-group');
-                        inputField.addClass("is-invalid");
-                        parent.addClass("has-error");
-                        var help = parent.find('.invalid-feedback');
-                        if( help.length > 0 ) {
-                            help.text(message);
+                        var help = null;
+                        var inputField = document.querySelector(
+                            "[name=\"" + key + "\"]");
+                        if( inputField ) {
+                            inputField.classList.add("is-invalid");
+                            const parent = inputField.closest('.form-group');
+                            if( parent ) {
+                                parent.classList.add("has-error");
+                                help = parent.querySelector(
+                                    '.invalid-feedback');
+                            }
+                        }
+                        if( help ) {
+                            help.textContent = message;
                             hasContextMessages = true;
                         } else {
                             if( key === 'detail' ) {
@@ -209,10 +252,6 @@ const djApi = {
         return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
     },
 
-    _isArray: function (obj) {
-        return obj instanceof Object && obj.constructor === Array;
-    },
-
     _isFunction: function (func){
         // https://stackoverflow.com/a/7356528/1491475
         return func && {}.toString.call(func) === '[object Function]';
@@ -265,7 +304,7 @@ const djApi = {
                 args['failureCallback'] = arg2;
             }
         } else if( arg instanceof FormData ||
-            self._isObject(arg) || self._isArray(arg) ) {
+            self._isObject(arg) || _isArray(arg) ) {
             // We are dealing with either:
             // - http(elem, url, data)
             // - http(elem, url, data, success)
@@ -312,7 +351,7 @@ const djApi = {
         // - http(elem, url, data, success)
         // - http(elem, url, data, success, fail)
         args['elem'] = elem;
-        if( typeof url != 'string' && !self._isArray(url) ) {
+        if( typeof url != 'string' && !_isArray(url) ) {
             throw '`url` should be a string or an array of ajax queries';
         }
         args['url'] = url;
@@ -730,7 +769,7 @@ const djApi = {
         `successCallback` and `failureCallback` must be Javascript
         functions (i.e. instance of type `Function`).
     */
-    multiple: function(elem, queryArray, arg, arg2, arg3) {
+    multiple: async function(elem, queryArray, arg, arg2, arg3) {
         const self = this;
         const args = self._parseCallArguments(
             elem, queryArray, arg, arg2, arg3);
@@ -753,29 +792,33 @@ const djApi = {
             }
         }
 
-        var ajaxCalls = [];
-        for(var idx = 0; idx < args.url.length; ++idx ) {
-            ajaxCalls.push(jQuery.ajax({
-                method: args.url[idx].method,
-                url: self._safeUrl(self.apiBase, args.url[idx].url),
-                data: JSON.stringify(args.url[idx].data),
-                beforeSend: function(xhr, settings) {
-                    if( authToken ) {
-                        xhr.setRequestHeader(
-                            "Authorization", "Bearer " + authToken);
-                    } else {
-                        if( !self._csrfSafeMethod(settings.type) ) {
-                            if( csrfToken ) {
-                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            }
-                        }
+        try {
+            const fetchPromises = args.url.map(arg => fetch(
+                self._safeUrl(self.apiBase, arg.url), {
+                    method: arg.method,
+                    headers: headers,
+                    body: arg.data ? JSON.stringify(arg.data) : null,
+                    credentials: 'include',
+                    traditional: true,
+                }));
+            const resps = await Promise.all(fetchPromises);
+            for( const resp of resps ) {
+                if( !resp.ok ) {
+                    if( args.failureCallback ) {
+                        args.failureCallback(...resps);
                     }
-                },
-                contentType: 'application/json',
-            }));
+                    throw new Error(`HTTP status: ${resp.status}`);
+                }
+            }
+            const jsonPromises = resps.map(resp => resp.json());
+            const data = await Promise.all(jsonPromises);
+            if( args.successCallback ) {
+                args.successCallback(...data);
+            }
+
+        } catch( err ) {
+            // We have already called `failureCallback` previously.
         }
-        jQuery.when.apply(jQuery, ajaxCalls).done(args.successCallback).fail(
-            args.failureCallback);
     }
 
 };
