@@ -487,6 +487,8 @@ def create_charge_for_balance_organization(organization,
         LOGGER.info('SKIP   %d %s to %s (less than 50 %s)',
             invoiceable_amount, invoiceable_unit, organization,
             invoiceable_unit)
+    else:
+        LOGGER.info('SKIP   %s (no amount due)', organization)
 
     return nb_charges
 
@@ -498,7 +500,8 @@ def create_charges_for_balance(until=None, dry_run=False):
     nb_charges = 0
     until = datetime_or_now(until)
     LOGGER.info("create charges for balance at %s ...", until)
-    for organization in get_organization_model().objects.filter(
+    for organization in get_organization_model().objects.exclude(
+            billing_start__isnull=True).filter(
             nb_renewal_attempts__lt=settings.MAX_RENEWAL_ATTEMPTS):
         nb_charges += create_charge_for_balance_organization(
             organization, until=until, dry_run=dry_run)
