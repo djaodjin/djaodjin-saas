@@ -166,11 +166,13 @@ class OrganizationManager(models.Manager):
             is_active=True, pk__in=roles.values('organization')).distinct()
 
     def find_candidates_by_domain(self, domain):
+        if is_mail_provider_domain(domain):
+            return self.none()
         if domain and domain[0] != '@':
             domain = '@' + domain
         return self.filter(is_active=True, email__endswith=domain)
 
-    def find_candidates(self, full_name, user=None):
+    def find_candidates(self, full_name, email=None):
         """
         Returns a set of organizations based on a fuzzy match of *full_name*
         and the email address of *user*.
@@ -183,8 +185,8 @@ class OrganizationManager(models.Manager):
             Q(slug=slugify(full_name)) | Q(full_name__iexact=full_name))
         if queryset.exists():
             return queryset
-        if user:
-            email_suffix = user.email.split('@')[-1]
+        if email:
+            email_suffix = email.split('@')[-1]
             candidates_from_email = get_role_model().objects.valid_for(
                 user__email__iendswith=email_suffix,
                 role_description__slug=settings.MANAGER).values(
@@ -1529,19 +1531,17 @@ class RoleManager(models.Manager):
             domain = email_parts[-1]
             nb_candidates = organization_model.objects.filter(
                 email__iexact=user.email).count()
-            if not is_mail_provider_domain(domain):
-                nb_candidates += \
-                    organization_model.objects.find_candidates_by_domain(
-                        domain).count()
+            nb_candidates += \
+                organization_model.objects.find_candidates_by_domain(
+                    domain).count()
 
             if nb_candidates < settings.MAX_TYPEAHEAD_CANDIDATES:
                 # If we have too many candidates for implicit grants, bail out.
                 candidates = list(organization_model.objects.filter(
                     email__iexact=user.email).exclude(role__user=user))
-                if not is_mail_provider_domain(domain):
-                    candidates += list(
-                        organization_model.objects.find_candidates_by_domain(
-                            domain).exclude(role__user=user))
+                candidates += list(
+                    organization_model.objects.find_candidates_by_domain(
+                        domain).exclude(role__user=user))
                 for profile in candidates:
                     try:
                         role_descr = RoleDescription.objects.filter(

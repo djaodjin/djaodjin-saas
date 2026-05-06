@@ -206,11 +206,14 @@ class OrganizationRedirectView(RedirectFormMixin, TemplateView):
         context.update({'redirects': {'results': redirects}})
         if not redirects:
             if request.user.email:
+                candidate = None
                 email_parts = request.user.email.lower().split('@')
                 domain = email_parts[-1]
-                candidate = \
+                candidates_by_domain = \
                     self.organization_model.objects.find_candidates_by_domain(
-                        domain).first()
+                        domain)
+                if candidates_by_domain.count() == 1:
+                    candidate = candidates_by_domain.first()
                 if candidate:
                     context.update({
                         'candidate_query': candidate.printable_name})

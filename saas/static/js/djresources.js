@@ -4,7 +4,7 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define('djResources', ['exports'], factory);
+        define('djresources', ['exports'], factory);
     } else if (typeof exports === 'object' && typeof exports.nodeName !== 'string') {
         // CommonJS
         factory(exports);
@@ -13,7 +13,7 @@
         factory(root);
         // If we want to put the exports in a namespace, use the following line
         // instead.
-        // factory((root.djResources = {}));
+        // factory((root.djresources = {}));
     }
 }(typeof self !== 'undefined' ? self : this, function (exports) {
 

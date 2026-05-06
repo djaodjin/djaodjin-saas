@@ -219,7 +219,7 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
         _('Code'),
         _('DiscountType'),
         _('Amount'),
-        _('Name'),
+        _('Full Name'),
         _('Email'),
         _('Plan'),
     ]
@@ -311,7 +311,7 @@ class SubscriptionBaseDownloadView(CSVDownloadView):
     CSV_CUSTOMER_CONTACTS_INCLUDED = settings.CSV_CUSTOMER_CONTACTS_INCLUDED
 
     headings = [
-        _('Name'),
+        _('Profile Name'),
         _('Email'),
         _('Plan'),
         _('Since'),
@@ -453,7 +453,7 @@ class TransferDownloadView(SmartTransactionListMixin,
         _('Amount'),
         _('Unit'),
         _('Description'),
-        _('Full Name')
+        _('Profile Name')
     ]
 
     def get_headings(self):
