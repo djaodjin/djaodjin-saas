@@ -3520,13 +3520,15 @@ class CartItemManager(models.Manager):
         """
         at_time = datetime_or_now(created_at)
         coupon_applied = False
+        redeemed = None
         for item in self.get_cart(user):
-            redeemed = Coupon.objects.active(
+            coupon = Coupon.objects.active(
                 item.plan.organization, coupon_code, at_time=at_time).first()
-            if redeemed and redeemed.is_valid(item.plan, at_time=at_time):
+            if coupon and coupon.is_valid(item.plan, at_time=at_time):
                 coupon_applied = True
-                item.coupon = redeemed
+                item.coupon = coupon
                 item.save()
+                redeemed = coupon
         if coupon_applied:
             if redeemed.nb_attempts is not None and redeemed.nb_attempts > 0:
                 redeemed.nb_attempts -= 1
