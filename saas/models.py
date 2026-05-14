@@ -3519,19 +3519,19 @@ class CartItemManager(models.Manager):
         Apply a *coupon* to all items in a cart that accept it.
         """
         at_time = datetime_or_now(created_at)
-        coupon_applied = False
+        redeemed_coupons = {}
         for item in self.get_cart(user):
-            redeemed = Coupon.objects.active(
+            coupon = Coupon.objects.active(
                 item.plan.organization, coupon_code, at_time=at_time).first()
-            if redeemed and redeemed.is_valid(item.plan, at_time=at_time):
-                coupon_applied = True
-                item.coupon = redeemed
+            if coupon and coupon.is_valid(item.plan, at_time=at_time):
+                item.coupon = coupon
                 item.save()
-        if coupon_applied:
+                redeemed_coupons[coupon.pk] = coupon
+        for redeemed in redeemed_coupons.values():
             if redeemed.nb_attempts is not None and redeemed.nb_attempts > 0:
                 redeemed.nb_attempts -= 1
                 redeemed.save()
-        return coupon_applied
+        return bool(redeemed_coupons)
 
 
 @python_2_unicode_compatible
