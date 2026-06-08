@@ -565,6 +565,10 @@ class StripeBackend(object):
 
                 idempotency_key = self._generate_idempotent_key(amount,
                     unit, provider, descr, stmt_descr, created_at, token)
+                LOGGER.debug("stripe.PaymentIntent.create("\
+                    "amount=%d, currency=%s, description=%s, "\
+                    "statement_descriptor=%s, kwargs=%s)...",
+                    amount, unit, descr, stmt_descr, charge_kwargs)
                 payment_intent = stripe.PaymentIntent.create(
                     amount=amount, currency=unit,
                     description=descr, statement_descriptor=stmt_descr[:15],
@@ -575,11 +579,7 @@ class StripeBackend(object):
                     **charge_kwargs)
                 if payment_intent.latest_charge:
                     stripe_charge = payment_intent.latest_charge
-                LOGGER.debug("stripe.PaymentIntent.create("\
-                    "amount=%d, currency=%s, description=%s, "\
-                    "statement_descriptor=%s, kwargs=%s)"\
-                    " =>\n%s\nstripe_charge=%s",
-                    amount, unit, descr, stmt_descr, charge_kwargs,
+                LOGGER.debug(" =>\n%s\nstripe_charge=%s",
                     str(payment_intent), str(stripe_charge))
             except stripe.error.StripeErrorWithParamCode as err:
                 # If the card is declined, Stripe will record a failed
@@ -588,9 +588,13 @@ class StripeBackend(object):
                 # So instead of generating
                 # an HTTP retrieve and recording a failed charge in our
                 # database, we raise and rollback.
-                raise CardError(str(err), err.code,
-                    charge_processor_key=err.json_body['error']['charge'],
-                    backend_except=err)
+                try:
+                    err_charge = err.json_body['error']['charge']
+                    raise CardError(str(err), err.code,
+                        charge_processor_key=err_charge,
+                        backend_except=err)
+                except KeyError:
+                    raise ProcessorError(str(err), backend_except=err)
             except (stripe.error.AuthenticationError,
                     stripe.error.PermissionError) as err:
                 # It is possible we no longer have access to the connected
