@@ -9,7 +9,7 @@
             <em>{{invoicables.0.subscription.plan.title}} from {{invoicables.0.subscription.plan.organization.printable_name}}</em>
           </th>
           <th class="text-right">
-            {% if invoicables.0.subscription.plan.is_removable %}
+            {% if not invoicables.0.is_balance %}
             <button type="button" id="{{invoicables.0.subscription.plan.slug}}" class="remove-from-cart">Remove from Cart</button>
             {% endif %}
           </th>
@@ -39,7 +39,7 @@
           <em>{{entry.subscription.plan.title}} from {{entry.subscription.plan.organization.printable_name}}</em>
         </th>
           <th class="text-right">
-            {% if entry.subscription.plan.is_removable %}
+            {% if not entry.is_balance %}
             <button type="button" id="{{entry.subscription.plan.slug}}" class="remove-from-cart">Remove from Cart</button>
             {% endif %}
           </th>

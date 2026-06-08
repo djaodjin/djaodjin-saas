@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,8 @@ from phonenumber_field.formfields import PhoneNumberField
 
 from . import settings
 from .compat import gettext_lazy as _
-from .models import AdvanceDiscount, Plan, Subscription
+from .models import (BALANCE_PREFIX, CART_PREFIX, AdvanceDiscount, Plan,
+    Subscription)
 from .utils import get_organization_model, CurrencyDataLoader
 
 #pylint: disable=no-member
@@ -116,7 +117,7 @@ class CreditCardForm(PostalFormMixin, forms.Form):
             label=_("Zip/Postal code"), required=False)
         self.add_postal_country(required=False)
         for item in self.initial:
-            if item.startswith('cart-'):
+            if item.startswith(BALANCE_PREFIX) or item.startswith(CART_PREFIX):
                 self.fields[item] = forms.CharField(required=True)
 
     def clean_remember_card(self):
@@ -148,7 +149,7 @@ class CartPeriodsForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super(CartPeriodsForm, self).__init__(*args, **kwargs)
         for item in self.initial:
-            if item.startswith('cart-'):
+            if item.startswith(BALANCE_PREFIX) or item.startswith(CART_PREFIX):
                 self.fields[item] = forms.CharField(required=True)
 
 

@@ -43,7 +43,7 @@ from .decorators import _valid_manager
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
 from .helpers import (datetime_or_now, full_name_natural_parts,
     update_context_urls)
-from .models import (CartItem, Charge, Coupon, Plan, Price,
+from .models import (BALANCE_PREFIX, CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, sum_orig_amount)
 from .utils import (build_absolute_uri, get_organization_model, get_role_model,
     handle_uniq_error, validate_redirect_url)
@@ -103,8 +103,9 @@ class BalanceDueMixin(object):
                     subscription, at_time)]
             if lines or options:
                 invoicables += [{
+                    'is_balance': True,
+                    'name': '%s%s' % (BALANCE_PREFIX, subscription.plan.slug),
                     'subscription': subscription,
-                    'name': 'cart-%s' % subscription.plan.slug,
                     'lines': lines,
                     'options': options}]
         return invoicables
@@ -528,7 +529,8 @@ class OrganizationCreateMixin(object):
             postal_code=validated_data.get('postal_code', ""),
             country=validated_data.get('country', ""),
             extra=validated_data.get('extra'))
-        organization.is_personal = (validated_data.get('type') == 'personal')
+        organization.is_personal = bool(
+            validated_data.get('type') == 'personal')
         with transaction.atomic():
             try:
                 if organization.is_personal:
@@ -818,12 +820,8 @@ class InvoicablesMixin(OrganizationMixin):
             for invoicable in self.invoicables:
                 plan = invoicable['subscription'].plan
                 if current_plan is None or plan != current_plan:
-                    invoicable['is_changed'] = (current_plan is not None)
+                    invoicable['is_changed'] = bool(current_plan is not None)
                     current_plan = plan
-                    current_plan.is_removable = True
-                for line in invoicable['lines']:
-                    if line.pk:
-                        current_plan.is_removable = False
             self._invoicables_lines_price = Price(lines_amount, lines_unit)
         return self._invoicables_lines_price
 

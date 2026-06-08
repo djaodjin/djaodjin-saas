@@ -101,8 +101,9 @@ Release Notes
 
 Tested with
 
-- **Python:** 3.10, **Django:** 4.2 ([LTS](https://www.djangoproject.com/download/))
-- **Python:** 3.12, **Django:** 5.2 (next)
+- **Python:** 3.12, **Django:** 5.2 ([LTS](https://www.djangoproject.com/download/))
+- **Python:** 3.14, **Django:** 6.0 (next)
+- **Python:** 3.10, **Django:** 4.2 (legacy)
 - **Python:** 3.9, **Django:** 3.2 (legacy)
 
 1.2.2

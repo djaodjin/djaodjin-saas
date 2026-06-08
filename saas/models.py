@@ -91,6 +91,9 @@ from .utils import (get_organization_model, get_role_model,
 
 LOGGER = logging.getLogger(__name__)
 
+BALANCE_PREFIX = 'blce-'
+CART_PREFIX = 'cart-'
+
 
 class InsufficientFunds(Exception):
 
@@ -3627,7 +3630,7 @@ class CartItem(models.Model):
 
     @property
     def name(self):
-        result = 'cart-%s' % self.plan.slug
+        result = '%s%s' % (CART_PREFIX, self.plan.slug)
         if self.use:
             result = '%s-%s' % (result, self.use)
         if self.sync_on:

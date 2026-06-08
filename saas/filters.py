@@ -385,8 +385,6 @@ class OrderingFilter(BaseOrderingFilter):
         return ordering
 
     def get_schema_operation_parameters(self, view):
-        # validating presence of coreapi and coreschema
-        super(OrderingFilter, self).get_schema_fields(view)
         ordering_fields = getattr(view, 'ordering_fields', [])
         sort_fields_description = "sort by %s. If a field is preceded by"\
             " a minus sign ('-'), the order will be reversed. Multiple 'o'"\
