@@ -106,9 +106,14 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (legacy)
 - **Python:** 3.9, **Django:** 3.2 (legacy)
 
-1.2.2
+1.2.3
 
-  * fixes `GET /api/legal/privacy` when 404 before reaching session middleware
-  * replaces `report_weekly_revenue` with more generic `saas_reports` command
+  * skips "pay balance" page if balance less than 50 cents
+  * raises an appropriate error when attempting to charge less than 50 cents
+  * does not show "Remove from cart" for balances due
+  * fixes `AttributeError` in `CartItemManager.redeem` under certain conditions
+  * makes use of pytz optional
+  * removes dependency on jQuery in Vue components
+  * reconciles subscriptions in database with a spreadsheet
 
 [previous release notes](changelog)

@@ -8,6 +8,18 @@ Roadmap
 Released versions
 =================
 
+1.2.3
+
+  * skips "pay balance" page if balance less than 50 cents
+  * raises an appropriate error when attempting to charge less than 50 cents
+  * does not show "Remove from cart" for balances due
+  * fixes `AttributeError` in `CartItemManager.redeem` under certain conditions
+  * makes use of pytz optional
+  * removes dependency on jQuery in Vue components
+  * reconciles subscriptions in database with a spreadsheet
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri,  9 Jun 2026 15:20:00 -0700
+
 1.2.2
 
   * fixes `GET /api/legal/privacy` when 404 before reaching session middleware
