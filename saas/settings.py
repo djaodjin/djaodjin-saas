@@ -105,6 +105,7 @@ _SETTINGS = {
     'EXTRA_FIELD': None,
     'FORCE_PERSONAL_PROFILE': False,
     'INACTIVITY_DAYS': 90,
+    'LOCK_BALANCE': 50,
     'MAX_RENEWAL_ATTEMPTS': 3,
     'MAX_TYPEAHEAD_CANDIDATES': 5,
     'MAIL_PROVIDER_DOMAINS': [],
@@ -198,6 +199,12 @@ EXTRA_MIXIN = _SETTINGS.get('EXTRA_MIXIN')
 FORCE_PERSONAL_PROFILE = _SETTINGS.get('FORCE_PERSONAL_PROFILE')
 INACTIVITY_DAYS = _SETTINGS.get('INACTIVITY_DAYS')
 IS_BROKER_CALLABLE = _SETTINGS.get('BROKER').get('IS_INSTANCE_CALLABLE', None)
+
+#: Processors typically have a minimum charge which is above zero
+#: (ex: Stripe has a minimum charge of 50 cents). The `LOCK_BALANCE`
+#: setting prevents users from being stuck on a "pay balance" page
+#: when the balance is below that minimum amount to create a processor charge.
+LOCK_BALANCE = _SETTINGS.get('LOCK_BALANCE')
 MAX_RENEWAL_ATTEMPTS = _SETTINGS.get('MAX_RENEWAL_ATTEMPTS')
 MAX_TYPEAHEAD_CANDIDATES = _SETTINGS.get('MAX_TYPEAHEAD_CANDIDATES')
 MAIL_PROVIDER_DOMAINS = _SETTINGS.get('MAIL_PROVIDER_DOMAINS')

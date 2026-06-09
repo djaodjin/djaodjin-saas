@@ -1592,6 +1592,7 @@ class RoleManager(models.Manager):
         user_model = get_user_model()
         if not isinstance(user, user_model):
             user = user_model.objects.get(username=user)
+        kwargs = {}
         if role_descr:
             if isinstance(role_descr, RoleDescription):
                 kwargs = {'role_description': role_descr}
@@ -3226,6 +3227,7 @@ class Plan(SlugTitleMixin, models.Model):
         If end_time - start_time >= interval period, the value
         returned is undefined.
         """
+        fraction = 0
         if self.period_type == self.HOURLY:
             # Hourly: fractional period is in minutes.
             # XXX integer division?
@@ -3233,7 +3235,7 @@ class Plan(SlugTitleMixin, models.Model):
         elif self.period_type == self.DAILY:
             # Daily: fractional period is in hours.
             # XXX integer division?
-            fraction = ((end_time - start_time).seconds // (3600 * 24))
+            fraction = (end_time - start_time).seconds // (3600 * 24)
         elif self.period_type == self.WEEKLY:
             # Weekly, fractional period is in days.
             # XXX integer division?
@@ -3429,7 +3431,7 @@ class Coupon(models.Model):
         valid_plan = (not self.plan or self.plan == plan)
         valid_time = (not self.ends_at or at_time < self.ends_at)
         valid_attempts = (self.nb_attempts is None or self.nb_attempts > 0)
-        valid_organization = (self.organization == plan.organization)
+        valid_organization = bool(self.organization == plan.organization)
         return (valid_plan and valid_time and valid_attempts
             and valid_organization)
 
@@ -3825,7 +3827,7 @@ class Subscription(models.Model):
         Charge.objects.settle_customer_payments(self.organization)
         balance, _ = \
             Transaction.objects.get_subscription_statement_balance(self)
-        return balance > 0
+        return balance > settings.LOCK_BALANCE
 
     @property
     def provider(self):
@@ -3888,6 +3890,7 @@ class Subscription(models.Model):
         is longer than a plan period. Use ``nb_periods`` instead.
         """
         #pylint:disable=too-many-arguments
+        fraction = 0
         if not period_type:
             period_type = self.plan.period_type
         delta = relativedelta(until, start)
@@ -3929,6 +3932,7 @@ class Subscription(models.Model):
         partial_end_period = 0
         if start_upper <= until_lower:
             delta = relativedelta(until_lower, start_upper) # XXX inverted
+            estimated = 0
             if period_type == Plan.HOURLY:
                 # Integer division?
                 estimated = (start_upper - until_lower).total_seconds() // 3600
