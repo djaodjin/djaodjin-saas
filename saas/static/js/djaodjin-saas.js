@@ -200,7 +200,12 @@
 
     $.fn.chargeEmailReceipt = function(options) {
         var opts = $.extend( {}, $.fn.chargeEmailReceipt.defaults, options );
-        return new ChargeEmailReceipt($(this), opts);
+        return this.each(function() {
+            if (!$.data(this, "chargeEmailReceipt")) {
+                $.data(this, "chargeEmailReceipt",
+                    new ChargeEmailReceipt(this, opts));
+            }
+        });
     };
 
     $.fn.chargeEmailReceipt.defaults = {
