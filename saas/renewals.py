@@ -257,14 +257,19 @@ def extend_subscription(subscription, at_time=None, dry_run=False):
 def extend_subscriptions_organization(organization,
                                       at_time=None, dry_run=False):
     """
-    Extend active subscriptions
+    Extend active and future subscriptions
+
+    If `at_time` is less than the `subscription.created_at` datetime, the
+    subscription hasn't started yet. It is in the future. This function will
+    consider future subscriptions in its evaluation such that plan
+    upgrade/downgrade at the end of the period are included.
     """
     nb_renewals = 0
     at_time = datetime_or_now(at_time)
     LOGGER.info("extend subscriptions for %s at %s ...", organization, at_time)
     for subscription in Subscription.objects.filter(
             organization=organization).valid_for(auto_renew=True,
-            created_at__lte=at_time, ends_at__gt=at_time).select_related(
+            ends_at__gt=at_time).select_related(
             'organization', 'plan'):
         nb_renewals += extend_subscription(
             subscription, at_time=at_time, dry_run=dry_run)
@@ -274,13 +279,18 @@ def extend_subscriptions_organization(organization,
 
 def extend_subscriptions(at_time=None, dry_run=False):
     """
-    Extend active subscriptions
+    Extend active and future subscriptions
+
+    If `at_time` is less than the `subscription.created_at` datetime, the
+    subscription hasn't started yet. It is in the future. This function will
+    consider future subscriptions in its evaluation such that plan
+    upgrade/downgrade at the end of the period are included.
     """
     nb_renewals = 0
     at_time = datetime_or_now(at_time)
     LOGGER.info("extend subscriptions at %s ...", at_time)
     for subscription in Subscription.objects.valid_for(auto_renew=True,
-            created_at__lte=at_time, ends_at__gt=at_time).select_related(
+            ends_at__gt=at_time).select_related(
             'organization', 'plan'):
         nb_renewals += extend_subscription(
             subscription, at_time=at_time, dry_run=dry_run)
