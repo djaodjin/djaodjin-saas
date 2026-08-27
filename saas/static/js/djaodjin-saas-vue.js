@@ -3136,7 +3136,26 @@ Vue.component('search-profile', {
     data: function() {
         return {
             url: this.$urls.provider ? this.$urls.provider.api_accounts : null,
+            listUrl: this.$urls.organization ?
+                this.$urls.organization.api_profile_base : null,
         }
+    },
+    methods: {
+        search: function() {
+            var vm = this;
+            if( !vm.query ) return vm.reset();
+            var params = {};
+            params[vm.queryParamName] = vm.query;
+
+            vm.loading = true;
+            vm.reqGet(vm.listUrl, params,
+            function(resp) {
+                vm.items = resp.results;
+                vm.loading = false;
+            }, function() {
+                vm.loading = false;
+            });
+        },
     }
 });
 
