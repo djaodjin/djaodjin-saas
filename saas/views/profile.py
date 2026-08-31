@@ -24,7 +24,8 @@
 """
 Manage Profile information
 """
-import logging
+import json, logging
+from collections.abc import Mapping
 
 from django import http
 from django.contrib import messages
@@ -39,7 +40,7 @@ from ..helpers import update_context_urls
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker
-from ..utils import fill_form_errors, get_organization_model
+from ..utils import extra_as_dict, fill_form_errors, get_organization_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -294,9 +295,42 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
     slug_field = 'slug'
     slug_url_kwarg = settings.PROFILE_URL_KWARG
     template_name = "saas/profile/index.html"
+    extra_field_prefix = 'extra__'
+
+    def _extract_extra_fields(self, data):
+        prefix = self.extra_field_prefix
+        return {
+            key[len(prefix):]: value
+            for key, value in data.items()
+            if key.startswith(prefix) and len(key) > len(prefix)
+        }
+
+    def _prefix_extra_fields(self, extra):
+        return {
+            self.extra_field_prefix + key: value
+            for key, value in extra.items()
+        }
+
+    def _get_updated_extra(self):
+        submitted_extra = self._extract_extra_fields(self.request.POST)
+        if not submitted_extra:
+            return None
+
+        extra_was_mapping = isinstance(self.object.extra, Mapping)
+        extra = extra_as_dict(self.object.extra)
+        extra.update(submitted_extra)
+        extra_model_field = self.object._meta.get_field('extra')
+        if (not extra_was_mapping and
+                extra_model_field.get_internal_type() != 'JSONField'):
+            return json.dumps(extra)
+        return extra
 
     def form_valid(self, form):
         validated_data = form.cleaned_data
+        updated_extra = self._get_updated_extra()
+        if updated_extra is not None:
+            validated_data = validated_data.copy()
+            validated_data['extra'] = updated_extra
         try:
             self.update_profile_fields(self.get_object(), validated_data)
         except ValidationError as err:
@@ -324,6 +358,13 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             kwargs.update({
                 'is_provider': self.object.is_provider,
                 'extra': self.object.extra})
+        extra_initial = extra_as_dict(self.object.extra)
+        if self.request.method == 'POST':
+            # repeated submissions will discard the extra values as these
+            # are not proper form fields
+            extra_initial.update(
+                self._extract_extra_fields(self.request.POST))
+        kwargs.update(self._prefix_extra_fields(extra_initial))
         return kwargs
 
     def get_success_url(self):

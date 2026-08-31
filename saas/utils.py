@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime, inspect, random, re, sys, json
+from collections.abc import Mapping
 
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.core.files.storage import default_storage
@@ -37,6 +38,19 @@ from rest_framework.settings import api_settings
 from .compat import (get_model_class, gettext_lazy as _, import_string, six,
     timezone_or_utc)
 from .helpers import datetime_or_now
+
+
+def extra_as_dict(extra):
+    if isinstance(extra, Mapping):
+        return dict(extra)
+    if extra:
+        try:
+            extra = json.loads(extra)
+        except (TypeError, ValueError):
+            pass
+        if isinstance(extra, Mapping):
+            return dict(extra)
+    return {}
 
 
 class SlugTitleMixin(object):
