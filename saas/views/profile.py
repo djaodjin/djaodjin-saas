@@ -36,11 +36,11 @@ from .. import settings
 from ..compat import gettext_lazy as _, is_authenticated, reverse
 from ..decorators import _valid_manager
 from ..forms import OrganizationForm, ManagerAndOrganizationForm
-from ..helpers import update_context_urls
+from ..helpers import extra_as_internal, update_context_urls
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker
-from ..utils import extra_as_dict, fill_form_errors, get_organization_model
+from ..utils import fill_form_errors, get_organization_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -317,7 +317,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             return None
 
         extra_was_mapping = isinstance(self.object.extra, Mapping)
-        extra = extra_as_dict(self.object.extra)
+        extra = extra_as_internal(self.object)
         extra.update(submitted_extra)
         extra_model_field = self.object._meta.get_field('extra')
         if (not extra_was_mapping and
@@ -358,7 +358,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             kwargs.update({
                 'is_provider': self.object.is_provider,
                 'extra': self.object.extra})
-        extra_initial = extra_as_dict(self.object.extra)
+        extra_initial = extra_as_internal(self.object)
         if self.request.method.lower() in ('post',):
             # repeated submissions will discard the extra values as these
             # are not proper form fields

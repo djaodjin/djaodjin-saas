@@ -22,11 +22,28 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime
+import datetime, json
+from collections.abc import Mapping
 
 from django.utils.dateparse import parse_date, parse_datetime
 
 from .compat import six, timezone_or_utc
+
+
+def extra_as_internal(obj):
+    try:
+        extra = obj.extra
+    except AttributeError:
+        try:
+            extra = obj.get('extra', {})
+        except AttributeError:
+            return {}
+    if isinstance(extra, six.string_types):
+        try:
+            extra = json.loads(extra)
+        except (TypeError, ValueError):
+            return {}
+    return dict(extra) if isinstance(extra, Mapping) else {}
 
 
 def as_timestamp(dtime_at=None):
