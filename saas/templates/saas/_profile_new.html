@@ -5,7 +5,7 @@ Request access to an existing profile or create a new profile
   <div>
     <form id="add-profile" @submit.prevent="submit">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-      <search-profile inline-template ref="typeahead"
+      <profile-typeahead inline-template ref="typeahead"
                  v-bind:dataset="items.results"
                  v-on:selectitem="updateItemSelected"
                  v-show="!inNewProfileFlow"
@@ -47,7 +47,7 @@ We couldn't find a profile matching your search criteria, or there are too many 
             </div>
           </div>
         </div>
-      </search-profile>
+      </profile-typeahead>
       <!-- Workflow to create a new profile  -->
       <div v-show="inNewProfileFlow">
         <div>

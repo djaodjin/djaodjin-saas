@@ -3128,8 +3128,22 @@ Vue.component('unengaged-subscribers', {
 
 // Widgets for dashboard
 // ---------------------
+Vue.component('profile-typeahead', {
+    mixins: [
+        typeAheadMixin
+    ],
+    data: function() {
+        return {
+            url: this.$urls.provider ? this.$urls.provider.api_accounts : null,
+        }
+    },
+});
+
 
 Vue.component('search-profile', {
+    // The difference of 'search-profile' with 'profile-typeahead' is that
+    // calling `search` on 'search-profile' will make an API call to the
+    // profile list API instead of the profile typeahead API.
     mixins: [
         typeAheadMixin
     ],
@@ -3158,6 +3172,8 @@ Vue.component('search-profile', {
         },
     }
 });
+
+
 
 
 Vue.component('subscription-typeahead', {
