@@ -359,7 +359,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
                 'is_provider': self.object.is_provider,
                 'extra': self.object.extra})
         extra_initial = extra_as_dict(self.object.extra)
-        if self.request.method == 'POST':
+        if self.request.method.lower() in ('post',):
             # repeated submissions will discard the extra values as these
             # are not proper form fields
             extra_initial.update(
