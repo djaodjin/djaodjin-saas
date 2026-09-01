@@ -6,7 +6,7 @@
     {% include "saas/_filter.html" %}
     <div>
       <a id="download" role="button"
-        v-bind:href="'{{urls.download_balances}}' + getQueryString(['page'])">Download</a>
+        v-bind:href="appendQueryString('{{urls.download_balances}}', ['page'])">Download</a>
     </div>
     <table>
         <thead>

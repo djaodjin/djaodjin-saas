@@ -63,7 +63,9 @@ var paramsMixin = {
             }
             return params;
         },
-        getQueryString: function(excludes){
+        appendQueryString: function(url, excludes) {
+            // Returns `url` with a URL encoded query string from the parameters
+            // defined in the component, excluding parameters in `excludes`.
             var vm = this;
             var sep = "";
             var result = "";
@@ -76,10 +78,10 @@ var paramsMixin = {
                 }
             }
             if( result ) {
-                result = '?' + result;
+                result = (url.lastIndexOf('?') > 0 ? '&' : '?') + result;
             }
-            return result;
-        },
+            return url + result;
+        }
     },
     computed: {
         _start_at: {
@@ -723,7 +725,8 @@ var typeAheadMixin = {
             if( !vm.query ) {
                 return text;
             }
-            let regex = new RegExp(vm.query, "gi"); // search for all instances
+            let regex = new RegExp(RegExp.escape(vm.query), "gi");
+                                                    // search for all instances
             let newText = text.replace(regex, `<mark>$&</mark>`);
             return newText;
         },
@@ -817,6 +820,17 @@ var typeAheadMixin = {
                 vm.current = -1;
                 vm.loading = false;
                 vm.$nextTick(function() {
+                    var dropdowns = vm.$refs.dropdown;
+                    if( dropdowns ) {
+                        if( typeof dropdowns.length != 'undefined' ) {
+                            if( dropdowns.length > 0 ) {
+                                dropdowns[0].scrollTo({
+                                    top: 0, behavior: 'instant'});
+                            }
+                        } else {
+                            dropdowns.scrollTo({top: 0, behavior: 'instant'});
+                        }
+                    }
                     var inputs = vm.$refs.input;
                     if( inputs ) {
                         if( typeof inputs.length != 'undefined' ) {

@@ -11,7 +11,7 @@
         {% include "saas/_filter.html" %}
         <div>
           <a id="download-registered" role="button"
-           v-bind:href="'{{registered.urls.download}}' + getQueryString(['page'])">CSV Download</a>
+           v-bind:href="appendQueryString('{{registered.urls.download}}', ['page'])">CSV Download</a>
         </div>
         <div>
           <table>
@@ -61,7 +61,7 @@
         <div>
           <a href="{{urls.subscribers_activity}}">Activity</a>
           <a id="download-{{tab.slug}}" role="button"
-             v-bind:href="'{{tab.urls.download}}' + getQueryString(['page'])">CSV Download</a>
+             v-bind:href="appendQueryString('{{tab.urls.download}}', ['page'])">CSV Download</a>
         </div>
         <div>
           <table>

@@ -80,7 +80,7 @@ class OrganizationQuerysetMixin(OrganizationDecorateMixin):
 class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
                             OrganizationQuerysetMixin, ListAPIView):
     """
-    Searches profile and user accounts
+    Finds profile and user candidates
 
     Returns a list of {{MAX_TYPEAHEAD_CANDIDATES}} candidate profiles
     or user accounts based of a search criteria (``q``).
@@ -90,7 +90,7 @@ class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
     than {{MAX_TYPEAHEAD_CANDIDATES}}.
 
     If you need to list all profiles, please see
-    `Lists billing profiles </docs/api/#listOrganization>`_
+    `Lists billing profiles <./#profile_list>`_
 
     The queryset can be further refined by a range of dates
     ([``start_at``, ``ends_at``]), and sorted on specific fields (``o``).

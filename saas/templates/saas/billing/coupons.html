@@ -8,7 +8,7 @@
       {% include "saas/_filter.html" %}
       <div>
         <a id="download" role="button"
-         v-bind:href="'{{urls.provider.download_coupons}}' + getQueryString(['page'])">CSV Download</a>
+         v-bind:href="appendQueryString('{{urls.provider.download_coupons}}', ['page'])">CSV Download</a>
       </div>
       <h2 v-show="!itemsLoaded">Please wait...</h2>
       <h2 v-show="itemsLoaded && items.results.length == 0">No Coupons yet</h2>

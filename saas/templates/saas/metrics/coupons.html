@@ -3,7 +3,7 @@
 {% block saas_content %}
 <coupon-user-list inline-template id="coupon-performance">
     <div id="coupon-users-container">
-        <a id="download" role="button" :href="'{{urls.coupon_uses_download}}' + getQueryString(['page'])">Download .CSV</a>
+        <a id="download" role="button" :href="appendQueryString('{{urls.coupon_uses_download}}', ['page'])">Download .CSV</a>
         <p v-show="itemsLoaded">
 {{coupon.code}} was used [[totalItems]] time[[totalItems > 0 ? "s" : ""]].
         </p>

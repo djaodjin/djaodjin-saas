@@ -37,7 +37,7 @@
       <a v-bind:href="'#' + table.key"
          @click="tabClicked(index)"><h2>[[table.title]]</h2></a>
       <div>
-        <a :href="[[table.download + getQueryString(['page'])]]" target="_blank">Download</a>
+        <a :href="appendQueryString(table.download, ['page'])" target="_blank">Download</a>
       </div>
       <div class="chart-content">
       </div>

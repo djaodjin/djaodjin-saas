@@ -3,7 +3,7 @@
   {% include "saas/_filter.html" %}
   <div>
     <a id="download" role="button"
-       v-bind:href="'{{urls.download}}' + getQueryString(['page'])">CSV Download</a>
+       v-bind:href="appendQueryString('{{urls.download}}', ['page'])">CSV Download</a>
   </div>
   <table>
     <thead>
