@@ -2382,12 +2382,24 @@ Vue.component('profile-update', {
         updateProfile: function(){
             var vm = this;
             vm.validateForm();
-            var data = {}
+            var data = {};
+            var extra = {};
+            var extraFieldPrefix = 'extra__';
             for( var field in vm.formFields ) {
-                if( vm.formFields.hasOwnProperty(field) &&
-                    vm.formFields[field] ) {
-                    data[field] = vm.formFields[field];
+                if( vm.formFields.hasOwnProperty(field) ) {
+                    if( field.indexOf(extraFieldPrefix) === 0 ) {
+                        var extraField = field.substring(
+                            extraFieldPrefix.length);
+                        if( extraField ) {
+                            extra[extraField] = vm.formFields[field];
+                        }
+                    } else if( vm.formFields[field] ) {
+                        data[field] = vm.formFields[field];
+                    }
                 }
+            }
+            if( Object.keys(extra).length > 0 ) {
+                data.extra = extra;
             }
             vm.reqPut(vm.url, data,
             function(resp) {
