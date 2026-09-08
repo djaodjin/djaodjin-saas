@@ -40,11 +40,15 @@ import json, logging
 from django.core import validators
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import is_password_usable
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import EmailValidator
 from django.db import transaction, IntegrityError
 from django.template.defaultfilters import slugify
+from django.utils.deconstruct import deconstructible
 from django_countries.serializer_fields import CountryField
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.fields import CharField
 from rest_framework.generics import get_object_or_404
 import phonenumbers
 
@@ -61,6 +65,40 @@ from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
 
 
 LOGGER = logging.getLogger(__name__)
+
+@deconstructible
+class EmailOrEmailDomainValidator(EmailValidator):
+
+    def __call__(self, value):
+        # The maximum length of an email is 320 characters per RFC 3696
+        # section 3.
+        if not value or "@" not in value or len(value) > 320:
+            raise DjangoValidationError(self.message, code=self.code, params={
+                "value": value})
+
+        user_part, domain_part = value.rsplit("@", 1)
+
+        if user_part and not self.user_regex.match(user_part):
+            raise DjangoValidationError(self.message, code=self.code, params={
+                "value": value})
+
+        if (domain_part not in self.domain_allowlist and
+            not self.validate_domain_part(domain_part)):
+            raise DjangoValidationError(self.message, code=self.code, params={
+                "value": value})
+
+
+class EmailOrEmailDomainField(CharField):
+
+    default_error_messages = {
+        'invalid': _('Enter a valid email address or email domain.')
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        validator = EmailOrEmailDomainValidator(
+            message=self.error_messages['invalid'])
+        self.validators.append(validator)
 
 
 class EnumField(serializers.ChoiceField):
@@ -532,8 +570,8 @@ class OrganizationDetailSerializer(OrganizationSerializer):
     full_name = serializers.CharField(help_text=_("Full name"))
     default_timezone = serializers.CharField(required=False,
         help_text=_("Timezone to use when reporting metrics"))
-    email = serializers.EmailField(required=False,
-        help_text=_("E-mail address"))
+    email = EmailOrEmailDomainField(required=False,
+        help_text=_("E-mail address or e-mail domain"))
     phone = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Phone number"))
     street_address = serializers.CharField(required=False, allow_blank=True,
