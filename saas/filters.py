@@ -127,7 +127,7 @@ class SearchFilter(BaseSearchFilter):
         conditions = []
         for search_term in search_terms:
             queries = [
-                models.Q(**{orm_lookup: search_term})
+                self.build_search_query(orm_lookup, search_term)
                 for orm_lookup in orm_lookups
             ]
             conditions.append(reduce(operator.or_, queries))
@@ -148,10 +148,18 @@ class SearchFilter(BaseSearchFilter):
         return queryset
 
 
+    def build_search_query(self, orm_lookup, search_term):
+        return models.Q(**{orm_lookup: search_term})
+
+
     def filter_valid_fields(self, queryset, fields, view):
         #pylint:disable=protected-access
         model_fields = {
             field.name for field in queryset.model._meta.get_fields()}
+        annotations = getattr(
+            getattr(queryset, 'query', None), 'annotations', None)
+        if annotations:
+            model_fields |= set(annotations.keys())
         # We add all the fields that could be aliases then filter out the ones
         # which are not present in the model.
         alternate_fields = getattr(view, 'alternate_fields', {})
@@ -188,7 +196,11 @@ class SearchFilter(BaseSearchFilter):
                 except FieldDoesNotExist:
                     pass
             elif field_name in model_fields:
-                rel = queryset.model._meta.get_field(field_name).remote_field
+                try:
+                    rel = queryset.model._meta.get_field(
+                        field_name).remote_field
+                except FieldDoesNotExist:
+                    rel = None
                 if not rel:
                     # if it is a relation fields (as a result valid),
                     # we don't want to end-up with a problem later on
@@ -280,6 +292,28 @@ class SearchFilter(BaseSearchFilter):
                 },
             },
         ]
+
+
+class JSONArraySearchFilter(SearchFilter):
+
+    def get_valid_fields(self, request, queryset, view, context=None):
+        fields = super().get_valid_fields(
+            request, queryset, view, context=context)
+        for field in getattr(view, 'json_search_fields', []):
+            if field not in fields:
+                fields = fields + (field,)
+        return fields
+
+    def build_search_query(self, orm_lookup, search_term):
+        json_search_fields = getattr(self, '_json_search_fields', ())
+        for field in json_search_fields:
+            if orm_lookup.startswith(field):
+                return models.Q(**{orm_lookup: f'"{search_term}"'})
+        return super().build_search_query(orm_lookup, search_term)
+
+    def filter_queryset(self, request, queryset, view):
+        self._json_search_fields = getattr(view, 'json_search_fields', ())
+        return super().filter_queryset(request, queryset, view)
 
 
 class OrderingFilter(BaseOrderingFilter):
@@ -401,6 +435,53 @@ class OrderingFilter(BaseOrderingFilter):
                 },
             },
         ]
+
+
+class ExtraOrderingFilter(OrderingFilter):
+
+    extra_ordering_prefix = 'extra__'
+
+    def get_extra_ordering_terms(self, request, view):
+        params = self.get_query_param(request, self.ordering_param)
+        if not params:
+            return []
+        if isinstance(params, str):
+            params = [params]
+
+        extra_fields = []
+        for term in [param.strip() for param in params]:
+            alias = term.lstrip('-')
+            if alias.startswith(self.extra_ordering_prefix):
+                key = alias[len(self.extra_ordering_prefix):]
+                if key:
+                    extra_fields.append((key, alias))
+        return extra_fields
+
+    def get_extra_ordering_fields(self, request, queryset, view):
+        json_ordering_source = getattr(view, 'json_ordering_source', None)
+        annotations = getattr(
+            getattr(queryset, 'query', None), 'annotations', {})
+        if (not json_ordering_source or
+            json_ordering_source not in annotations):
+            return []
+        return [(f'{json_ordering_source}__{key}', alias)
+            for key, alias in self.get_extra_ordering_terms(request, view)]
+
+    def get_valid_fields(self, queryset, view, context=None):
+        valid_fields = list(super().get_valid_fields(
+            queryset, view, context=context))
+        request = (context or {}).get('request')
+        if request:
+            valid_fields += self.get_extra_ordering_fields(
+                request, queryset, view)
+        return tuple(valid_fields)
+
+    def get_schema_operation_parameters(self, view):
+        parameters = super().get_schema_operation_parameters(view)
+        parameters[0]['description'] += (
+            " Profile extra keys must use the 'extra__' prefix"
+            " (for example 'extra__birthdate').")
+        return parameters
 
 
 class DateRangeFilter(BaseFilterBackend):
