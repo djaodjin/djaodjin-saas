@@ -332,7 +332,7 @@ def translate_descr_suffix(descr):
 
 def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
                          coupon=None, cart_item=None, full_name=None):
-    #pylint:disable=too-many-arguments
+    #pylint:disable=too-many-arguments,too-many-positional-arguments
     descr = DESCRIBE_BUY_PERIODS % {
         'plan': plan,
         'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),

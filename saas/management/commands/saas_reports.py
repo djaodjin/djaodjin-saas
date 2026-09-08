@@ -119,7 +119,7 @@ class Command(BaseCommand):
 
         # 'yearly' is unique in its treatment of the starting date.
         # Flag set for special handling later.
-        include_start = (period == humanize.YEARLY)
+        include_start = bool(period == humanize.YEARLY)
 
         # Calculate the date exactly one year, month, or day prior to base_time
         if period == humanize.HOURLY:
@@ -339,7 +339,8 @@ class Command(BaseCommand):
 
     def run_report(self, provider, at_time, period_type=humanize.WEEKLY,
                     extra=None, verbosity=0, dry_run=False):
-        # pylint:disable=too-many-arguments,too-many-locals
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=too-many-locals
         dates = self.construct_date_periods(
             at_time, period=period_type, timezone=provider.default_timezone)
         prev_period, prev_year = dates

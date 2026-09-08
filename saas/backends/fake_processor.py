@@ -77,7 +77,8 @@ class FakeProcessorBackend(object):
                        processor_card_key=None,
                        descr=None, stmt_descr=None, created_at=None,
                        broker_fee_amount=0, provider=None, broker=None):
-        #pylint: disable=too-many-arguments,unused-argument
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=unused-argument
         created_at = datetime_or_now(created_at)
         receipt_info = {
             'last4': "1234",
@@ -118,7 +119,8 @@ class FakeProcessorBackend(object):
     def get_payment_context(subscriber,
                             amount=None, unit=None, broker_fee_amount=0,
                             provider=None, broker=None):
-        #pylint:disable=too-many-arguments,unused-argument
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=unused-argument
         context = {}
         return context
 

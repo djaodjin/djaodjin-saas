@@ -587,7 +587,7 @@ class AbstractOrganization(models.Model):
         When ``grant_key`` is specified, it will be set on the role, regardless
         of the ``role_descr.skip_optin_on_grant`` value.
         """
-        #pylint:disable=too-many-arguments
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
         # Implementation Note:
         # Django get_or_create will call router.db_for_write without
         # an instance so the using database will be lost. The following
@@ -1174,7 +1174,7 @@ class AbstractOrganization(models.Model):
                 stripe:Withdraw                          $174.52
                 cowork:Funds
        """
-        #pylint:disable=too-many-arguments
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
         # We use ``get_or_create`` here because the method is also called
         # when transfers are reconciled with the payment processor.
         dry_run_prefix = "(dryrun) " if dry_run else ""
@@ -1343,7 +1343,7 @@ class AbstractOrganization(models.Model):
                 xia:Canceled                              $179.99
                 cowork:Receivable
         """
-        #pylint:disable=too-many-arguments
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
         assert amount > 0
         at_time = datetime_or_now(created_at)
         sub_event_id = get_sub_event_id(subscription)
@@ -1751,7 +1751,7 @@ class ChargeManager(models.Manager):
 
     def create_charge(self, customer, transactions, amount, unit,
                       user=None, created_at=None):
-        #pylint: disable=too-many-arguments
+        #pylint: disable=too-many-arguments,too-many-positional-arguments
         assert amount > 0
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
@@ -2819,7 +2819,8 @@ class ChargeItem(models.Model):
                 stripe:Refund                            $156.78
                 cowork:Funds
         """
-        #pylint:disable=too-many-locals,too-many-arguments,too-many-statements
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=too-many-locals,too-many-statements
         #pylint:disable=no-member
         created_at = datetime_or_now(created_at)
         if not refund_type:
@@ -4261,7 +4262,7 @@ class TransactionManager(models.Manager):
 
     def offline_payment(self, subscription, amount, payment_event_id=None,
                         descr=None, created_at=None, user=None):
-        #pylint: disable=too-many-arguments
+        #pylint: disable=too-many-arguments,too-many-positional-arguments
         """
         For an offline payment, we will record a sequence of ``Transaction``
         as if we went through ``payment_successful`` and ``withdraw_funds``
@@ -4588,7 +4589,7 @@ class TransactionManager(models.Manager):
                 xia:Payable                              $39.99
                 cowork:Receivable
         """
-        #pylint:disable=too-many-arguments
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
         if quantity <= 0:
             # Minimum quantity for a use charge is one.
             quantity = 1
@@ -4659,7 +4660,7 @@ class TransactionManager(models.Manager):
     @staticmethod
     def new_payable(customer, price, provider, descr,
                     event_id=None, created_at=None):
-        #pylint:disable=too-many-arguments
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
         created_at = datetime_or_now(created_at)
         return Transaction(
             created_at=created_at,
@@ -4777,7 +4778,8 @@ class TransactionManager(models.Manager):
                 cowork:Backlog                         $179.99
                 cowork:Income
         """
-        #pylint:disable=unused-argument,too-many-arguments,too-many-locals
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=unused-argument,too-many-locals
         created_transactions = []
         ends_at = datetime_or_now(ends_at)
         if not event_id:

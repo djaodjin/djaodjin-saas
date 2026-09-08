@@ -92,7 +92,8 @@ class RazorpayBackend(object):
     def create_payment(self, amount, unit, token,
                        descr=None, stmt_descr=None, created_at=None,
                        broker_fee_amount=0, provider=None, broker=None):
-        #pylint: disable=too-many-arguments,no-member,unused-argument
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=no-member,unused-argument
         LOGGER.debug('create_payment(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
         try:
@@ -133,7 +134,8 @@ class RazorpayBackend(object):
     def get_payment_context(self, subscriber,
                             amount=None, unit=None, broker_fee_amount=0,
                             provider=None, broker=None):
-        #pylint:disable=too-many-arguments,unused-argument
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=unused-argument
         context = {
             'RAZORPAY_PUB_KEY': self.pub_key
         }

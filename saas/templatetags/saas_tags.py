@@ -142,7 +142,7 @@ def htmlize_money(amount_unit_tuple):
                 '<span class="frac-digits zero-frac-digits">%s</span>'
                 % frac_amount)
         else:
-            frac_amount = ('<span class="frac-digits">%s</span>' % frac_amount)
+            frac_amount = '<span class="frac-digits">%s</span>' % frac_amount
         html = unit_prefix + int_amount + frac_amount + unit_suffx
         return  mark_safe(html)
     return text

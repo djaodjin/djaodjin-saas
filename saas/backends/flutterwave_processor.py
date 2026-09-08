@@ -101,7 +101,8 @@ class FlutterwaveBackend(object):
                        processor_card_key=None,
                        descr=None, stmt_descr=None, created_at=None,
                        broker_fee_amount=0, provider=None, broker=None):
-        #pylint: disable=too-many-arguments,unused-argument,too-many-locals
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=unused-argument,too-many-locals
         rave = Rave(self.pub_key, self.priv_key,
             usingEnv=False)
         LOGGER.debug(
@@ -157,7 +158,8 @@ class FlutterwaveBackend(object):
     def get_payment_context(self, subscriber,
                             amount=None, unit=None, broker_fee_amount=0,
                             provider=None, broker=None):
-        #pylint:disable=too-many-arguments,unused-argument
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=unused-argument
         context = {
             'FLUTTERWAVE_PUB_KEY': self.pub_key,
             'flutterwave_invoice_id': generate_random_slug()

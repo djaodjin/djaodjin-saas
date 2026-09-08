@@ -1385,7 +1385,8 @@ class MetricsDownloadMixin(object):
 def _as_html_description(transaction_descr,
                          orig_organization=None, dest_organization=None,
                          dest_account=None, request=None, force_links=False):
-    #pylint:disable=too-many-arguments,too-many-locals
+    #pylint:disable=too-many-arguments,too-many-positional-arguments
+    #pylint:disable=too-many-locals
     active_links = force_links or (request is not None)
     result = transaction_descr
     for pat, trans in six.iteritems(humanize.REGEX_TO_TRANSLATION):

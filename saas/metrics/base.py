@@ -131,7 +131,8 @@ def set_to_start_of_period(date, time_unit):
 
 def _generate_periods(time_unit, num_units, start_date, step_units,
                       timezone_str, include_start_date=True):
-    #pylint:disable=too-many-arguments,too-many-locals
+    #pylint:disable=too-many-arguments,too-many-positional-arguments
+    #pylint:disable=too-many-locals
     period_dates = []
     start_date = datetime_or_now(start_date)
     original_timezone = start_date.tzinfo
@@ -176,7 +177,7 @@ def _generate_periods(time_unit, num_units, start_date, step_units,
 
 def generate_periods(period, nb_periods=0, from_date=None, step_units=1,
                      tzinfo=None, include_start_date=True):
-    #pylint:disable=too-many-arguments
+    #pylint:disable=too-many-arguments,,too-many-positional-arguments
     assert period in (humanize.HOURLY, humanize.DAILY, humanize.WEEKLY,
         humanize.MONTHLY, humanize.YEARLY)
     if not nb_periods:
@@ -371,7 +372,8 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
     12 months of total/new/churn into or out of (see *reverse*) *account*
     and associated distinct customers as extracted from Transactions.
     """
-    #pylint: disable=too-many-locals,too-many-arguments,invalid-name
+    #pylint:disable=too-many-arguments,too-many-positional-arguments
+    #pylint:disable=too-many-locals,invalid-name
     if not account_title:
         account_title = str(account)
     customers, account_totals, unit = _aggregate_transactions_change_by_period(

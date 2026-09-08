@@ -25,22 +25,12 @@
 """Command to synchronize database subscriptions with rows in a spreadsheet"""
 
 import csv, logging
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
 
-from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
 from django.template.defaultfilters import slugify
-from django.utils.dateparse import parse_datetime
-from rest_framework.settings import api_settings
 
-from ... import humanize, settings, signals
-from ...compat import force_str, six, timezone_or_utc
 from ...helpers import datetime_or_now
-from ...metrics.base import generate_periods, usage_metrics
-from ...metrics.transactions import revenue_metrics
-from ...metrics.subscriptions import subscribers_metrics
-
 from ...models import Plan, Subscription
 from ...utils import get_organization_model
 
@@ -48,18 +38,15 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    """Update subscriptions from a spreadsheet"""
+    """
+    Write SQL statements to synchronize subscriptions with a spreadsheet
+    """
     help = 'Synchronize subscriptions with a spreadsheet'
 
     profile_model = get_organization_model()
     plan_model = Plan
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--dry-run', action='store_true',
-            dest='dry_run', default=False,
-            help='Do not commit updates'
-        )
         parser.add_argument(
             '--expired-at', action='store',
             dest='expired_at', default=None,
@@ -86,7 +73,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         #pylint:disable=too-many-locals
-        dry_run = options['dry_run']
         subscriptions = {}
         for filename in options['filenames']:
             if filename.endswith('.csv'):
@@ -110,8 +96,8 @@ class Command(BaseCommand):
                                 LOGGER.info("substitutes profile '%s' for '%s'",
                                 profile.full_name, rec.profile_name)
                         except self.profile_model.DoesNotExist:
-                            LOGGER.info("new profile '%s' <%s>" % (
-                                rec.profile_name, rec.email))
+                            LOGGER.info("new profile '%s' <%s>",
+                                rec.profile_name, rec.email)
                             profile = self.profile_model(
                                 full_name=rec.profile_name, email=rec.email)
                         except self.profile_model.MultipleObjectsReturned:
@@ -169,7 +155,7 @@ class Command(BaseCommand):
                 if rec.until:
                     renew_ends_at = datetime_or_now(rec.until)
                 try:
-                    subscription = Subscription.objects.get(
+                    _ = Subscription.objects.get(
                         plan__slug=plan_slug,
                         organization__slug=profile,
                         ends_at__gt=expired_at)

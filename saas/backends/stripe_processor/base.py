@@ -503,11 +503,13 @@ class StripeBackend(object):
 
         *stmt_descr* can only be 15 characters maximum.
         """
-        #pylint: disable=too-many-arguments,too-many-locals,too-many-statements
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=too-many-locals,too-many-statements
         card_kwargs = self._prepare_card_request(broker)
         charge_kwargs = self._prepare_charge_request(provider, broker)
 
         receipt_info = {}
+        stripe_charge = None
         if token and token.startswith('pi_'):
             # We are dealing with a PaymentIntent. The Stripe Charge has
             # already been created.
@@ -887,7 +889,8 @@ class StripeBackend(object):
         Returns a dictionnary of values that needs to be passed to the browser
         client in order for the processor to create a payment.
         """
-        #pylint:disable=too-many-arguments,too-many-locals
+        #pylint:disable=too-many-arguments,too-many-positional-arguments
+        #pylint:disable=too-many-locals
         context = {
             'STRIPE_PUB_KEY': self.pub_key,
         }
@@ -1038,6 +1041,7 @@ class StripeBackend(object):
     def _retrieve_card(self, subscriber, broker=None, stripe_customer=None):
         context = {}
         try:
+            billing_name = ""
             card_kwargs = self._prepare_card_request(broker)
             if not stripe_customer:
                 if subscriber.processor_card_key:

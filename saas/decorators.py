@@ -704,7 +704,7 @@ def requires_subscription(function=None,
                 redirect_field_name=REDIRECT_FIELD_NAME,
                 strength=NORMAL,
                 roledescription=None):
-    #pylint:disable=too-many-arguments
+    #pylint:disable=too-many-arguments,too-many-positional-arguments
     """
     Decorator that checks an organization is or was subscribed to a plan.
     It redirects to an appropriate page when this is not the case:
@@ -741,7 +741,7 @@ def requires_paid_subscription(function=None,
                 redirect_field_name=REDIRECT_FIELD_NAME,
                 strength=NORMAL,
                 roledescription=None):
-    #pylint:disable=too-many-arguments
+    #pylint:disable=too-many-arguments,too-many-positional-arguments
     """
     Decorator that checks a specified subscription is paid. It redirects to an
     appropriate page when this is not the case:

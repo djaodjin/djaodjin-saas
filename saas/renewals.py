@@ -82,8 +82,7 @@ def _recognize_subscription_income(subscription, until=None):
 
         candidate_beg, _candidate_end = subscription.clipped_period_for(
             order.created_at)
-        if candidate_beg > order_subscribe_beg:
-            order_subscribe_beg = candidate_beg
+        order_subscribe_beg = max(order_subscribe_beg, candidate_beg)
         order_subscribe_end = subscription.plan.end_of_period(
             order_subscribe_beg, nb_periods=order_periods)
         min_end = min(order_subscribe_end, until)

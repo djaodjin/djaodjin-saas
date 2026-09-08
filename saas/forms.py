@@ -306,6 +306,12 @@ class PlanForm(forms.ModelForm):
                   'use_charge_quota', 'use_charge_maximum_limit')
 
     def __init__(self, *args, **kwargs):
+        period_amount = 0
+        period_type = Plan.MONTHLY
+        renewal_type = Plan.AUTO_RENEW
+        discount_type = AdvanceDiscount.PERCENTAGE
+        discount_value = 0
+        discount_length = 0
         initial = kwargs.get('initial', None)
         if initial:
             period_amount = initial.get('period_amount', 0)
@@ -313,10 +319,8 @@ class PlanForm(forms.ModelForm):
             renewal_type = initial.get('renewal_type', Plan.AUTO_RENEW)
             discount_type = initial.get(
                 'advance_discount_type', AdvanceDiscount.PERCENTAGE)
-            discount_value = initial.get(
-                'advance_discount_value', 0)
-            discount_length = initial.get(
-                'advance_discount_value', 0)
+            discount_value = initial.get('advance_discount_value', 0)
+            discount_length = initial.get('advance_discount_value', 0)
         instance = kwargs.get('instance', None)
         if instance:
             period_amount = instance.period_amount

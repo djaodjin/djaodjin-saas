@@ -152,7 +152,7 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
 
         for row in active_by_plans:
             member = row[plan_key]
-            nb_subscribers = (row['nb_subscribers'] - by_plans[member][2])
+            nb_subscribers = row['nb_subscribers'] - by_plans[member][2]
             by_plans[member][1] = nb_subscribers
 
         by_subscribers = get_organization_model().objects.filter(
