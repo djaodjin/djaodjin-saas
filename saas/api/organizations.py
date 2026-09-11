@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,7 @@ import hashlib, logging, os, re
 from dateutil.relativedelta import relativedelta
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
-from django.db import models, transaction
-from django.db.models.functions import Cast
+from django.db import transaction
 from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
@@ -40,8 +39,7 @@ from .serializers import (EngagedSubscriberSerializer, OrganizationSerializer,
 from .. import settings
 from ..compat import (force_str, gettext_lazy as _, urlparse,
     urlunparse)
-from ..filters import (DateRangeFilter, ExtraOrderingFilter,
-    JSONArraySearchFilter, OrderingFilter, SearchFilter)
+from ..filters import OrderingFilter, SearchFilter
 from ..helpers import datetime_or_now
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSearchOrderListMixin, OrganizationSmartListMixin,
@@ -361,16 +359,6 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
     """
     serializer_class = OrganizationDetailSerializer
     user_model = get_user_model()
-    json_search_fields = ('extra_tags_str',)
-    json_ordering_source = 'extra_json'
-    filter_backends = (
-        DateRangeFilter, JSONArraySearchFilter, ExtraOrderingFilter)
-
-    def get_queryset(self):
-        return super().get_queryset().annotate(
-            extra_json=Cast('extra', output_field=models.JSONField()),
-            extra_tags_str=Cast(
-                'extra_json__tags', output_field=models.TextField()))
 
     def paginate_queryset(self, queryset):
         page = super(OrganizationListAPIView, self).paginate_queryset(queryset)

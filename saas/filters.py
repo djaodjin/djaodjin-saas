@@ -28,6 +28,8 @@ from functools import reduce
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
+from django.db.models.expressions import RawSQL
+from django.db.models.functions import Cast
 from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter, BaseFilterBackend)
 
@@ -102,6 +104,7 @@ class SearchFilter(BaseSearchFilter):
     search_field_param = settings.SEARCH_FIELDS_PARAM
 
     def filter_queryset(self, request, queryset, view):
+        #pylint:disable=too-many-locals
         search_fields = self.get_valid_fields(request, queryset, view)
         search_terms = self.get_search_terms(request)
         LOGGER.debug("[SearchFilter.filter_queryset] search_terms=%s, "\
@@ -110,18 +113,50 @@ class SearchFilter(BaseSearchFilter):
         if not search_fields or not search_terms:
             return queryset
 
+        json_field = self.get_json_field(view)
+        json_field_as_json = '%s_json' % (json_field if json_field else "")
+        model_search_fields = []
+        json_search_fields = []
+        for field in search_fields:
+            field_name = field
+            lookup = self.lookup_prefixes.get(field_name[0])
+            if lookup:
+                field_name = field_name[1:]
+            if json_field and field_name.startswith('%s__' % json_field):
+                json_field_name = field_name.replace(
+                    json_field, json_field_as_json)
+                json_search_fields += [
+                    (lookup + json_field_name) if lookup else json_field_name]
+            else:
+                model_search_fields += [field]
+        if json_search_fields:
+            json_field_valid = "%s_valid" % json_field_as_json
+            if settings.IS_JSON_SQL_FEATURE_AVAILABLE:
+                queryset = queryset.annotate(
+                    **{json_field_valid: RawSQL("%s IS JSON" % json_field, [])})
+            else:
+                # sqlite3 defines a `JSON_VALID` function.
+                # PostgresQL < 16 requires to create a database function.
+                queryset = queryset.annotate(**{json_field_valid: models.Func(
+                    json_field, function='JSON_VALID',
+                    output_field=models.BooleanField())})
+            queryset = queryset.annotate(
+                    **{json_field_as_json: models.Case(
+                    models.When(models.Q(**{json_field_valid: True}),
+                    then=Cast(json_field, output_field=models.JSONField())))})
+
         try:
             # djangorestframework>=3.15
             orm_lookups = [
                 self.construct_search(six.text_type(search_field), queryset)
-                for search_field in search_fields
+                for search_field in (model_search_fields + json_search_fields)
             ]
         except TypeError:
             # djangorestframework<=3.14
             #pylint:disable=no-value-for-parameter
             orm_lookups = [
                 self.construct_search(six.text_type(search_field))
-                for search_field in search_fields
+                for search_field in (model_search_fields + json_search_fields)
             ]
 
         conditions = []
@@ -139,7 +174,7 @@ class SearchFilter(BaseSearchFilter):
                     conditions.append(reduce(operator.or_, queries))
         queryset = queryset.filter(reduce(operator.or_, conditions))
 
-        if self.must_call_distinct(queryset, search_fields):
+        if self.must_call_distinct(queryset, model_search_fields):
             # Filtering against a many-to-many field requires us to
             # call queryset.distinct() in order to avoid duplicate items
             # in the resulting queryset.
@@ -177,13 +212,17 @@ class SearchFilter(BaseSearchFilter):
                 else:
                     fields += tuple([alternate_field])
 
+        json_field = self.get_json_field(view)
         valid_fields = []
         for field in fields:
             field_name = field
             lookup = self.lookup_prefixes.get(field_name[0])
             if lookup:
                 field_name = field_name[1:]
-            if '__' in field_name:
+            if json_field and field_name.startswith('%s__' % json_field):
+                if json_field in model_fields:
+                    valid_fields.append(field)
+            elif '__' in field_name:
                 relation, rel_field = field_name.split('__')
                 try:
                     # check if the field is a relation
@@ -208,6 +247,13 @@ class SearchFilter(BaseSearchFilter):
                     valid_fields.append(field)
 
         return tuple(valid_fields)
+
+
+    def get_json_field(self, view):
+        json_field = getattr(view, 'json_field', None)
+        if json_field and json_field in getattr(view, 'search_fields', []):
+            return json_field
+        return None
 
 
     def get_query_param(self, request, key, default_value=None):
@@ -259,6 +305,7 @@ class SearchFilter(BaseSearchFilter):
 
     def get_schema_operation_parameters(self, view):
         search_fields = getattr(view, 'search_fields', None)
+        json_field = self.get_json_field(view)
         search_field_names = []
         if search_fields:
             for search_field in search_fields:
@@ -267,9 +314,16 @@ class SearchFilter(BaseSearchFilter):
                 else:
                     search_field_names += [search_field]
         search_fields_description = (
-            "restrict searches to one or more fields in: %s."\
-            " searches all fields when unspecified."  % (
-            ', '.join(search_field_names)))
+            "restrict searches to one or more fields in: %(search_fields)s."\
+            " searches all fields when unspecified.")
+        if json_field:
+            search_fields_description += (
+            " If %(json_field)s is valid JSON, using target keys works"\
+            " by adding a '__' between %(json_field)s and the target key"\
+            " (example: '%(json_field)s__birth_date').")
+        search_fields_description = search_fields_description % {
+            'json_field': json_field,
+            'search_fields': ', '.join(search_field_names)}
         return [
             {
                 'name': self.search_param,
@@ -294,29 +348,62 @@ class SearchFilter(BaseSearchFilter):
         ]
 
 
-class JSONArraySearchFilter(SearchFilter):
-
-    def get_valid_fields(self, request, queryset, view, context=None):
-        fields = super().get_valid_fields(
-            request, queryset, view, context=context)
-        for field in getattr(view, 'json_search_fields', []):
-            if field not in fields:
-                fields = fields + (field,)
-        return fields
-
-    def build_search_query(self, orm_lookup, search_term):
-        json_search_fields = getattr(self, '_json_search_fields', ())
-        for field in json_search_fields:
-            if orm_lookup.startswith(field):
-                return models.Q(**{orm_lookup: f'"{search_term}"'})
-        return super().build_search_query(orm_lookup, search_term)
+class OrderingFilter(BaseOrderingFilter):
 
     def filter_queryset(self, request, queryset, view):
-        self._json_search_fields = getattr(view, 'json_search_fields', ())
-        return super().filter_queryset(request, queryset, view)
+        #pylint:disable=too-many-locals
+        ordering = self.get_ordering(request, queryset, view)
+
+        json_field = self.get_json_field(view)
+        json_field_as_json = '%s_json' % (json_field if json_field else "")
+        model_fields = []
+        json_fields = []
+        ordering_fields = []
+        for field in ordering:
+            field_name = field
+            lookup = None
+            if field_name.startswith('-'):
+                lookup = '-'
+                field_name = field_name[1:]
+            if json_field and field_name.startswith('%s__' % json_field):
+                json_field_name = field_name.replace(
+                    json_field, json_field_as_json)
+                json_fields += [
+                    (lookup + json_field_name) if lookup else json_field_name]
+                ordering_fields += [
+                    (lookup + json_field_name) if lookup else json_field_name]
+            else:
+                model_fields += [field]
+                ordering_fields += [field]
+        if json_fields:
+            json_field_valid = "%s_valid" % json_field_as_json
+            if settings.IS_JSON_SQL_FEATURE_AVAILABLE:
+                queryset = queryset.annotate(
+                    **{json_field_valid: RawSQL("%s IS JSON" % json_field, [])})
+            else:
+                # sqlite3 defines a `JSON_VALID` function.
+                # PostgresQL < 16 requires to create a database function.
+                queryset = queryset.annotate(**{json_field_valid: models.Func(
+                    json_field, function='JSON_VALID',
+                    output_field=models.BooleanField())})
+            queryset = queryset.annotate(
+                    **{json_field_as_json: models.Case(
+                    models.When(models.Q(**{json_field_valid: True}),
+                    then=Cast(json_field, output_field=models.JSONField())))})
+
+        if ordering_fields:
+            return queryset.order_by(*ordering_fields)
+
+        return queryset
 
 
-class OrderingFilter(BaseOrderingFilter):
+    def get_json_field(self, view):
+        json_field = getattr(view, 'json_field', None)
+        if json_field in [field[0]
+                          for field in getattr(view, 'ordering_fields', [])]:
+            return json_field
+        return None
+
 
     def get_query_param(self, request, key, default_value=None):
         try:
@@ -325,8 +412,10 @@ class OrderingFilter(BaseOrderingFilter):
             pass
         return request.GET.get(key, default_value)
 
+
     def get_valid_fields(self, queryset, view, context=None):
         #pylint:disable=protected-access
+
         if context is None:
             context = {}
 
@@ -343,10 +432,16 @@ class OrderingFilter(BaseOrderingFilter):
                     base_fields += [(item, item) for item in alternate_field]
                 else:
                     base_fields += [(alternate_field, alternate_field)]
+
+        json_field = self.get_json_field(view)
         valid_fields = []
         for field in base_fields:
-            if '__' in field[0]:
-                relation, rel_field = field[0].split('__')
+            field_name = field[0]
+            if json_field and field_name.startswith('%s__' % json_field):
+                if json_field in model_fields:
+                    valid_fields.append(field)
+            elif '__' in field_name:
+                relation, rel_field = field_name.split('__')
                 try:
                     # check if the field is a relation
                     rel = queryset.model._meta.get_field(relation).remote_field
@@ -357,11 +452,13 @@ class OrderingFilter(BaseOrderingFilter):
                         valid_fields.append(field)
                 except FieldDoesNotExist:
                     pass
-            elif field[0] in model_fields:
+            elif field_name in model_fields:
                 valid_fields.append(field)
         return tuple(valid_fields)
 
+
     def remove_invalid_fields(self, queryset, fields, view, request):
+        json_field = self.get_json_field(view)
         valid_fields = {item[1]: item[0]
             for item in self.get_valid_fields(
                 queryset, view, {'request': request})}
@@ -372,12 +469,17 @@ class OrderingFilter(BaseOrderingFilter):
             if alias.startswith('-'):
                 alias = alias[1:]
                 reverse = True
-            real_field = valid_fields.get(alias)
+            if json_field and alias.startswith('%s__' % json_field):
+                real_field = alias
+            else:
+                real_field = valid_fields.get(alias)
             if real_field:
                 if reverse:
                     real_field = '-' + real_field
                 ordering.append(real_field)
+
         return ordering
+
 
     def get_ordering(self, request, queryset, view):
         # We use an alternate ordering if the fields are not present
@@ -419,11 +521,22 @@ class OrderingFilter(BaseOrderingFilter):
         return ordering
 
     def get_schema_operation_parameters(self, view):
+        json_field = self.get_json_field(view)
         ordering_fields = getattr(view, 'ordering_fields', [])
-        sort_fields_description = "sort by %s. If a field is preceded by"\
-            " a minus sign ('-'), the order will be reversed. Multiple 'o'"\
-            " parameters can be specified to produce a stable"\
-            " result." % ', '.join([field[1] for field in ordering_fields])
+        sort_fields_description = "sort by %(ordering_fields)s. If a field "\
+            " is preceded by a minus sign ('-'), the order will be reversed."\
+            " Multiple 'o' parameters can be specified to produce a stable"\
+            " sort."
+        if json_field:
+            sort_fields_description += " If %(json_field)s is valid JSON,"\
+                " using target keys works by adding a '__' between"\
+                " %(json_field)s and the target key"\
+                " (example: '%(json_field)s__birth_date')."
+        sort_fields_description = sort_fields_description % {
+            'json_field': json_field,
+            'ordering_fields': ', '.join([
+                field[1] for field in ordering_fields])
+        }
         return [
             {
                 'name': self.ordering_param,
@@ -435,53 +548,6 @@ class OrderingFilter(BaseOrderingFilter):
                 },
             },
         ]
-
-
-class ExtraOrderingFilter(OrderingFilter):
-
-    extra_ordering_prefix = 'extra__'
-
-    def get_extra_ordering_terms(self, request, view):
-        params = self.get_query_param(request, self.ordering_param)
-        if not params:
-            return []
-        if isinstance(params, str):
-            params = [params]
-
-        extra_fields = []
-        for term in [param.strip() for param in params]:
-            alias = term.lstrip('-')
-            if alias.startswith(self.extra_ordering_prefix):
-                key = alias[len(self.extra_ordering_prefix):]
-                if key:
-                    extra_fields.append((key, alias))
-        return extra_fields
-
-    def get_extra_ordering_fields(self, request, queryset, view):
-        json_ordering_source = getattr(view, 'json_ordering_source', None)
-        annotations = getattr(
-            getattr(queryset, 'query', None), 'annotations', {})
-        if (not json_ordering_source or
-            json_ordering_source not in annotations):
-            return []
-        return [(f'{json_ordering_source}__{key}', alias)
-            for key, alias in self.get_extra_ordering_terms(request, view)]
-
-    def get_valid_fields(self, queryset, view, context=None):
-        valid_fields = list(super().get_valid_fields(
-            queryset, view, context=context))
-        request = (context or {}).get('request')
-        if request:
-            valid_fields += self.get_extra_ordering_fields(
-                request, queryset, view)
-        return tuple(valid_fields)
-
-    def get_schema_operation_parameters(self, view):
-        parameters = super().get_schema_operation_parameters(view)
-        parameters[0]['description'] += (
-            " Profile extra keys must use the 'extra__' prefix"
-            " (for example 'extra__birthdate').")
-        return parameters
 
 
 class DateRangeFilter(BaseFilterBackend):

@@ -999,11 +999,14 @@ class OrganizationSearchOrderListMixin(object):
         # fields in User model:
         'username',
         'first_name',
-        'last_name'
+        'last_name',
+        'extra'
     )
+
     ordering_fields = (
         ('full_name', 'full_name'),
         ('created_at', 'created_at'),
+        ('extra', 'extra')
     )
 
     # XXX technically we should derive ('first_name', 'last_name')
@@ -1012,6 +1015,8 @@ class OrganizationSearchOrderListMixin(object):
     #     ```ordering = self.remove_invalid_fields(
     #            queryset, self.get_default_ordering(view), view, request)```
     ordering = ('full_name', 'first_name', 'last_name')
+
+    json_field = 'extra'
 
     filter_backends = (SearchFilter, OrderingFilter,) # See comment above
 

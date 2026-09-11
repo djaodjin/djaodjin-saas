@@ -617,7 +617,8 @@
       "postal_code": "94133",
       "country": "US",
       "processor": 1,
-      "is_active": 1
+      "is_active": 1,
+      "extra": "{\"birth_date\":\"2000-09-09\"}"
     },
     "model": "saas.Organization", "pk": 12
 },
@@ -897,7 +898,8 @@
       "created_at": "2026-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 1,
-      "is_active": 1
+      "is_active": 1,
+      "extra": "{\"birth_date\":\"2000-08-31\"}"
     },
     "model": "saas.Organization", "pk": 21
 },
@@ -942,7 +944,8 @@
       "created_at": "2026-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 1,
-      "is_active": 1
+      "is_active": 1,
+      "extra": "{\"birth_date\":\"2001-02-12\"}"
     },
     "model": "saas.Organization", "pk": 22
 },
