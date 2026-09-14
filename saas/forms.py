@@ -28,6 +28,7 @@ Forms shown by the saas application
 from __future__ import unicode_literals
 
 from decimal import Decimal
+import json
 
 from django import forms
 from django.template.defaultfilters import slugify
@@ -179,6 +180,7 @@ class ImportTransactionForm(forms.Form):
 
 class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
+    form_id = 'update'
     submit_title = _('Update')
     slug = forms.SlugField(max_length=254, label=_("Display name"),
         disabled=True,
@@ -235,6 +237,20 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
             self.fields['extra'] = forms.CharField(required=False,
                 widget=forms.Textarea, label=mark_safe('Notes'),
                 initial=initial)
+            try:
+                extra_as_json = (initial if isinstance(initial, dict)
+                    else json.loads(initial))
+                for initial_name, initial_value in extra_as_json.items():
+                    field_name = 'extra__%s' % str(initial_name)
+                    if field_name:
+                        self.fields[field_name] = forms.CharField(
+                            required=False,
+                            label=mark_safe(initial_name),
+                            initial=initial_value)
+            except (TypeError, ValueError):
+                # If 'extra' is not a JSON-formatted field,
+                # we do not try to interpret it.
+                pass
 
 
 class OrganizationCreateForm(OrganizationForm):

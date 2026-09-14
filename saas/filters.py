@@ -188,7 +188,7 @@ class SearchFilter(BaseSearchFilter):
 
 
     def filter_valid_fields(self, queryset, fields, view):
-        #pylint:disable=protected-access
+        #pylint:disable=too-many-locals,protected-access
         model_fields = {
             field.name for field in queryset.model._meta.get_fields()}
         annotations = getattr(

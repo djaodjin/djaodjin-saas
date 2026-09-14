@@ -588,7 +588,7 @@ class OrganizationDetailSerializer(OrganizationSerializer):
         help_text=_("When `True`, the profile does not allow implicit roles"))
     is_bulk_buyer = serializers.BooleanField(required=False, default=False,
         help_text=_("Enable GroupBuy"))
-    extra = ExtraField(required=False, allow_null=True,
+    extra = ExtraField(required=False, allow_null=True, allow_blank=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     detail = serializers.CharField(read_only=True, required=False,

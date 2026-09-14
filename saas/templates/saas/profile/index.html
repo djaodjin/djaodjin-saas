@@ -3,7 +3,8 @@
 {% block saas_content %}
 <profile-update inline-template id="profile-container">
   <div>
-    <form method="post" action="." @submit.prevent="updateProfile">
+    <form{% if form.form_id %} id="{{form.form_id}}"{% endif %}
+        method="post" action="." @submit.prevent="updateProfile">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
       <div>
         <input type="hidden" name="picture" value="{% if form.instance.picture %}{{form.instance.picture}}{% endif %}">

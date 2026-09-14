@@ -1,4 +1,4 @@
-# Copyright (c) 2025, DjaoDjin inc.
+# Copyright (c) 2026, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,6 @@
 Manage Profile information
 """
 import json, logging
-from collections.abc import Mapping
 
 from django import http
 from django.contrib import messages
@@ -295,42 +294,10 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
     slug_field = 'slug'
     slug_url_kwarg = settings.PROFILE_URL_KWARG
     template_name = "saas/profile/index.html"
-    extra_field_prefix = 'extra__'
-
-    def _extract_extra_fields(self, data):
-        prefix = self.extra_field_prefix
-        return {
-            key[len(prefix):]: value
-            for key, value in data.items()
-            if key.startswith(prefix) and len(key) > len(prefix)
-        }
-
-    def _prefix_extra_fields(self, extra):
-        return {
-            self.extra_field_prefix + key: value
-            for key, value in extra.items()
-        }
-
-    def _get_updated_extra(self):
-        submitted_extra = self._extract_extra_fields(self.request.POST)
-        if not submitted_extra:
-            return None
-
-        extra_was_mapping = isinstance(self.object.extra, Mapping)
-        extra = extra_as_internal(self.object)
-        extra.update(submitted_extra)
-        extra_model_field = self.object._meta.get_field('extra')
-        if (not extra_was_mapping and
-                extra_model_field.get_internal_type() != 'JSONField'):
-            return json.dumps(extra)
-        return extra
+    json_field = 'extra'
 
     def form_valid(self, form):
         validated_data = form.cleaned_data
-        updated_extra = self._get_updated_extra()
-        if updated_extra is not None:
-            validated_data = validated_data.copy()
-            validated_data['extra'] = updated_extra
         try:
             self.update_profile_fields(self.get_object(), validated_data)
         except ValidationError as err:
@@ -345,6 +312,43 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             return ManagerAndOrganizationForm
         return super(OrganizationProfileView, self).get_form_class()
 
+    def get_form_kwargs(self):
+        kwargs = super(OrganizationProfileView, self).get_form_kwargs()
+
+        if self.request.method in ("POST", "PUT"): # Same as Django code base
+            data = {}
+            extra_keys = {}
+            set_extra = False
+            extra_field_prefix = '%s__' % self.json_field
+            for key, val in self.request.POST.items():
+                if key.startswith(extra_field_prefix):
+                    extra_keys.update({key[len(extra_field_prefix):]: val})
+                else:
+                    data.update({key: val})
+                    if key == self.json_field:
+                        set_extra = True
+
+            if extra_keys:
+                if set_extra:
+                    try:
+                        updated_extra = json.loads(data[self.json_field])
+                        updated_extra.update(extra_keys)
+                        data.update({
+                            self.json_field: json.dumps(updated_extra)})
+                    except (TypeError, ValueError):
+                        # If 'extra' is not a JSON-formatted field,
+                        # we do not try to interpret it.
+                        pass
+                else:
+                    updated_extra = extra_as_internal(self.object)
+                    updated_extra.update(extra_keys)
+                    data.update({self.json_field: json.dumps(updated_extra)})
+
+            kwargs.update({'data': data})
+
+        return kwargs
+
+
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
         if _valid_manager(
@@ -358,15 +362,8 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             kwargs.update({
                 'is_provider': self.object.is_provider,
                 'extra': self.object.extra})
-        extra_initial = extra_as_internal(self.object)
-        if self.request.method.lower() in ('post',):
-            # repeated submissions will discard the extra values as these
-            # are not proper form fields
-            extra_initial.update(
-                self._extract_extra_fields(self.request.POST))
-        kwargs.update(self._prefix_extra_fields(extra_initial))
         return kwargs
 
     def get_success_url(self):
-        messages.info(self.request, 'Profile updated.')
+        messages.success(self.request, _('Profile was updated.'))
         return reverse('saas_organization_profile', args=(self.object,))

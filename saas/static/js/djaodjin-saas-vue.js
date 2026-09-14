@@ -618,7 +618,6 @@ var cardMixin = {
                 data['country'] = vm.getInitValue(cardForm, 'country');
                 data['region'] = vm.getInitValue(cardForm, 'region');
             }
-            console.log("XXX [getCardFormData] cardForm=", cardForm, "data=", data);
             return data;
         },
         clearCardData: function() {
@@ -2384,6 +2383,7 @@ Vue.component('profile-update', {
             vm.validateForm();
             var data = {};
             var extra = {};
+            var setExtra = false;
             var extraFieldPrefix = 'extra__';
             for( var field in vm.formFields ) {
                 if( vm.formFields.hasOwnProperty(field) ) {
@@ -2393,13 +2393,26 @@ Vue.component('profile-update', {
                         if( extraField ) {
                             extra[extraField] = vm.formFields[field];
                         }
-                    } else if( vm.formFields[field] ) {
+                    } else {
                         data[field] = vm.formFields[field];
+                        if( field === 'extra' ) {
+                            setExtra = true;
+                        }
                     }
                 }
             }
             if( Object.keys(extra).length > 0 ) {
-                data.extra = extra;
+                if( setExtra ) {
+                    try {
+                        var submittedExtra = JSON.parse(data.extra)
+                        data.extra = Object.assign({}, submittedExtra, extra);
+                    } catch(err) {
+                        // We do nothing if the `extra` field is present,
+                        // but is not JSON-formatted.
+                    }
+                } else {
+                    data.extra = extra;
+                }
             }
             vm.reqPut(vm.url, data,
             function(resp) {
