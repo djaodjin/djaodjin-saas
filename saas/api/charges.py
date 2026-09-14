@@ -571,8 +571,7 @@ class PaymentCollectedAPIView(OrganizationMixin, generics.CreateAPIView):
         # of the charge if no amount was passed.
         claim_code = kwargs.get(self.claim_code_url_kwarg)
         charge = generics.get_object_or_404(
-            Charge.objects.all(), #filter(customer=self.organization),
-            claim_code=claim_code)
+            Charge.objects.all(), claim_code=claim_code)
         charge.retrieve() # This will settle the charge on the processor
                           # if necessary.
         charge_items = charge.charge_items.filter(

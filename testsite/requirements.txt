@@ -6,21 +6,24 @@ Django==4.2.30 ; python_version >= "3.9" and python_version < "3.12"
 Django==5.2.16 ; python_version >= "3.12" and python_version < "3.14"
 Django==6.0.7  ; python_version >= "3.14"
 djangorestframework==3.14.0 ; python_version < "3.9"
-                                      # 3.12.4 not compatible with Django4.2
-djangorestframework==3.15.2 ; python_version >= "3.9" # Breaking
-                                      # changes in 3.15.0 and 3.15.1.
-                                      # Requires Django>=4.2 and Python >=3.8.
+                             # 3.12.4 not compatible with Django4.2
+djangorestframework==3.15.2 ;python_version >= "3.9" and python_version < "3.12"
+                             # Breaking changes in 3.15.0 and 3.15.1.
+                             # Requires Django>=4.2 and Python >=3.8.
+djangorestframework==3.18.1 ; python_version >= "3.14"
+                             # 3.18 dropped support for Django4.2
+
 django-countries==8.2.0
 django-localflavor==3.1
 django-phonenumber-field==7.1.0
-Markdown==3.4.4                       # To htmlize legal agreements
+Markdown==3.10.3                      # To htmlize legal agreements
 phonenumbers==8.13.7
 python-dateutil==2.8.2
 PyJWT==2.8.0                ; python_version < "3.9"
-PyJWT==2.12.0               ; python_version >= "3.9"
+PyJWT==2.14.0               ; python_version >= "3.9"
 rave_python==1.4.0
 razorpay==0.2.0
-stripe==5.0.0
+stripe==12.5.1
 
 # testsite-only
 coverage==7.2.1
