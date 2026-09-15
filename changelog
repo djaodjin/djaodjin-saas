@@ -8,6 +8,16 @@ Roadmap
 Released versions
 =================
 
+1.3.0
+
+  * generates profile page form fields for JSON filed target keys automatically
+  * enables search/order all models based on a target key in a JSON field
+  * enables profile primary address to be an e-mail or e-mail domain
+  * adds search button in dashboard
+  * fixes re-send e-mail receipt
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Tue, 15 Sep 2026 09:00:00 -0700
+
 1.2.3
 
   * skips "pay balance" page if balance less than 50 cents

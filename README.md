@@ -106,14 +106,12 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (legacy)
 - **Python:** 3.9, **Django:** 3.2 (legacy)
 
-1.2.3
+1.3.0
 
-  * skips "pay balance" page if balance less than 50 cents
-  * raises an appropriate error when attempting to charge less than 50 cents
-  * does not show "Remove from cart" for balances due
-  * fixes `AttributeError` in `CartItemManager.redeem` under certain conditions
-  * makes use of pytz optional
-  * removes dependency on jQuery in Vue components
-  * reconciles subscriptions in database with a spreadsheet
+  * generates profile page form fields for JSON filed target keys automatically
+  * enables search/order all models based on a target key in a JSON field
+  * enables profile primary address to be an e-mail or e-mail domain
+  * adds search button in dashboard
+  * fixes re-send e-mail receipt
 
 [previous release notes](changelog)
