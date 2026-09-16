@@ -106,8 +106,9 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (legacy)
 - **Python:** 3.9, **Django:** 3.2 (legacy)
 
-1.3.0
+1.3.1
 
+  * enables webpack builds on case-sensitive filesystems
   * generates profile page form fields for JSON filed target keys automatically
   * enables search/order all models based on a target key in a JSON field
   * enables profile primary address to be an e-mail or e-mail domain
