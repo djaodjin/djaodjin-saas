@@ -5,7 +5,7 @@ name = "djaodjin-saas"
 dynamic = ["version"]
 description = "Django application for software-as-service and subscription businesses"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 license =  {text = "BSD-2-Clause"}
 keywords = ["django", "stripe", "saas", "subscriptions", "razorpay", "plans"]
 authors = [
@@ -17,11 +17,10 @@ maintainers = [
 classifiers = [
   "Framework :: Django",
   "Environment :: Web Environment",
-  "Programming Language :: Python",
-  "License :: OSI Approved :: BSD License"
+  "Programming Language :: Python"
 ]
 dependencies = [
-  "Django>=1.11",
+  "Django>=3.2",
   "django-countries>=2.1.2",
   "django-localflavor>=1.0",
   "django-phonenumber-field>=2.4.0",
