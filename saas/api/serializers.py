@@ -621,7 +621,7 @@ class OrganizationCreateSerializer(OrganizationDetailSerializer):
 OrganizationCreateSerializer._declared_fields["type"] = \
     serializers.CharField(#pylint:disable=protected-access,no-member
         required=False,
-        help_text=_("One of 'organization', 'personal' or 'user'"))
+        help_text=_("One of 'personal' or 'organization'"))
 
 
 class OrganizationWithSubscriptionsSerializer(OrganizationDetailSerializer):
@@ -824,10 +824,15 @@ class PlanCreateSerializer(PlanDetailSerializer):
 
 
 class OrganizationInviteSerializer(OrganizationCreateSerializer):
+    """
+    We use `OrganizationInviteSerializer` to invite an already
+    existing profile (`slug`) or creating a new profile with `full_name`,
+    `email` and `type`.
+    """
+    full_name = serializers.CharField(required=False,
+        help_text=_("Full name"))
 
     def validate(self, attrs):
-        # XXX This is because we use `OrganizationInviteSerializer`
-        # in `ProvidedSubscriptionCreateSerializer`.
         if not (attrs.get('slug') or (attrs.get('full_name') and
                 attrs.get('email') and attrs.get('type'))):
             raise ValidationError(_("One of slug or (full_name, email,"\

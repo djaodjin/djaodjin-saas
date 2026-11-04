@@ -71,7 +71,7 @@
     "fields": {
       "slug": "subscriber131",
       "email": "subscriber+131@localhost.localdomain",
-      "full_name": "Subscriber131",
+      "full_name": "Subscriber '131",
       "created_at": "2026-01-01T00:00:00+00:00",
       "processor": 1,
       "is_provider": 0,
