@@ -802,14 +802,29 @@ const djApi = {
                     traditional: true,
                 }));
             const resps = await Promise.all(fetchPromises);
+            let failed = 0;
             for( const resp of resps ) {
                 if( !resp.ok ) {
-                    if( args.failureCallback ) {
-                        args.failureCallback(...resps);
-                    }
-                    throw new Error(`HTTP status: ${resp.status}`);
+                    failed = resp.status;
+                    break;
                 }
             }
+            if( failed && args.failureCallback ) {
+                let failures = [];
+                for( const resp of resps ) {
+                    if( !resp.ok ) {
+                        failed = resp.status;
+                        const d = await resp.text();
+                        failures.push({status: resp.status, data: d})
+                    } else {
+                        const d = await resp.json();
+                        failures.push({status: resp.status, data: d})
+                    }
+                }
+                args.failureCallback(...failures);
+                throw new Error(`HTTP status: ${failed}`);
+            }
+
             const jsonPromises = resps.map(resp => resp.json());
             const data = await Promise.all(jsonPromises);
             if( args.successCallback ) {
