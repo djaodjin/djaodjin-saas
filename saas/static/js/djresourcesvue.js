@@ -57,7 +57,7 @@ var paramsMixin = {
             var params = {};
             for( var key in vm.params ) {
                 if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
-                    if( excludes && key in excludes ) continue;
+                    if( excludes && excludes.includes(key) ) continue;
                     params[key] = vm.params[key];
                 }
             }
