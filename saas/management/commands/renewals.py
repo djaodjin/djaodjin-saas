@@ -88,15 +88,17 @@ on credit cards"""
             recognize_income(end_period, dry_run=dry_run)
         except Exception as err:
             LOGGER.exception("recognize_income: %s", err)
+
+        nb_renewals = None
         try:
             nb_renewals = extend_subscriptions(end_period, dry_run=dry_run)
-            self.stdout.write("  %d subscriptions renewed" % nb_renewals)
         except Exception as err:
             LOGGER.exception("extend_subscriptions: %s", err)
+
+        nb_charges = None
         try:
             nb_charges = create_charges_for_balance(
                 end_period, dry_run=dry_run or no_charges)
-            self.stdout.write("  %d charges initiated" % nb_charges)
         except Exception as err:
             LOGGER.exception(
                 "Unable to create charges for balance on broker '%s'",
@@ -108,9 +110,21 @@ on credit cards"""
             complete_charges()
 
         # Trigger 'expires soon' notifications
+        nb_notices_per_period = {}
         expiration_periods = settings.EXPIRE_NOTICE_DAYS
         for period in expiration_periods:
             nb_notices = trigger_expiration_notices(
                 end_period, nb_days=period, dry_run=dry_run)
+            nb_notices_per_period.update({period: nb_notices})
+
+        self.report(nb_renewals=nb_renewals, nb_charges=nb_charges,
+            nb_notices_per_period=nb_notices_per_period)
+
+
+    def report(self, nb_renewals=None, nb_charges=None,
+               nb_notices_per_period=None):
+        self.stdout.write("  %d subscriptions renewed" % nb_renewals)
+        self.stdout.write("  %d charges initiated" % nb_charges)
+        for period, nb_notices in nb_notices_per_period.items():
             self.stdout.write("  %d %d-days expiration notices sent" % (
                 nb_notices, period))
