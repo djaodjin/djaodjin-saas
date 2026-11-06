@@ -8,6 +8,13 @@ Roadmap
 Released versions
 =================
 
+1.3.2
+
+  * fixes profile subscriptions page is blank
+  * enables override of report format in renewals command
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu,  5 Nov 2026 16:20:00 -0700
+
 1.3.1
 
   * enables webpack builds on case-sensitive filesystems
